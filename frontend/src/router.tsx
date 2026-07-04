@@ -43,13 +43,13 @@ export function Router() {
       <Route path="/hotels" element={<Hotels />} />
       <Route path="/hotels/:id" element={<HotelRooms />} />
       <Route path="/settings" element={<Settings />} />
-      {/* <Route path="/messaging" element={<Inbox />} />
+      <Route path="/messaging" element={<Inbox />} />
       <Route path="/automations" element={<Automation />} />
       <Route path="/campaigns" element={<Campaigns />} />
       <Route path="/voice" element={<Voice />} />
       <Route path="/contacts" element={<Contacts />} />
       <Route path="/pipeline" element={<Pipeline />} />
-      <Route path="/ai-agent" element={<AiAgent />} /> */}
+      <Route path="/ai-agent" element={<AiAgent />} />
       <Route path="/login" element={<Login />} />
       <Route path="*" element={<Analytics />} />
     </Routes>
