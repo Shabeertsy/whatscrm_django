@@ -1,495 +1,389 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Building2, ArrowLeft, Bed, MapPin, Users, CheckCircle2, ChevronRight, ChevronLeft, Share2, Check } from 'lucide-react';
+import {
+  ArrowLeft, Bed, MapPin, Users, ChevronLeft, ChevronRight,
+  Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal
+} from 'lucide-react';
 import { hotelsApi } from '../api/hotels';
 import { useHotelStore } from '../store/hotelStore';
 
-
-
 export function HotelRooms() {
   const { id } = useParams<{ id: string }>();
-  const selectedHotel = useHotelStore(state => state.selectedHotel);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
-  const [propertyData, setPropertyData] = useState<any>(selectedHotel || null);
-  const [rooms, setRooms] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedRoom = useHotelStore(state => state.selectedHotel);
+  const imgRef = useRef<HTMLDivElement>(null);
+
+  const [room, setRoom] = useState<any>(cachedRoom || null);
+  const [loading, setLoading] = useState(!cachedRoom);
   const [error, setError] = useState('');
-  
-  // Selection & UI states
-  const [selectedRoomIds, setSelectedRoomIds] = useState<string[]>([]);
+  const [imgIdx, setImgIdx] = useState(0);
 
-  const toggleRoomSelection = (roomId: string) => {
-    setSelectedRoomIds(prev => 
-      prev.includes(roomId) ? prev.filter(id => id !== roomId) : [...prev, roomId]
-    );
-  };
-
-  // Filter states
-  const [checkIn, setCheckIn] = useState('2026-07-04');
-  const [checkOut, setCheckOut] = useState('2026-07-05');
-  const [adults, setAdults] = useState(2);
+  // Filters (re-fetch room with new params)
+  const today = new Date().toISOString().split('T')[0];
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+  const [checkIn, setCheckIn] = useState(
+    cachedRoom?.price_summary?.check_in || today
+  );
+  const [checkOut, setCheckOut] = useState(
+    cachedRoom?.price_summary?.check_out || tomorrow
+  );
+  const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [roomsCount, setRoomsCount] = useState(1);
-  const [priceRange, setPriceRange] = useState([1000, 15000]);
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
-  const [showPriceDropdown, setShowPriceDropdown] = useState(false);
+  const guestRef = useRef<HTMLDivElement>(null);
 
-  const scrollLeft = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: -400, behavior: 'smooth' });
-    }
-  };
+  // Close dropdown on outside click
+  useEffect(() => {
+    const h = (e: MouseEvent) => {
+      if (guestRef.current && !guestRef.current.contains(e.target as Node)) setShowGuestDropdown(false);
+    };
+    document.addEventListener('mousedown', h);
+    return () => document.removeEventListener('mousedown', h);
+  }, []);
 
-  const scrollRight = () => {
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollBy({ left: 400, behavior: 'smooth' });
-    }
-  };
-
-  const fetchRooms = async () => {
+  const fetchRoom = async () => {
     if (!id) return;
     setLoading(true);
+    setError('');
     try {
-      const params = {
-        property_uuid: id,
-        check_in: checkIn,
-        check_out: checkOut,
-        adults: adults,
-        children: children,
-        rooms: roomsCount
-      };
+      const params: Record<string, any> = { adults, children, rooms_needed: roomsCount };
+      if (checkIn) params.check_in = checkIn;
+      if (checkOut) params.check_out = checkOut;
 
-      const response = await hotelsApi.getRooms(params);
-      const data = response.data || response;
-      
-      if (data) {
-        // Merge the selectedHotel (which has images) with the new data
-        let enhancedData = { ...selectedHotel, ...data };
-        setPropertyData(enhancedData);
-        let extractedRooms = data.rooms || data.results || (Array.isArray(data) ? data : []);
-        
-        // Apply price filter client-side
-        extractedRooms = extractedRooms.filter((room: any) => {
-          const roomPrice = room.price || room.grand_total || (room.price_summary && room.price_summary.grand_total) || 0;
-          if (!roomPrice) return true; // If no price data, include it
-          return roomPrice >= priceRange[0] && roomPrice <= priceRange[1];
-        });
-        
-        setRooms(extractedRooms);
+      // Use detail endpoint to get accurate pricing after rate check
+      const res = await hotelsApi.getCrmRoomDetail(id, params);
+      if (res.data) {
+        setRoom(res.data);
+      } else if (cachedRoom) {
+        setRoom(cachedRoom);
+      } else {
+        setError('Room not found.');
       }
-    } catch (err: any) {
-      console.error(err);
-      setError('Failed to load room details. Please try again later.');
+    } catch {
+      setError('Failed to load room details. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-
-  useEffect(() => {
-    fetchRooms();
-  }, [id]);
+  useEffect(() => { fetchRoom(); }, [id]);
 
   if (loading) {
     return (
-      <div className="flex flex-col justify-center items-center h-96 space-y-4">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#007e3a]"></div>
-        <span className="text-sm font-medium text-slate-500">Loading property rooms...</span>
+      <div className="flex flex-col items-center justify-center h-80 gap-4">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#007e3a]" />
+        <span className="text-sm text-slate-500">Loading room details...</span>
       </div>
     );
   }
 
-  if (error) {
+  if (error || !room) {
     return (
       <div className="space-y-4">
-        <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Hotels
+        <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 transition">
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Rooms
         </Link>
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200">
-          {error}
-        </div>
+        <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200">{error || 'Room not found.'}</div>
       </div>
     );
   }
 
+  const images: any[] = room.room_images || [];
+  const summary = room.price_summary || {};
+  const breakdown: any[] = room.price_breakdown || [];
+  const amenities: any[] = room.amenities || [];
 
-  
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition mb-4">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Hotels
-        </Link>
-        
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white">
-              {propertyData?.property_name || propertyData?.name || 'Hotel Details'}
-            </h1>
-            {propertyData?.location && (
-              <p className="text-slate-500 dark:text-slate-400 text-sm mt-1.5 flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-[#007e3a]" />
-                {propertyData.location.address || propertyData.location.name}
-              </p>
+      {/* Back */}
+      <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
+        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Rooms
+      </Link>
+
+      {/* Search / Filter Bar */}
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+        <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700">
+          {/* Check In */}
+          <div className="px-5 py-3.5 flex-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Check In</label>
+            <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)}
+              className="text-[13px] font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:outline-none w-full cursor-pointer" />
+          </div>
+          {/* Check Out */}
+          <div className="px-5 py-3.5 flex-1">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Check Out</label>
+            <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)}
+              className="text-[13px] font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:outline-none w-full cursor-pointer" />
+          </div>
+          {/* Guests */}
+          <div className="px-5 py-3.5 flex-1 relative cursor-pointer" ref={guestRef} onClick={() => setShowGuestDropdown(v => !v)}>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1 cursor-pointer">Guests</label>
+            <div className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">{adults + children} Persons</div>
+            <div className="text-[10px] text-slate-400">{adults} Adult · {children} Child · {roomsCount} Room</div>
+            {showGuestDropdown && (
+              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-xl p-4 w-[220px] z-50" onClick={e => e.stopPropagation()}>
+                {[
+                  { label: 'Adults', val: adults, min: 1, set: setAdults },
+                  { label: 'Children', val: children, min: 0, set: setChildren },
+                  { label: 'Rooms', val: roomsCount, min: 1, set: setRoomsCount },
+                ].map(({ label, val, min, set }) => (
+                  <div key={label} className="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
+                    <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => set(v => Math.max(min, v - 1))} className="w-7 h-7 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded-lg hover:bg-green-50 transition-colors font-bold">−</button>
+                      <span className="w-5 text-center font-bold text-[13px] text-slate-900 dark:text-white">{val}</span>
+                      <button onClick={() => set(v => v + 1)} className="w-7 h-7 flex items-center justify-center bg-[#007e3a] text-white rounded-lg hover:bg-[#00602d] transition-colors font-bold">+</button>
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => { setShowGuestDropdown(false); }} className="w-full mt-3 bg-[#007e3a] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#00602d] transition-colors">Apply</button>
+              </div>
             )}
           </div>
-          
-          <div className="bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-lg shadow-sm flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700 w-full md:w-max md:ml-auto">
-            {/* Check In */}
-            <div className="px-6 py-3.5 relative group min-w-[160px]">
-              <span className="block text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-1">Check In</span>
-              <div className="flex items-center justify-between">
-                <input 
-                  type="date" 
-                  value={checkIn}
-                  onChange={e => setCheckIn(e.target.value)}
-                  className="font-bold text-[15px] text-slate-900 dark:text-white bg-transparent focus:outline-none w-full cursor-pointer" 
-                />
-                {checkIn && (
-                  <button onClick={() => setCheckIn('')} className="text-slate-400 hover:text-[#007e3a] transition-colors p-0.5 absolute right-4 bg-white dark:bg-slate-900">
-                    <span className="text-lg font-black leading-none">&times;</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Check Out */}
-            <div className="px-6 py-3.5 relative group min-w-[160px]">
-              <span className="block text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-1">Check Out</span>
-              <div className="flex items-center justify-between">
-                <input 
-                  type="date" 
-                  value={checkOut}
-                  onChange={e => setCheckOut(e.target.value)}
-                  className="font-bold text-[15px] text-slate-900 dark:text-white bg-transparent focus:outline-none w-full cursor-pointer" 
-                />
-                {checkOut && (
-                  <button onClick={() => setCheckOut('')} className="text-slate-400 hover:text-[#007e3a] transition-colors p-0.5 absolute right-4 bg-white dark:bg-slate-900">
-                    <span className="text-lg font-black leading-none">&times;</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Guests */}
-            <div className="px-6 py-3.5 min-w-[180px] relative cursor-pointer" onClick={() => setShowGuestDropdown(!showGuestDropdown)}>
-              <span className="block text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-1.5">Guests</span>
-              <div className="inline-block text-[14px] font-bold text-slate-900 dark:text-white">
-                {adults + children} Persons
-              </div>
-              <div className="text-[11px] text-slate-500 mt-1 font-medium">
-                {adults} Adult, {children} Child, {roomsCount} Rooms
-              </div>
-
-              {/* Guest Dropdown */}
-              {showGuestDropdown && (
-                <div 
-                  className="absolute top-[105%] left-0 md:-left-4 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg p-4 w-[220px] z-50 cursor-default"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <div className="space-y-3">
-                    {/* Adults */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-slate-700 dark:text-slate-300">Adults</span>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => setAdults(Math.max(1, adults - 1))} className="w-6 h-6 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded text-lg hover:bg-green-50 transition-colors leading-none pb-0.5">-</button>
-                        <span className="w-4 text-center font-semibold text-[13px] text-slate-900 dark:text-white">{adults}</span>
-                        <button onClick={() => setAdults(adults + 1)} className="w-6 h-6 flex items-center justify-center bg-[#007e3a] text-white rounded text-lg hover:bg-[#00602d] transition-colors leading-none pb-0.5">+</button>
-                      </div>
-                    </div>
-
-                    {/* Children */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-slate-700 dark:text-slate-300">Children</span>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => setChildren(Math.max(0, children - 1))} className="w-6 h-6 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded text-lg hover:bg-green-50 transition-colors leading-none pb-0.5">-</button>
-                        <span className="w-4 text-center font-semibold text-[13px] text-slate-900 dark:text-white">{children}</span>
-                        <button onClick={() => setChildren(children + 1)} className="w-6 h-6 flex items-center justify-center bg-[#007e3a] text-white rounded text-lg hover:bg-[#00602d] transition-colors leading-none pb-0.5">+</button>
-                      </div>
-                    </div>
-
-                    {/* Rooms */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-[13px] text-slate-700 dark:text-slate-300">Rooms</span>
-                      <div className="flex items-center gap-3">
-                        <button onClick={() => setRoomsCount(Math.max(1, roomsCount - 1))} className="w-6 h-6 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded text-lg hover:bg-green-50 transition-colors leading-none pb-0.5">-</button>
-                        <span className="w-4 text-center font-semibold text-[13px] text-slate-900 dark:text-white">{roomsCount}</span>
-                        <button onClick={() => setRoomsCount(roomsCount + 1)} className="w-6 h-6 flex items-center justify-center bg-[#007e3a] text-white rounded text-lg hover:bg-[#00602d] transition-colors leading-none pb-0.5">+</button>
-                      </div>
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={() => setShowGuestDropdown(false)}
-                    className="w-full mt-4 bg-[#007e3a] hover:bg-[#00602d] text-white text-[13px] font-semibold py-2 rounded transition-colors"
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Price Per Night */}
-            <div className="px-6 py-3.5 min-w-[140px] relative cursor-pointer" onClick={() => setShowPriceDropdown(!showPriceDropdown)}>
-              <span className="block text-[11px] text-slate-500 font-bold uppercase tracking-wider mb-1.5">Price Per Night</span>
-              <div className="text-[15px] font-bold text-slate-900 dark:text-white">
-                ₹{priceRange[0]} - ₹{priceRange[1]}
-              </div>
-
-              {/* Price Dropdown */}
-              {showPriceDropdown && (
-                <div 
-                  className="absolute top-[105%] right-0 mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-lg p-4 w-[240px] z-50 cursor-default"
-                  onClick={e => e.stopPropagation()}
-                >
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Min Price (₹)</label>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={priceRange[0]}
-                        onChange={e => setPriceRange([Number(e.target.value), priceRange[1]])}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 text-[13px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#007e3a] focus:border-[#007e3a]"
-                      />
-                    </div>
-                    <div>
-                      <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">Max Price (₹)</label>
-                      <input 
-                        type="number" 
-                        min={priceRange[0]}
-                        value={priceRange[1]}
-                        onChange={e => setPriceRange([priceRange[0], Number(e.target.value)])}
-                        className="w-full px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900 text-[13px] font-semibold text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-[#007e3a] focus:border-[#007e3a]"
-                      />
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={() => setShowPriceDropdown(false)}
-                    className="w-full mt-5 bg-[#007e3a] hover:bg-[#00602d] text-white text-[13px] font-semibold py-2 rounded-lg transition-colors"
-                  >
-                    Apply
-                  </button>
-                </div>
-              )}
-            </div>
-
-            {/* Search Button */}
-            <button 
-              onClick={() => fetchRooms()}
-              className="bg-[#007e3a] hover:bg-[#00602d] text-white text-[15px] font-bold w-full md:w-[140px] transition-colors md:rounded-r-lg cursor-pointer flex items-center justify-center py-4 md:py-0 focus:outline-none"
-            >
-              Search
-            </button>
-          </div>
+          {/* Search Button */}
+          <button onClick={fetchRoom} className="bg-[#007e3a] hover:bg-[#00602d] text-white font-bold text-sm px-8 py-4 md:rounded-r-xl transition-colors flex items-center gap-2 justify-center">
+            <SlidersHorizontal className="h-4 w-4" /> Check Rates
+          </button>
         </div>
       </div>
 
-      {/* Property Images Gallery */}
-      {propertyData?.images && propertyData.images.length > 0 && (
-        <div className="relative w-full rounded-2xl mb-6 group">
-          <div 
-            ref={scrollContainerRef}
-            className="flex overflow-x-auto gap-3 h-48 md:h-[280px] snap-x snap-mandatory [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] scroll-smooth"
-          >
-            {propertyData.images.map((img: any, idx: number) => (
-              <div 
-                key={img.uuid || idx} 
-                className="h-full flex-shrink-0 snap-center w-[85%] sm:w-[60%] md:w-[45%] lg:w-[35%] relative rounded-xl overflow-hidden shadow-sm"
-              >
-                <img 
-                  src={img.image || img.url || img} 
-                  alt={`${propertyData.property_name || 'Property'} - ${idx + 1}`} 
-                  className="w-full h-full object-cover hover:scale-105 transition-transform duration-500 cursor-pointer" 
-                />
-              </div>
-            ))}
+      {/* Room Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">{room.name}</h1>
+          <div className="flex flex-wrap items-center gap-3 mt-2">
+            {room.room_type && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-[#007e3a]/10 text-[#007e3a] px-3 py-1 rounded-full">
+                <Bed className="h-3 w-3" /> {room.room_type.name}
+              </span>
+            )}
+            {room.property_type && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-3 py-1 rounded-full">
+                <Building2 className="h-3 w-3" /> {room.property_type.name}
+              </span>
+            )}
+            {room.status && (
+              <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border ${room.status === 'available' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
+                <CheckCircle2 className="h-3 w-3" /> {room.status}
+              </span>
+            )}
           </div>
-          
-          {/* Scroll Buttons */}
-          <button 
-            onClick={scrollLeft}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/95 dark:bg-slate-800/95 text-slate-700 dark:text-white p-2.5 rounded-full shadow-md hover:shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white dark:hover:bg-slate-700 hover:scale-110 z-10 hidden md:flex items-center justify-center border border-slate-100 dark:border-slate-600"
-          >
-            <ChevronLeft className="h-5 w-5" />
-          </button>
-          <button 
-            onClick={scrollRight}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/95 dark:bg-slate-800/95 text-slate-700 dark:text-white p-2.5 rounded-full shadow-md hover:shadow-lg opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-white dark:hover:bg-slate-700 hover:scale-110 z-10 hidden md:flex items-center justify-center border border-slate-100 dark:border-slate-600"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
         </div>
-      )}
+        {/* Price Summary */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm text-right min-w-[200px]">
+          <div className="text-3xl font-black text-slate-900 dark:text-white">
+            ₹{(summary.grand_total ?? room.grand_total ?? room.price)?.toLocaleString()}
+          </div>
+          <div className="text-xs text-slate-500 mt-0.5">
+            {summary.nights ? `${summary.nights} night${summary.nights > 1 ? 's' : ''} · ` : ''}
+            {summary.check_in && summary.check_out ? `${summary.check_in} → ${summary.check_out}` : 'per night'}
+          </div>
+          {summary.gst_amount > 0 && (
+            <div className="text-xs text-slate-400 mt-1">Incl. GST ₹{summary.gst_amount?.toLocaleString()} ({summary.gst_pct}%)</div>
+          )}
+        </div>
+      </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        
-        {/* Left Column: Property Info */}
-        <div className="xl:col-span-1 space-y-6">
-          {/* Highlights */}
-          {propertyData?.highlights && propertyData.highlights.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-                <Star className="h-5 w-5 text-amber-500" /> Property Highlights
-              </h3>
-              <ul className="space-y-3">
-                {propertyData.highlights.map((highlight: any) => (
-                  <li key={highlight.uuid} className="flex items-start gap-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm text-slate-600 dark:text-slate-300">{highlight.title}</span>
-                  </li>
-                ))}
-              </ul>
+        {/* Left: Images + Details */}
+        <div className="xl:col-span-2 space-y-6">
+
+          {/* Image Gallery */}
+          {images.length > 0 ? (
+            <div className="relative rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800" style={{ height: 300 }}>
+              <img src={images[imgIdx]?.url || images[imgIdx]?.image} alt={room.name}
+                className="w-full h-full object-cover transition-all duration-500" />
+              {images.length > 1 && (
+                <>
+                  <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 p-2 rounded-full shadow-md hover:scale-110 transition">
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button onClick={() => setImgIdx(i => (i + 1) % images.length)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 p-2 rounded-full shadow-md hover:scale-110 transition">
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
+                    {images.map((_: any, i: number) => (
+                      <button key={i} onClick={() => setImgIdx(i)}
+                        className={`h-2 rounded-full transition-all ${i === imgIdx ? 'w-5 bg-white' : 'w-2 bg-white/50'}`} />
+                    ))}
+                  </div>
+                  {/* Thumbnails */}
+                  {images.length > 1 && (
+                    <div className="absolute bottom-0 left-0 right-0 p-2 flex gap-2 overflow-x-auto bg-gradient-to-t from-black/40 to-transparent">
+                      {images.map((img: any, i: number) => (
+                        <button key={i} onClick={() => setImgIdx(i)}
+                          className={`h-12 w-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition ${i === imgIdx ? 'border-white' : 'border-transparent opacity-60'}`}>
+                          <img src={img.url || img.image} alt="" className="h-full w-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 h-48 flex items-center justify-center">
+              <Bed className="h-12 w-12 text-slate-300" />
             </div>
           )}
 
-          {/* Popular Amenities */}
-          {propertyData?.popular_amenities && propertyData.popular_amenities.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">Popular Amenities</h3>
+          {/* Room Info Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { label: 'Base Occupancy', val: `${room.base_occupancy} Guests`, icon: <Users className="h-4 w-4" /> },
+              { label: 'Max Occupancy', val: `${room.max_occupancy} Guests`, icon: <Users className="h-4 w-4" /> },
+              { label: 'Room Number', val: room.room_number ? `#${room.room_number}` : '—', icon: <Bed className="h-4 w-4" /> },
+              { label: 'Base Price', val: `₹${parseFloat(room.base_price || 0).toLocaleString()}`, icon: <Tag className="h-4 w-4" /> },
+            ].map(({ label, val, icon }) => (
+              <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+                <div className="flex items-center gap-1.5 text-[#007e3a] mb-2">{icon}</div>
+                <div className="font-bold text-slate-900 dark:text-white text-sm">{val}</div>
+                <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Description */}
+          {room.description && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <Info className="h-4 w-4 text-[#007e3a]" /> Description
+              </h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{room.description}</p>
+            </div>
+          )}
+
+          {/* Amenities */}
+          {amenities.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <Star className="h-4 w-4 text-[#007e3a]" /> Amenities
+              </h3>
               <div className="flex flex-wrap gap-2">
-                {propertyData.popular_amenities.map((amenity: any) => (
-                  <span key={amenity.uuid} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-xs font-medium text-slate-700 dark:text-slate-300">
-                    {/* Map FontAwesome to Lucide if needed, or just show name */}
-                    {amenity.name}
+                {amenities.map((a: any) => (
+                  <span key={a.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300">
+                    <i className={`fa ${a.icon} text-[#007e3a]`} style={{ fontSize: 11 }} />
+                    {a.name}
                   </span>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Rules */}
-          {propertyData?.rules && propertyData.rules.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
-              <h3 className="text-base font-bold text-slate-900 dark:text-white mb-4">Property Rules</h3>
-              <div className="space-y-4">
-                {propertyData.rules.slice(0, 3).map((ruleGroup: any) => (
-                  <div key={ruleGroup.uuid}>
-                    <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-2">{ruleGroup.name}</h4>
-                    <ul className="space-y-1.5 pl-2">
-                      {ruleGroup.rules.slice(0, 2).map((rule: any) => (
-                        <li key={rule.uuid} className="text-xs text-slate-500 dark:text-slate-400 list-disc ml-3">
-                          {rule.rule_text}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
+          {/* Price Breakdown */}
+          {breakdown.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                <Calendar className="h-4 w-4 text-[#007e3a]" /> Price Breakdown
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-slate-600 dark:text-slate-400">
+                  <thead className="text-[10px] uppercase text-slate-400 border-b border-slate-100 dark:border-slate-800">
+                    <tr>
+                      <th className="pb-2 text-left">Date</th>
+                      <th className="pb-2 text-right">Base Price</th>
+                      <th className="pb-2 text-right">Markup</th>
+                      <th className="pb-2 text-right">GST</th>
+                      <th className="pb-2 text-right font-bold text-slate-700 dark:text-slate-200">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50 dark:divide-slate-800">
+                    {breakdown.map((b: any, i: number) => (
+                      <tr key={i}>
+                        <td className="py-2">{b.date}</td>
+                        <td className="py-2 text-right">₹{room.base_price?.toLocaleString()}</td>
+                        <td className="py-2 text-right">₹{b.markup_amount?.toLocaleString()}</td>
+                        <td className="py-2 text-right">₹{b.gst_amount?.toLocaleString()}</td>
+                        <td className="py-2 text-right font-bold text-slate-800 dark:text-white">₹{b.total_with_gst?.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
         </div>
 
-        {/* Right Column: Rooms List */}
-        <div className="xl:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
-            <h2 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
-              <Bed className="h-5 w-5 text-[#007e3a]" /> Available Rooms
-            </h2>
-            <button 
-              onClick={() => {
-                // TODO: Add sharing functionality later
-              }}
-              className="flex items-center gap-1.5 text-sm font-medium text-[#007e3a] hover:text-[#00602d] transition-colors bg-green-50 dark:bg-green-900/20 px-4 py-2 rounded-lg border border-green-200 dark:border-green-800 shadow-sm"
-            >
-              <Share2 className="h-4 w-4" /> Share This Property
-            </button>
-          </div>
-          
-          {rooms.length === 0 ? (
-            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center shadow-sm">
-              <Bed className="h-12 w-12 mx-auto text-slate-300 mb-4" />
-              <h3 className="text-lg font-bold text-slate-700 dark:text-slate-300 mb-1">No Rooms Available</h3>
-              <p className="text-sm text-slate-500">Try adjusting your dates or guest counts to find availability.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {rooms.map((room: any, index: number) => {
-                const roomId = room.uuid || index.toString();
-                const isSelected = selectedRoomIds.includes(roomId);
-                return (
-                <div 
-                  key={room.uuid || index} 
-                  className={`bg-white dark:bg-slate-900 rounded-xl border ${isSelected ? 'border-[#007e3a] shadow-md shadow-[#007e3a]/10' : 'border-slate-200 dark:border-slate-800 shadow-sm'} p-5 hover:shadow-md transition-all flex flex-col md:flex-row gap-6 relative`}
-                >
-                  {isSelected && (
-                    <div className="absolute top-0 right-0 bg-[#007e3a] text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl uppercase tracking-wider">
-                      Selected
-                    </div>
-                  )}
-                  {/* Room Image */}
-                  <div className="w-full md:w-48 h-32 bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden flex-shrink-0">
-                    {room.room_images && room.room_images.length > 0 ? (
-                      <img src={room.room_images[0].image || room.room_images[0].url} alt={room.name || 'Room'} className="w-full h-full object-cover" />
-                    ) : room.image || room.thumbnail ? (
-                      <img src={room.image || room.thumbnail} alt={room.name || 'Room'} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <Bed className="h-8 w-8 text-slate-300" />
-                      </div>
-                    )}
-                  </div>
-                  
-                  {/* Room Details */}
-                  <div className="flex-1 flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white">{room.name || room.title || 'Standard Room'}</h3>
-                      <div className="flex flex-wrap items-center gap-3 mt-2">
-                        {room.max_adults && (
-                          <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                            <Users className="h-3.5 w-3.5" /> Max {room.max_adults} Adults
-                          </span>
-                        )}
-                        {room.bed_type && (
-                          <span className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400">
-                            <Bed className="h-3.5 w-3.5" /> {room.bed_type}
-                          </span>
-                        )}
-                      </div>
-                      
-                      <p className="text-sm text-slate-600 dark:text-slate-300 mt-3 line-clamp-2">
-                        {room.description || 'Enjoy a comfortable stay in our beautifully appointed rooms with premium amenities.'}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-end justify-between mt-4 border-t border-slate-100 dark:border-slate-800 pt-4">
-                      <div>
-                        {room.price ? (
-                          <>
-                            <span className="text-2xl font-black text-slate-900 dark:text-white">₹{room.price}</span>
-                            <span className="text-xs text-slate-500 ml-1">/ night</span>
-                          </>
-                        ) : (
-                          <span className="text-lg font-bold text-slate-900 dark:text-white">Price Unavailable</span>
-                        )}
-                      </div>
-                      <button 
-                        onClick={() => toggleRoomSelection(roomId)}
-                        className={`${isSelected ? 'bg-white border-2 border-[#007e3a] text-[#007e3a]' : 'bg-[#007e3a] hover:bg-[#00662f] text-white border-2 border-transparent'} px-5 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-1.5`}
-                      >
-                        {isSelected ? (
-                          <><Check className="h-4 w-4" /> Selected</>
-                        ) : (
-                          <>Select Room <ChevronRight className="h-4 w-4" /></>
-                        )}
-                      </button>
-                    </div>
+        {/* Right: Sidebar */}
+        <div className="space-y-5">
+          {/* Property Info */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+              <Building2 className="h-4 w-4 text-[#007e3a]" /> Property Info
+            </h3>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-start gap-3">
+                <Building2 className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">{room.owner_username || room.owner_brand_name}</p>
+                  <p className="text-xs text-slate-400">{room.property_type?.name}</p>
+                </div>
+              </div>
+              {room.property_location && (
+                <div className="flex items-start gap-3">
+                  <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed">{room.property_location.name}</p>
+                    <p className="text-xs text-slate-400">{room.property_location.city}, {room.property_location.state}</p>
                   </div>
                 </div>
-                );
-              })}
+              )}
+              {room.owner_phone && (
+                <div className="flex items-center gap-3">
+                  <Phone className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  <span className="text-slate-700 dark:text-slate-300 text-xs">{room.owner_phone}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Pricing Summary */}
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <Tag className="h-4 w-4 text-[#007e3a]" /> Pricing Summary
+            </h3>
+            <div className="space-y-2.5 text-sm">
+              {[
+                { label: 'Avg. per night', val: `₹${summary.avg_per_night?.toLocaleString() ?? '—'}` },
+                { label: `Subtotal (${summary.nights ?? '?'} night${(summary.nights ?? 0) > 1 ? 's' : ''})`, val: `₹${summary.subtotal?.toLocaleString() ?? '—'}` },
+                room.markup_amount > 0 && { label: 'Markup', val: `₹${room.markup_amount?.toLocaleString()}` },
+                { label: `GST (${summary.gst_pct ?? 0}%)`, val: `₹${summary.gst_amount?.toLocaleString() ?? '0'}` },
+              ].filter(Boolean).map((row: any) => (
+                <div key={row.label} className="flex justify-between items-center text-slate-600 dark:text-slate-400">
+                  <span>{row.label}</span>
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{row.val}</span>
+                </div>
+              ))}
+              <hr className="border-slate-100 dark:border-slate-800" />
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-900 dark:text-white">Grand Total</span>
+                <span className="font-black text-lg text-[#007e3a]">₹{(summary.grand_total ?? room.grand_total)?.toLocaleString()}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Extra Charges Info */}
+          {(parseFloat(room.extra_adult_price) > 0 || parseFloat(room.child_price) > 0) && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+              <h3 className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-2 uppercase tracking-wider">Extra Charges</h3>
+              <div className="space-y-1.5 text-xs text-amber-700 dark:text-amber-300">
+                {parseFloat(room.extra_adult_price) > 0 && (
+                  <div className="flex justify-between"><span>Extra Adult</span><span className="font-bold">₹{parseFloat(room.extra_adult_price).toLocaleString()}</span></div>
+                )}
+                {parseFloat(room.child_price) > 0 && (
+                  <div className="flex justify-between"><span>Child</span><span className="font-bold">₹{parseFloat(room.child_price).toLocaleString()}</span></div>
+                )}
+              </div>
             </div>
           )}
+
+          {/* Book Button removed as per request */}
         </div>
-        
       </div>
     </div>
   );
 }
 
-// Add Star icon import since it's used
-import { Star } from 'lucide-react';
 export default HotelRooms;

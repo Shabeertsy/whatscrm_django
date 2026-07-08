@@ -1,3 +1,304 @@
-from django.shortcuts import render
+import json
+import logging
+from datetime import datetime, timezone
 
-# Create your views here.
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
+from django.utils import timezone as django_tz
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+
+from apps.whatsapp.models import WhatsappInstance
+from .models import Contact, Conversation, Message
+from .serializers import (
+    ContactSerializer,
+    ConversationListSerializer,
+    ConversationDetailSerializer,
+    ConversationUpdateSerializer,
+    MessageSerializer,
+    SendMessageSerializer,
+)
+from .utils import broadcast_new_message, broadcast_delete_message
+
+logger = logging.getLogger(__name__)
+
+
+#  Contact ViewSet 
+class ContactViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class   = ContactSerializer
+
+    def get_queryset(self):
+        qs = Contact.objects.all()
+        is_saved = self.request.query_params.get('is_saved')
+        search   = self.request.query_params.get('search')
+        if is_saved is not None:
+            qs = qs.filter(is_saved=is_saved.lower() == 'true')
+        if search:
+            qs = qs.filter(
+                name__icontains=search
+            ) | qs.filter(
+                phone__icontains=search
+            ) | qs.filter(
+                wa_id__icontains=search
+            )
+        return qs.order_by('-created_at')
+
+    @action(detail=True, methods=['post'], url_path='save')
+    def save_contact(self, request, pk=None):
+        contact = self.get_object()
+        name = request.data.get('name', contact.name)
+        tags = request.data.get('tags', contact.tags)
+        source = request.data.get('source', 'manual')
+
+        contact.is_saved = True
+        contact.name = name
+        contact.tags = tags
+        contact.source = source
+        contact.save(update_fields=['is_saved', 'name', 'tags', 'source', 'updated_at'])
+        return Response(ContactSerializer(contact).data)
+
+
+#  Conversation APIViews
+class ConversationListAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = Conversation.objects.select_related(
+            'contact', 'instance', 'assigned_agent'
+        ).prefetch_related('messages')
+
+        status_filter = request.query_params.get('status')
+        instance_id   = request.query_params.get('instance')
+        search        = request.query_params.get('search')
+
+        if status_filter:
+            qs = qs.filter(status=status_filter)
+        if instance_id:
+            qs = qs.filter(instance_id=instance_id)
+        if search:
+            qs = qs.filter(contact__name__icontains=search) | \
+                 qs.filter(contact__phone__icontains=search)
+
+        qs = qs.order_by('-last_message_at')
+        serializer = ConversationListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class ConversationDetailAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        qs = Conversation.objects.select_related(
+            'contact', 'instance', 'assigned_agent'
+        ).prefetch_related('messages')
+        conv = get_object_or_404(qs, pk=pk)
+        serializer = ConversationDetailSerializer(conv)
+        return Response(serializer.data)
+
+    def patch(self, request, pk):
+        conv = get_object_or_404(Conversation, pk=pk)
+        serializer = ConversationUpdateSerializer(conv, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(ConversationListSerializer(conv).data)
+
+
+class ConversationSendMessageAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        conv = get_object_or_404(Conversation, pk=pk)
+        serializer = SendMessageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        msg = Message.objects.create(
+            conversation=conv,
+            direction='outbound',
+            msg_type=serializer.validated_data.get('msg_type', 'text'),
+            body=serializer.validated_data.get('body', ''),
+            media_url=serializer.validated_data.get('media_url', ''),
+            sent_by=request.user,
+            status='sent',
+            timestamp=django_tz.now(),
+        )
+
+        # Update conversation's last_message_at
+        conv.last_message_at = msg.timestamp
+        conv.save(update_fields=['last_message_at'])
+
+        # Broadcast to the agent's WebSocket in real-time
+        broadcast_new_message(conv, msg)
+        return Response(MessageSerializer(msg).data, status=status.HTTP_201_CREATED)
+
+
+class ConversationMarkReadAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        """Reset unread_count to 0 when agent opens the conversation."""
+        conv = get_object_or_404(Conversation, pk=pk)
+        conv.unread_count = 0
+        conv.save(update_fields=['unread_count'])
+        return Response({'status': 'ok', 'unread_count': 0})
+
+
+class MessageDeleteAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, pk):
+        msg = get_object_or_404(Message, pk=pk)
+        conv = msg.conversation
+        msg_id_str = str(msg.id)
+        
+        msg.delete()
+        
+        # Recalculate last_message_at
+        last_msg = conv.messages.order_by('-timestamp').first()
+        conv.last_message_at = last_msg.timestamp if last_msg else conv.created_at
+        conv.save(update_fields=['last_message_at'])
+
+        # Broadcast deletion to WebSockets
+        broadcast_delete_message(conv, msg_id_str)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Webhook View 
+class WebhookView(APIView):
+    """
+    Handles inbound messages from Meta Cloud API.
+    GET  = webhook verification challenge
+    POST = incoming messages / status updates
+    """
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def get(self, request):
+        """Meta webhook verification handshake."""
+        mode      = request.query_params.get('hub.mode')
+        token     = request.query_params.get('hub.verify_token')
+        challenge = request.query_params.get('hub.challenge')
+
+        instance = WhatsappInstance.objects.filter(
+            webhook_verify_token=token,
+            is_active=True
+        ).order_by('-created_at').first()
+        if mode == 'subscribe' and instance:
+            logger.info(f"Webhook verified for instance: {instance.display_name}")
+            return HttpResponse(challenge, content_type='text/plain')
+
+        logger.warning(f"Webhook verification failed. Token: {token}")
+        return HttpResponse(status=403)
+
+    def post(self, request):
+        try:
+            payload = request.data
+            entry   = payload.get('entry', [])
+
+            for e in entry:
+                for change in e.get('changes', []):
+                    value = change.get('value', {})
+                    self._process_webhook_value(value)
+
+        except Exception as exc:
+            logger.exception(f"Webhook processing error: {exc}")
+
+        # Always return 200 to Meta — otherwise it retries indefinitely
+        return Response({'status': 'ok'})
+
+    def _process_webhook_value(self, value: dict):
+        """Parse one 'value' block from the Meta payload."""
+        phone_number_id = value.get('metadata', {}).get('phone_number_id')
+        instance = WhatsappInstance.objects.filter(
+            phone_number_id=phone_number_id,
+            is_active=True
+        ).order_by('-created_at').first()
+
+        # Handle incoming messages
+        for msg_data in value.get('messages', []):
+            self._handle_inbound_message(msg_data, instance)
+
+        # Handle status updates (delivered / read / failed)
+        for status_data in value.get('statuses', []):
+            self._handle_status_update(status_data)
+
+    def _handle_inbound_message(self, msg_data: dict, instance):
+        """
+        1. Upsert Contact (get_or_create by wa_id)
+        2. Get or create Conversation
+        3. Save Message
+        4. Broadcast via WebSocket
+        """
+        wa_id = msg_data.get('from')  
+        wa_msg_id = msg_data.get('id')
+        msg_type  = msg_data.get('type', 'text')
+
+        #  Upsert contact
+        contact, _ = Contact.objects.get_or_create(
+            wa_id=wa_id,
+            defaults={
+                'phone': f'+{wa_id}',
+                'is_saved': False,
+                'source': 'inbound',
+            }
+        )
+
+        # Update name from profile if available
+        profile = msg_data.get('profile', {})
+        if profile.get('name') and not contact.name:
+            contact.name = profile['name']
+            contact.save(update_fields=['name', 'updated_at'])
+
+        #  Get or create conversation
+        conv, created = Conversation.objects.get_or_create(
+            contact=contact,
+            instance=instance,
+            status__in=['open', 'pending'],
+            defaults={'status': 'open'},
+        )
+        if not created and conv.status == 'resolved':
+            conv.status = 'open'
+            conv.save(update_fields=['status'])
+
+        #  Extract body
+        body = ''
+        if msg_type == 'text':
+            body = msg_data.get('text', {}).get('body', '')
+
+        # Parse timestamp
+        ts_raw = msg_data.get('timestamp')
+        ts = datetime.fromtimestamp(int(ts_raw), tz=timezone.utc) if ts_raw else django_tz.now()
+
+        # Save message
+        msg = Message.objects.create(
+            conversation=conv,
+            wa_message_id=wa_msg_id,
+            direction='inbound',
+            msg_type=msg_type,
+            body=body,
+            status='delivered',
+            timestamp=ts,
+        )
+
+        # Update conversation metadata
+        conv.last_message_at = ts
+        conv.unread_count    = conv.unread_count + 1
+        conv.save(update_fields=['last_message_at', 'unread_count'])
+
+        logger.info(f"Saved inbound message from {wa_id}: {body[:60]}")
+
+        # Broadcast to the assigned agent's WebSocket group in real-time
+        broadcast_new_message(conv, msg)
+
+    def _handle_status_update(self, status_data: dict):
+        """Update message delivery/read status from Meta callbacks."""
+        wa_msg_id  = status_data.get('id')
+        new_status = status_data.get('status') 
+        if wa_msg_id and new_status:
+            Message.objects.filter(wa_message_id=wa_msg_id).update(status=new_status)

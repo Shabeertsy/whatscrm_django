@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    "daphne",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -84,6 +85,22 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = "config.wsgi.application"
+
+# Django Channels — ASGI application entry point
+ASGI_APPLICATION = "config.asgi.application"
+
+# Channel Layer — InMemoryChannelLayer for dev, swap to Redis in production:
+# CHANNEL_LAYERS = {
+#     "default": {
+#         "BACKEND": "channels_redis.core.RedisChannelLayer",
+#         "CONFIG": {"hosts": [("127.0.0.1", 6379)]},
+#     }
+# }
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels.layers.InMemoryChannelLayer"
+    }
+}
 
 
 # Database
@@ -160,3 +177,7 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=30),
     'ROTATE_REFRESH_TOKENS': False,
 }
+
+import os
+# Base URL for upstream proxy APIs (like click4trip)
+PROXY_API_BASE_URL = os.environ.get("PROXY_API_BASE_URL", "https://demo.click4trip.in/api")

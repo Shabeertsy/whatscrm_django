@@ -1,10 +1,16 @@
 import { apiClient } from './client';
 
 export const hotelsApi = {
-  getHotels: async (params?: Record<string, any>) => {
-    return apiClient.get('/core/hotels/', { params });
+  getCrmRooms: async (params?: Record<string, any>) => {
+    return apiClient.get('/core/crm-rooms/', { params });
   },
-  getRooms: async (params: Record<string, any>) => {
-    return apiClient.get('/core/rooms/', { params });
+  getCrmRoomDetail: async (uuid: string, params?: Record<string, any>) => {
+    return apiClient.get(`/core/crm-rooms/${uuid}/`, { params });
   },
+  getRoomConfig: async () => {
+    return apiClient.get('/core/room-config/');
+  },
+  getPropertyConfig: async () => {
+    return apiClient.get('/core/property-config/');
+  }
 };

@@ -2,10 +2,10 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from apps.core.models import BaseModel
 
 
-class WhatsappInstance(models.Model):
-    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+class WhatsappInstance(BaseModel):
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -34,11 +34,8 @@ class WhatsappInstance(models.Model):
         help_text="Token you set in Meta webhook configuration",
     )
     is_active = models.BooleanField(default=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        ordering = ["-created_at"]
+    
+    class Meta(BaseModel.Meta):
         verbose_name = "WhatsApp Instance"
         verbose_name_plural = "WhatsApp Instances"
 

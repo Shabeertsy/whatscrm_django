@@ -1,5 +1,28 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import (
+    ContactViewSet,
+    ConversationListAPIView, ConversationDetailAPIView,
+    ConversationSendMessageAPIView, ConversationMarkReadAPIView,
+    MessageDeleteAPIView, WebhookView
+)
+
+router = DefaultRouter()
+router.register(r'contacts', ContactViewSet, basename='contact')
 
 urlpatterns = [
-    # path('', views.IndexView.as_view(), name='index'),
+    # Contacts (ViewSet)
+    path('', include(router.urls)),
+
+    # Conversations
+    path('conversations/', ConversationListAPIView.as_view(), name='conversation-list'),
+    path('conversations/<int:pk>/', ConversationDetailAPIView.as_view(), name='conversation-detail'),
+    path('conversations/<int:pk>/send/', ConversationSendMessageAPIView.as_view(), name='conversation-send-message'),
+    path('conversations/<int:pk>/mark-read/', ConversationMarkReadAPIView.as_view(), name='conversation-mark-read'),
+
+    # Messages
+    path('messages/<int:pk>/', MessageDeleteAPIView.as_view(), name='message-delete'),
+
+    # Meta Cloud API webhook — must be publicly accessible
+    path('webhook/', WebhookView.as_view(), name='messaging-webhook'),
 ]

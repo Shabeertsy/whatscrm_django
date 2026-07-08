@@ -42,11 +42,6 @@ class UserViewSet(viewsets.ModelViewSet):
         password = serializer.validated_data.pop('password', 'password123')
         user = serializer.save()
         user.set_password(password)
-        
-        if user.user_type == 'admin':
-            user.is_superuser = True
-            user.is_staff = True
-            
         user.save()
 
 
