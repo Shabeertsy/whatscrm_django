@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { messagingStore } from "../../../store/messagingStore";
 import { Check, CheckCheck, Clock, User2, Trash2 } from "lucide-react";
 import { formatMessageTime } from "../utils";
+import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 
 
 
@@ -15,15 +16,21 @@ interface ChatWindowProps {
 
 export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async (messageId: string) => {
-    if (!confirm('Are you sure you want to delete this message?')) return;
+  const confirmDelete = async () => {
+    if (!deleteId) return;
+    setIsDeleting(true);
     try {
-      await messagingApi.deleteMessage(messageId);
-      messagingStore.removeMessage(conversation.id, messageId);
+      await messagingApi.deleteMessage(deleteId);
+      messagingStore.removeMessage(conversation.id, deleteId);
+      setDeleteId(null);
     } catch (err) {
       console.error(err);
       alert('Failed to delete message. It may have already been deleted.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -115,7 +122,7 @@ export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProp
                 {/* Delete Button (Visible on Hover) */}
                 <div className={`hidden group-hover:flex items-center mx-2 ${isOutbound ? "order-first" : "order-last"}`}>
                    <button 
-                     onClick={() => handleDelete(m.id)}
+                     onClick={() => setDeleteId(m.id)}
                      className="p-1.5 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors opacity-0 group-hover:opacity-100"
                      title="Delete message"
                    >
@@ -165,6 +172,18 @@ export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProp
           })
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={!!deleteId}
+        title="Delete Message?"
+        description="Are you sure you want to delete this message? This action will permanently remove it from the CRM and cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        isLoading={isDeleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteId(null)}
+      />
     </div>
   );
 }
