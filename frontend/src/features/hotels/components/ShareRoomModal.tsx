@@ -21,13 +21,17 @@ interface ShareRoomModalProps {
   loadConversations: () => void;
   handleSendShare: () => void;
   closeShare: () => void;
+  filters?: any;
+  amenityOptions?: any[];
+  propertyTypeOptions?: any[];
 }
 
 
 export function ShareRoomModal({
   selectedShareRoom, shareOptions, setShareOptions, expandedShareCategory, setExpandedShareCategory,
   shareStep, setShareStep, selectedChats, setSelectedChats, isSendingShare,
-  chatSearchTerm, setChatSearchTerm, filteredConversations, loadConversations, handleSendShare, closeShare
+  chatSearchTerm, setChatSearchTerm, filteredConversations, loadConversations, handleSendShare, closeShare,
+  filters, amenityOptions, propertyTypeOptions
 }: ShareRoomModalProps) {
   if (!selectedShareRoom) return null;
 
@@ -57,26 +61,55 @@ export function ShareRoomModal({
           <div className="mb-6 space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">Include in Message</p>
             <div className="space-y-2">
-              {[
-                { key: 'propertyDetails', label: 'Property Details', subItems: [
-                    { subKey: 'propertyDetails_type', label: 'Type: ' + (selectedShareRoom.room_type?.name || 'N/A') },
-                    { subKey: 'propertyDetails_occupancy', label: `Occupancy: ${selectedShareRoom.base_occupancy}-${selectedShareRoom.max_occupancy} Guests` }
-                ]},
-                { key: 'price', label: 'Price', subItems: [
-                    { subKey: 'price_amount', label: `Amount: ₹${(selectedShareRoom.price_summary?.grand_total ?? selectedShareRoom.grand_total ?? selectedShareRoom.price)?.toLocaleString()} / night` }
-                ]},
-                { key: 'location', label: 'Location', subItems: [
-                    { subKey: 'location_city', label: `City: ${selectedShareRoom.property_location?.city || 'N/A'}` },
-                    { subKey: 'location_state', label: `State: ${selectedShareRoom.property_location?.state || 'N/A'}` }
-                ]},
-                { key: 'contactDetails', label: 'Contact Details', subItems: [
-                    { subKey: 'contactDetails_owner', label: `Owner: ${selectedShareRoom.owner_username || selectedShareRoom.owner_brand_name || 'N/A'}` },
-                    { subKey: 'contactDetails_phone', label: `Phone: ${selectedShareRoom.owner_phone || 'N/A'}` }
-                ]},
-                { key: 'images', label: 'Images & Media', subItems: (selectedShareRoom.room_images || []).map((img: any, i: number) => ({
-                    subKey: `images_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
-                }))}
-              ].map(opt => (
+              {(() => {
+                const searchFilterItems = [];
+                if (filters) {
+                  if (filters.checkIn || filters.checkOut) {
+                    searchFilterItems.push({ subKey: 'filters_dates', label: `Dates: ${filters.checkIn || 'Any'} to ${filters.checkOut || 'Any'}` });
+                  }
+                  if (filters.adults || filters.children) {
+                    searchFilterItems.push({ subKey: 'filters_guests', label: `Guests: ${filters.adults || 1} Adults, ${filters.children || 0} Children` });
+                  }
+                  if (filters.rooms) {
+                    searchFilterItems.push({ subKey: 'filters_rooms', label: `Rooms Needed: ${filters.rooms}` });
+                  }
+                  if (selectedShareRoom?.property_type) {
+                    searchFilterItems.push({ subKey: 'filters_propertyTypes', label: `Property Type: ${selectedShareRoom.property_type.name}` });
+                  }
+                  if (selectedShareRoom?.amenities?.length > 0) {
+                    const aNames = selectedShareRoom.amenities.map((a: any) => a.name).join(', ');
+                    searchFilterItems.push({ subKey: 'filters_amenities', label: `Amenities: ${aNames}` });
+                  }
+                }
+
+                const shareItemsList: any[] = [];
+                
+                if (searchFilterItems.length > 0) {
+                  shareItemsList.push({ key: 'searchFilters', label: 'Search Requirements', subItems: searchFilterItems });
+                }
+
+                shareItemsList.push(
+                  { key: 'propertyDetails', label: 'Property Details', subItems: [
+                      { subKey: 'propertyDetails_type', label: 'Type: ' + (selectedShareRoom.room_type?.name || 'N/A') },
+                      { subKey: 'propertyDetails_occupancy', label: `Occupancy: ${selectedShareRoom.base_occupancy}-${selectedShareRoom.max_occupancy} Guests` }
+                  ]},
+                  { key: 'price', label: 'Price', subItems: [
+                      { subKey: 'price_amount', label: `Amount: ₹${(selectedShareRoom.price_summary?.grand_total ?? selectedShareRoom.grand_total ?? selectedShareRoom.price)?.toLocaleString()} / night` }
+                  ]},
+                  { key: 'location', label: 'Location', subItems: [
+                      { subKey: 'location_city', label: `City: ${selectedShareRoom.property_location?.city || 'N/A'}` },
+                      { subKey: 'location_state', label: `State: ${selectedShareRoom.property_location?.state || 'N/A'}` }
+                  ]},
+                  { key: 'contactDetails', label: 'Contact Details', subItems: [
+                      { subKey: 'contactDetails_owner', label: `Owner: ${selectedShareRoom.owner_username || selectedShareRoom.owner_brand_name || 'N/A'}` },
+                      { subKey: 'contactDetails_phone', label: `Phone: ${selectedShareRoom.owner_phone || 'N/A'}` }
+                  ]},
+                  { key: 'images', label: 'Images & Media', subItems: (selectedShareRoom.room_images || []).map((img: any, i: number) => ({
+                      subKey: `images_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
+                  }))}
+                );
+
+                return shareItemsList.map(opt => (
                 <div key={opt.key} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50">
                     <label className="flex items-center gap-2 cursor-pointer group flex-1">
@@ -117,14 +150,14 @@ export function ShareRoomModal({
                     </div>
                   )}
                 </div>
-              ))}
+              ))})()}
             </div>
           </div>
 
           <div className="flex items-center gap-3">
             <button 
               onClick={() => {
-                const text = generateShareText(selectedShareRoom, shareOptions);
+                const text = generateShareText(selectedShareRoom, shareOptions, filters, amenityOptions, propertyTypeOptions);
                 navigator.clipboard.writeText(text);
                 alert('Message copied to clipboard!');
               }}

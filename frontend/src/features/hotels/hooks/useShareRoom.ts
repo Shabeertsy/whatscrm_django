@@ -4,7 +4,7 @@ import { generateShareText } from '../utils/generateShareText';
 import { useRouter } from '../../../router';
 
 
-export function useShareRoom() {
+export function useShareRoom(filters?: any, amenityOptions?: any[], propertyTypeOptions?: any[]) {
   const { navigate } = useRouter();
   const [selectedShareRoom, setSelectedShareRoom] = useState<any | null>(null);
   const [shareOptions, setShareOptions] = useState<Record<string, boolean>>({});
@@ -35,7 +35,7 @@ export function useShareRoom() {
     setIsSendingShare(true);
     try {
       const textOptions = { ...shareOptions, images: false };
-      const text = generateShareText(selectedShareRoom, textOptions);
+      const text = generateShareText(selectedShareRoom, textOptions, filters, amenityOptions, propertyTypeOptions);
       
       const imagesToInclude = shareOptions.images !== false && selectedShareRoom.room_images 
           ? selectedShareRoom.room_images.filter((_: any, i: number) => shareOptions[`images_${i}`] !== false) 

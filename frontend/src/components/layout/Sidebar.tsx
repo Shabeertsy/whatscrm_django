@@ -30,7 +30,7 @@ export function Sidebar() {
   const navItems = [
     { id: "#dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "#hotels", label: "Hotels and Resorts", icon: Building2 },
-    // { id: "#contacts", label: "Contacts", icon: Contact2 },
+    { id: "#contacts", label: "Contacts", icon: Contact2 },
     // { id: "#pipeline", label: "Pipeline", icon: Sliders },
     { id: "#messaging", label: "Chats", icon: MessageSquare },
     // { id: "#ai-agent", label: "AI Agent", icon: Bot },

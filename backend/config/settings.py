@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     "apps.billing",
     "apps.core",
     "apps.whatsapp",
+    "apps.contacts",
 ]
 
 MIDDLEWARE = [

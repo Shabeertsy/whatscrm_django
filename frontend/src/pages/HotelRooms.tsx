@@ -2,10 +2,12 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import {
   ArrowLeft, Bed, MapPin, Users, ChevronLeft, ChevronRight,
-  Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal
+  Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal, Share2
 } from 'lucide-react';
 import { hotelsApi } from '../api/hotels';
 import { useHotelStore } from '../store/hotelStore';
+import { useShareRoom } from '../features/hotels/hooks/useShareRoom';
+import { ShareRoomModal } from '../features/hotels/components/ShareRoomModal';
 
 export function HotelRooms() {
   const { id } = useParams<{ id: string }>();
@@ -31,6 +33,9 @@ export function HotelRooms() {
   const [roomsCount, setRoomsCount] = useState(1);
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
   const guestRef = useRef<HTMLDivElement>(null);
+
+  const filters = { checkIn, checkOut, adults, children, rooms: roomsCount };
+  const shareState = useShareRoom(filters);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -95,10 +100,18 @@ export function HotelRooms() {
 
   return (
     <div className="space-y-6">
-      {/* Back */}
-      <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
-        <ArrowLeft className="h-4 w-4 mr-1" /> Back to Rooms
-      </Link>
+      {/* Back and Share */}
+      <div className="flex items-center justify-between">
+        <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
+          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Rooms
+        </Link>
+        <button
+          onClick={() => shareState.setSelectedShareRoom(room)}
+          className="flex items-center gap-2 px-3 py-1.5 bg-[#007e3a]/10 hover:bg-[#007e3a]/20 text-[#007e3a] rounded-lg text-sm font-bold transition-colors"
+        >
+          <Share2 className="h-4 w-4" /> Share
+        </button>
+      </div>
 
       {/* Search / Filter Bar */}
       <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
@@ -162,9 +175,13 @@ export function HotelRooms() {
                 <Building2 className="h-3 w-3" /> {room.property_type.name}
               </span>
             )}
-            {room.status && (
-              <span className={`inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border ${room.status === 'available' ? 'bg-emerald-100 text-emerald-700 border-emerald-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
-                <CheckCircle2 className="h-3 w-3" /> {room.status}
+            {(room.availability ? room.availability.available : room.status === 'available') ? (
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border bg-emerald-100 text-emerald-700 border-emerald-200">
+                <CheckCircle2 className="h-3 w-3" /> Available
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border bg-red-100 text-red-700 border-red-200">
+                <CheckCircle2 className="h-3 w-3" /> {room.availability?.message || 'Not Available'}
               </span>
             )}
           </div>
@@ -235,7 +252,7 @@ export function HotelRooms() {
               { label: 'Base Occupancy', val: `${room.base_occupancy} Guests`, icon: <Users className="h-4 w-4" /> },
               { label: 'Max Occupancy', val: `${room.max_occupancy} Guests`, icon: <Users className="h-4 w-4" /> },
               { label: 'Room Number', val: room.room_number ? `#${room.room_number}` : '—', icon: <Bed className="h-4 w-4" /> },
-              { label: 'Base Price', val: `₹${parseFloat(room.base_price || 0).toLocaleString()}`, icon: <Tag className="h-4 w-4" /> },
+              { label: 'Base Price', val: `₹${parseFloat((room.price_breakdown?.[0]?.base_price ?? room.base_price) || 0).toLocaleString()}`, icon: <Tag className="h-4 w-4" /> },
             ].map(({ label, val, icon }) => (
               <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
                 <div className="flex items-center gap-1.5 text-[#007e3a] mb-2">{icon}</div>
@@ -293,7 +310,7 @@ export function HotelRooms() {
                     {breakdown.map((b: any, i: number) => (
                       <tr key={i}>
                         <td className="py-2">{b.date}</td>
-                        <td className="py-2 text-right">₹{room.base_price?.toLocaleString()}</td>
+                        <td className="py-2 text-right">₹{b.base_price?.toLocaleString()}</td>
                         <td className="py-2 text-right">₹{b.markup_amount?.toLocaleString()}</td>
                         <td className="py-2 text-right">₹{b.gst_amount?.toLocaleString()}</td>
                         <td className="py-2 text-right font-bold text-slate-800 dark:text-white">₹{b.total_with_gst?.toLocaleString()}</td>
@@ -365,15 +382,15 @@ export function HotelRooms() {
           </div>
 
           {/* Extra Charges Info */}
-          {(parseFloat(room.extra_adult_price) > 0 || parseFloat(room.child_price) > 0) && (
+          {(parseFloat(room.price_breakdown?.[0]?.extra_adult_price ?? room.extra_adult_price) > 0 || parseFloat(room.price_breakdown?.[0]?.child_price ?? room.child_price) > 0) && (
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
               <h3 className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-2 uppercase tracking-wider">Extra Charges</h3>
               <div className="space-y-1.5 text-xs text-amber-700 dark:text-amber-300">
-                {parseFloat(room.extra_adult_price) > 0 && (
-                  <div className="flex justify-between"><span>Extra Adult</span><span className="font-bold">₹{parseFloat(room.extra_adult_price).toLocaleString()}</span></div>
+                {parseFloat(room.price_breakdown?.[0]?.extra_adult_price ?? room.extra_adult_price) > 0 && (
+                  <div className="flex justify-between"><span>Extra Adult</span><span className="font-bold">₹{parseFloat(room.price_breakdown?.[0]?.extra_adult_price ?? room.extra_adult_price).toLocaleString()}</span></div>
                 )}
-                {parseFloat(room.child_price) > 0 && (
-                  <div className="flex justify-between"><span>Child</span><span className="font-bold">₹{parseFloat(room.child_price).toLocaleString()}</span></div>
+                {parseFloat(room.price_breakdown?.[0]?.child_price ?? room.child_price) > 0 && (
+                  <div className="flex justify-between"><span>Child</span><span className="font-bold">₹{parseFloat(room.price_breakdown?.[0]?.child_price ?? room.child_price).toLocaleString()}</span></div>
                 )}
               </div>
             </div>
@@ -382,6 +399,7 @@ export function HotelRooms() {
           {/* Book Button removed as per request */}
         </div>
       </div>
+      <ShareRoomModal {...shareState} filters={filters} />
     </div>
   );
 }

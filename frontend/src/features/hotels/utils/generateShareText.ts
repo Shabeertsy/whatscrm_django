@@ -1,6 +1,36 @@
-export function generateShareText(room: any, options: Record<string, boolean>) {
+export function generateShareText(
+  room: any, 
+  options: Record<string, boolean>,
+  filters?: any,
+  amenityOptions?: any[],
+  propertyTypeOptions?: any[]
+) {
   if (!room) return '';
   let text = `*${room.name}*\n\n`;
+
+  if (options.searchFilters !== false && filters) {
+    const filterParts = [];
+    if (options.filters_dates !== false && (filters.checkIn || filters.checkOut)) {
+      filterParts.push(`Dates: ${filters.checkIn || 'Any'} to ${filters.checkOut || 'Any'}`);
+    }
+    if (options.filters_guests !== false && (filters.adults || filters.children)) {
+      filterParts.push(`Guests: ${filters.adults || 1} Adults, ${filters.children || 0} Children`);
+    }
+    if (options.filters_rooms !== false && filters.rooms) {
+      filterParts.push(`Rooms Needed: ${filters.rooms}`);
+    }
+    if (options.filters_propertyTypes !== false && room.property_type) {
+      filterParts.push(`Property Type: ${room.property_type.name}`);
+    }
+    if (options.filters_amenities !== false && room.amenities?.length > 0) {
+      const aNames = room.amenities.map((a: any) => a.name).join(', ');
+      filterParts.push(`Amenities: ${aNames}`);
+    }
+
+    if (filterParts.length > 0) {
+      text += `*Requirements:*\n${filterParts.join('\n')}\n\n`;
+    }
+  }
 
   if (options.propertyDetails !== false) {
     if (options.propertyDetails_type !== false) text += `*Type:* ${room.room_type?.name || 'N/A'}\n`;
@@ -26,7 +56,7 @@ export function generateShareText(room: any, options: Record<string, boolean>) {
     text += '\n';
   }
 
-  text += `*View More Details:* ${window.location.origin}/#/hotels/${room.uuid}\n`;
+  // text += `*View More Details:* ${window.location.origin}/#/hotels/${room.uuid}\n`;
 
   if (options.images !== false && room.room_images?.length > 0) {
     const imagesToInclude = room.room_images.filter((_: any, i: number) => options[`images_${i}`] !== false);

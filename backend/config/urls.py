@@ -28,4 +28,5 @@ urlpatterns = [
     path("api/billing/", include("apps.billing.urls")),
     path("api/core/", include("apps.core.urls")),
     path("api/whatsapp/", include("apps.whatsapp.urls")),
+    path("api/contacts/", include("apps.contacts.urls")),
 ]

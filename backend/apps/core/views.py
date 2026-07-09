@@ -126,19 +126,19 @@ class CRMRoomsProxyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, uuid=None):
-        # We always fetch from the list endpoint because the upstream API lacks a detail endpoint.
-        # We'll pass page_size=500 to ensure we get all rooms, then filter in memory if uuid is given.
-        
-        # Clone request GET params to modify them safely
-        params = request.GET.copy()
-        if 'page_size' not in params:
-            params['page_size'] = 500
-        query_params = params.urlencode()
-        
+        query_params = request.GET.urlencode()
         base = settings.PROXY_API_BASE_URL.rstrip('/')
-        url = f"{base}/crm/rooms/?{query_params}"
         
-        cache_key = 'crm_rooms_api_' + hashlib.md5((url + str(uuid)).encode()).hexdigest()
+        if uuid:
+            url = f"{base}/crm/rooms/{uuid}/"
+            if query_params:
+                url += f"?{query_params}"
+        else:
+            url = f"{base}/crm/rooms/"
+            if query_params:
+                url += f"?{query_params}"
+                
+        cache_key = 'crm_rooms_api_' + hashlib.md5(url.encode()).hexdigest()
         cached_data = cache.get(cache_key)
         
         if cached_data:
@@ -150,18 +150,15 @@ class CRMRoomsProxyView(APIView):
             with urllib.request.urlopen(req) as response:
                 data = json.loads(response.read().decode())
                 
-                # If uuid is provided, filter the results and simulate a detail response
-                if uuid:
-                    rooms = data.get('rooms', [])
-                    found_room = next((r for r in rooms if r.get('uuid') == uuid), None)
-                    if found_room:
-                        cache.set(cache_key, found_room, timeout=60)
-                        return Response(found_room)
-                    else:
-                        return Response({"error": "Room not found"}, status=404)
-                else:
-                    cache.set(cache_key, data, timeout=60)
-                    return Response(data)
+                cache.set(cache_key, data, timeout=60)
+                return Response(data)
+        except urllib.error.HTTPError as e:
+            # Try to read error body if available
+            try:
+                error_body = json.loads(e.read().decode())
+                return Response(error_body, status=e.code)
+            except:
+                return Response({"error": str(e)}, status=e.code)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
 

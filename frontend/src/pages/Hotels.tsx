@@ -28,12 +28,17 @@ export function Hotels() {
   } = useHotels(filters, setPage, page);
 
   const [showFilters, setShowFilters] = useState(false);
-  const shareState = useShareRoom();
+  const shareState = useShareRoom(filters, amenityOptions, propertyTypeOptions);
 
-  const getStatusBadge = (status: string) => {
-    if (status === 'available') return 'bg-emerald-100 text-emerald-700 border-emerald-200';
-    if (status === 'booked') return 'bg-red-100 text-red-700 border-red-200';
-    return 'bg-slate-100 text-slate-600 border-slate-200';
+  const getStatusInfo = (room: any) => {
+    const isAvailable = room.availability ? room.availability.available : room.status === 'available';
+    const text = room.availability 
+      ? (room.availability.available ? 'Available' : (room.availability.message || 'Not Available')) 
+      : (room.status || 'N/A');
+    const badgeClass = isAvailable 
+      ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+      : 'bg-red-100 text-red-700 border-red-200';
+    return { text, badgeClass };
   };
 
   return (
@@ -155,9 +160,14 @@ export function Hotels() {
                         </td>
                         {/* Status */}
                         <td className="px-5 py-3.5">
-                          <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${getStatusBadge(room.status)}`}>
-                            {room.status || 'N/A'}
-                          </span>
+                          {(() => {
+                            const { text, badgeClass } = getStatusInfo(room);
+                            return (
+                              <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${badgeClass}`}>
+                                {text}
+                              </span>
+                            );
+                          })()}
                         </td>
                         {/* Action */}
                         <td className="px-5 py-3.5 text-right">
@@ -196,7 +206,7 @@ export function Hotels() {
         </div>
       </div>
 
-      <ShareRoomModal {...shareState} />
+      <ShareRoomModal {...shareState} filters={filters} amenityOptions={amenityOptions} propertyTypeOptions={propertyTypeOptions} />
     </div>
   );
 }

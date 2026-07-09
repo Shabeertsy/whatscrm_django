@@ -24,6 +24,14 @@ class Contact(BaseModel):
     tags            = models.JSONField(default=list, blank=True)
     notes           = models.TextField(blank=True)
 
+    # Link to CRM contact — set when the WhatsApp contact is imported into CRM
+    crm_contact     = models.OneToOneField(
+        'contacts.Contact',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='wa_contact',
+    )
+
     class Meta: 
         ordering = ['-created_at']
         verbose_name = 'Contact'
