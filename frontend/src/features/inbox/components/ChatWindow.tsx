@@ -143,14 +143,27 @@ export function ChatWindow({ conversation, messages, isLoading, onReply }: ChatW
                 </div>
 
                 <div
-                  className={`max-w-[75%] rounded-lg px-3 py-2 text-[13px] shadow-sm relative ${
+                  id={`message-${m.id}`}
+                  className={`max-w-[75%] rounded-lg px-3 py-2 text-[13px] shadow-sm relative transition-all duration-500 ${
                     isOutbound
                       ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-none"
                       : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-100 dark:border-transparent"
                   }`}
                 >
                   {(m as any).replied_to_message && (
-                    <div className="mb-2 p-2 rounded bg-black/5 dark:bg-black/20 border-l-2 border-[#007e3a] dark:border-[#00b359] text-xs opacity-90 flex items-center justify-between gap-2">
+                    <div 
+                      onClick={() => {
+                         const el = document.getElementById(`message-${(m as any).replied_to_message.id}`);
+                         if (el) {
+                           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                           el.classList.add('ring-2', 'ring-[#007e3a]', 'ring-offset-2', 'dark:ring-offset-slate-900');
+                           setTimeout(() => {
+                             el.classList.remove('ring-2', 'ring-[#007e3a]', 'ring-offset-2', 'dark:ring-offset-slate-900');
+                           }, 2000);
+                         }
+                      }}
+                      className="mb-2 p-2 rounded bg-black/5 hover:bg-black/10 dark:bg-black/20 dark:hover:bg-black/30 cursor-pointer border-l-2 border-[#007e3a] dark:border-[#00b359] text-xs opacity-90 flex items-center justify-between gap-2 transition-colors"
+                    >
                       <div className="flex-1 min-w-0">
                         <div className="font-semibold text-[10px] text-[#007e3a] dark:text-[#00b359] mb-0.5">
                           {(m as any).replied_to_message.sent_by_name || "Customer"}

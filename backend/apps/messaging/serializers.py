@@ -67,11 +67,11 @@ class MessageSerializer(serializers.ModelSerializer):
 
 ## Conversation ##
 class ConversationListSerializer(serializers.ModelSerializer):
-    contact           = ContactMinimalSerializer(read_only=True)
-    last_message      = serializers.SerializerMethodField()
-    last_inbound_at   = serializers.SerializerMethodField()
-    instance_name     = serializers.SerializerMethodField()
-    agent_name        = serializers.SerializerMethodField()
+    contact = ContactMinimalSerializer(read_only=True)
+    last_message = serializers.SerializerMethodField()
+    last_inbound_at = serializers.SerializerMethodField()
+    instance_name   = serializers.SerializerMethodField()
+    agent_name      = serializers.SerializerMethodField()
 
     class Meta:
         model  = Conversation
@@ -117,9 +117,9 @@ class ConversationUpdateSerializer(serializers.ModelSerializer):
 class SendMessageSerializer(serializers.Serializer):
     body      = serializers.CharField(max_length=4096, allow_blank=True, required=False, default='')
     media_url = serializers.URLField(required=False, allow_blank=True, default='')
-    related_room_uuid = serializers.CharField(max_length=255, allow_blank=True, required=False, default='')
+    related_room_uuid   = serializers.CharField(max_length=255, allow_blank=True, required=False, default='')
     reply_to_message_id = serializers.IntegerField(required=False, allow_null=True)
-    msg_type  = serializers.ChoiceField(
+    msg_type            = serializers.ChoiceField(
         choices=['text', 'template', 'image', 'document', 'video', 'audio'],
         default='text',
     )
