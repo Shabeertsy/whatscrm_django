@@ -217,9 +217,9 @@ export function ChatWindow({ conversation, messages, isLoading, onReply }: ChatW
                       </button>
                     )} */}
                     <div className="flex items-center space-x-1">
-                      {!isOutbound && m.sent_by_name && (
+                      {/* {!isOutbound && m.sent_by_name && (
                          <span>{m.sent_by_name} • </span>
-                      )}
+                      )} */}
                       <span>{time}</span>
                       {isOutbound && (
                         <span className="ml-1 opacity-80">{renderStatusIcon(m.status)}</span>
