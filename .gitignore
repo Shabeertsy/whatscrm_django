@@ -40,3 +40,8 @@ yarn-error.log
 # Django Migrations
 **/migrations/*.py
 !**/migrations/__init__.py
+
+# Django Static and Media
+staticfiles/
+static/
+media/
