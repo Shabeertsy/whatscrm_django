@@ -52,8 +52,10 @@ class MessageSerializer(serializers.ModelSerializer):
         if obj.direction == 'outbound' and obj.sent_by:
             return obj.sent_by.get_full_name() or obj.sent_by.email
         elif obj.direction == 'inbound':
-            contact = obj.conversation.contact
-            return contact.name or contact.phone
+            wa_contact = obj.conversation.contact
+            if wa_contact.crm_contact:
+                return wa_contact.crm_contact.name
+            return wa_contact.name or wa_contact.phone
         return None
 
     def get_replied_to_message(self, obj):
@@ -62,8 +64,11 @@ class MessageSerializer(serializers.ModelSerializer):
             if obj.replied_to.direction == 'outbound' and obj.replied_to.sent_by:
                 sent_by_name = obj.replied_to.sent_by.get_full_name() or obj.replied_to.sent_by.email
             else:
-                contact = obj.replied_to.conversation.contact
-                sent_by_name = contact.name or contact.phone
+                wa_contact = obj.replied_to.conversation.contact
+                if wa_contact.crm_contact:
+                    sent_by_name = wa_contact.crm_contact.name
+                else:
+                    sent_by_name = wa_contact.name or wa_contact.phone
 
             return {
                 'id': obj.replied_to.id,
