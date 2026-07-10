@@ -24,7 +24,7 @@ from .serializers import (
     MessageSerializer,
     SendMessageSerializer,
 )
-from .utils import broadcast_new_message, broadcast_delete_message, send_whatsapp_message
+from .utils import broadcast_new_message, broadcast_delete_message, send_whatsapp_message, broadcast_conversation_update
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +119,8 @@ class ConversationSendMessageAPIView(APIView):
         serializer.is_valid(raise_exception=True)
 
         body = serializer.validated_data.get('body', '')
+        msg_type = serializer.validated_data.get('msg_type', 'text')
+        media_url = serializer.validated_data.get('media_url', '')
         
         # Meta Graph API Call
         wa_message_id = ""
@@ -130,7 +132,9 @@ class ConversationSendMessageAPIView(APIView):
                     phone_number_id=conv.instance.phone_number_id,
                     access_token=conv.instance.access_token,
                     to_phone=conv.contact.wa_id,
-                    message_text=body
+                    message_text=body,
+                    msg_type=msg_type,
+                    media_url=media_url
                 )
                 if 'messages' in wa_response and len(wa_response['messages']) > 0:
                     wa_message_id = wa_response['messages'][0]['id']
@@ -316,6 +320,7 @@ class WebhookView(APIView):
 
         # Broadcast to the assigned agent's WebSocket group in real-time
         broadcast_new_message(conv, msg)
+        broadcast_conversation_update(conv)
 
     def _handle_status_update(self, status_data: dict):
         """Update message delivery/read status from Meta callbacks."""
