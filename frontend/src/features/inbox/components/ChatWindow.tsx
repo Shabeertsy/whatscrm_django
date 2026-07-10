@@ -150,15 +150,26 @@ export function ChatWindow({ conversation, messages, isLoading, onReply }: ChatW
                   }`}
                 >
                   {(m as any).replied_to_message && (
-                    <div className="mb-2 p-2 rounded bg-black/5 dark:bg-black/20 border-l-2 border-[#007e3a] dark:border-[#00b359] text-xs opacity-90">
-                      <div className="font-semibold text-[10px] text-[#007e3a] dark:text-[#00b359] mb-0.5">
-                        {(m as any).replied_to_message.sent_by_name || "Customer"}
+                    <div className="mb-2 p-2 rounded bg-black/5 dark:bg-black/20 border-l-2 border-[#007e3a] dark:border-[#00b359] text-xs opacity-90 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-[10px] text-[#007e3a] dark:text-[#00b359] mb-0.5">
+                          {(m as any).replied_to_message.sent_by_name || "Customer"}
+                        </div>
+                        <div className="line-clamp-1 opacity-80">
+                          {(m as any).replied_to_message.msg_type === 'text' 
+                            ? (m as any).replied_to_message.body 
+                            : `[${(m as any).replied_to_message.msg_type}] ${(m as any).replied_to_message.body || ''}`}
+                        </div>
                       </div>
-                      <div className="line-clamp-1 opacity-80">
-                        {(m as any).replied_to_message.msg_type === 'text' 
-                          ? (m as any).replied_to_message.body 
-                          : `[${(m as any).replied_to_message.msg_type}]`}
-                      </div>
+                      {(m as any).replied_to_message.media_url && (
+                        <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-black/10">
+                          {(m as any).replied_to_message.msg_type === 'image' ? (
+                            <img src={(m as any).replied_to_message.media_url} alt="" className="w-full h-full object-cover" />
+                          ) : (m as any).replied_to_message.msg_type === 'video' ? (
+                            <video src={(m as any).replied_to_message.media_url} className="w-full h-full object-cover" />
+                          ) : null}
+                        </div>
+                      )}
                     </div>
                   )}
 

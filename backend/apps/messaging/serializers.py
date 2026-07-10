@@ -59,6 +59,7 @@ class MessageSerializer(serializers.ModelSerializer):
                 'id': obj.replied_to.id,
                 'body': obj.replied_to.body,
                 'msg_type': obj.replied_to.msg_type,
+                'media_url': obj.replied_to.media_url,
                 'sent_by_name': obj.replied_to.sent_by.get_full_name() if obj.replied_to.sent_by else None
             }
         return None

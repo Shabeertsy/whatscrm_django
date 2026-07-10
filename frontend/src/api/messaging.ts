@@ -49,6 +49,7 @@ export interface Message {
     id: string;
     body: string;
     msg_type: string;
+    media_url?: string;
     sent_by_name: string | null;
   } | null;
   sent_by: string | null;

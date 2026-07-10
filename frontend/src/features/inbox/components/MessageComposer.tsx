@@ -29,9 +29,18 @@ export function MessageComposer({ value, onChange, onSubmit, onMediaSelect, disa
               Replying to {replyingTo.sent_by_name || (replyingTo.direction === 'inbound' ? 'Customer' : 'Agent')}
             </span>
             <span className="text-xs text-slate-500 truncate">
-              {replyingTo.msg_type === 'text' ? replyingTo.body : `[${replyingTo.msg_type}]`}
+              {replyingTo.msg_type === 'text' ? replyingTo.body : `[${replyingTo.msg_type}] ${replyingTo.body || ''}`}
             </span>
           </div>
+          {replyingTo.media_url && (
+            <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-black/10 mr-3">
+              {replyingTo.msg_type === 'image' ? (
+                <img src={replyingTo.media_url} alt="" className="w-full h-full object-cover" />
+              ) : replyingTo.msg_type === 'video' ? (
+                <video src={replyingTo.media_url} className="w-full h-full object-cover" />
+              ) : null}
+            </div>
+          )}
           <button onClick={onCancelReply} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
             <X className="h-4 w-4" />
           </button>
