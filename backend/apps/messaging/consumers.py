@@ -25,9 +25,11 @@ class InboxConsumer(AsyncWebsocketConsumer):
 
         self.user       = user
         self.group_name = f"inbox_{user.id}"
+        self.global_group = "inbox_global"
 
-        # Join the user's private inbox group
+        # Join the user's private inbox group and the global inbox group
         await self.channel_layer.group_add(self.group_name, self.channel_name)
+        await self.channel_layer.group_add(self.global_group, self.channel_name)
         await self.accept()
 
         logger.info(f"WS connected: user={user.email} group={self.group_name}")
@@ -36,6 +38,8 @@ class InboxConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, close_code):
         if hasattr(self, 'group_name'):
             await self.channel_layer.group_discard(self.group_name, self.channel_name)
+        if hasattr(self, 'global_group'):
+            await self.channel_layer.group_discard(self.global_group, self.channel_name)
             logger.info(f"WS disconnected: group={self.group_name} code={close_code}")
 
     async def receive(self, text_data):

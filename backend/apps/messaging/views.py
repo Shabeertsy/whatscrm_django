@@ -24,7 +24,7 @@ from .serializers import (
     MessageSerializer,
     SendMessageSerializer,
 )
-from .utils import broadcast_new_message, broadcast_delete_message
+from .utils import broadcast_new_message, broadcast_delete_message, send_whatsapp_message
 
 logger = logging.getLogger(__name__)
 
@@ -118,14 +118,35 @@ class ConversationSendMessageAPIView(APIView):
         serializer = SendMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        body = serializer.validated_data.get('body', '')
+        
+        # Meta Graph API Call
+        wa_message_id = ""
+        msg_status = "failed"
+        
+        if conv.instance and conv.instance.is_active:
+            try:
+                wa_response = send_whatsapp_message(
+                    phone_number_id=conv.instance.phone_number_id,
+                    access_token=conv.instance.access_token,
+                    to_phone=conv.contact.wa_id,
+                    message_text=body
+                )
+                if 'messages' in wa_response and len(wa_response['messages']) > 0:
+                    wa_message_id = wa_response['messages'][0]['id']
+                    msg_status = "sent"
+            except Exception as e:
+                logger.error(f"Failed to send WhatsApp message: {e}")
+
         msg = Message.objects.create(
             conversation=conv,
             direction='outbound',
             msg_type=serializer.validated_data.get('msg_type', 'text'),
-            body=serializer.validated_data.get('body', ''),
+            body=body,
             media_url=serializer.validated_data.get('media_url', ''),
             sent_by=request.user,
-            status='sent',
+            status=msg_status,
+            wa_message_id=wa_message_id,
             timestamp=django_tz.now(),
         )
 
