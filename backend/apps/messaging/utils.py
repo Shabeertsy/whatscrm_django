@@ -1,3 +1,5 @@
+import json
+from django.core.serializers.json import DjangoJSONEncoder
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .serializers import MessageSerializer, ConversationListSerializer
@@ -12,7 +14,7 @@ def broadcast_new_message(conv, msg):
         {
             "type":            "new_message",
             "conversation_id": str(conv.id),
-            "message":         MessageSerializer(msg).data,
+            "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
         }
     )
     
@@ -38,7 +40,7 @@ def broadcast_conversation_update(conv):
         target_group,
         {
             "type":         "conversation_update",
-            "conversation": ConversationListSerializer(conv).data,
+            "conversation": json.loads(json.dumps(ConversationListSerializer(conv).data, cls=DjangoJSONEncoder)),
         }
     )
 
