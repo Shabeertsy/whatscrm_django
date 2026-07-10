@@ -49,18 +49,28 @@ class MessageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'wa_message_id', 'replied_to_message']
 
     def get_sent_by_name(self, obj):
-        if obj.sent_by:
+        if obj.direction == 'outbound' and obj.sent_by:
             return obj.sent_by.get_full_name() or obj.sent_by.email
+        elif obj.direction == 'inbound':
+            contact = obj.conversation.contact
+            return contact.name or contact.phone
         return None
 
     def get_replied_to_message(self, obj):
         if obj.replied_to:
+            sent_by_name = None
+            if obj.replied_to.direction == 'outbound' and obj.replied_to.sent_by:
+                sent_by_name = obj.replied_to.sent_by.get_full_name() or obj.replied_to.sent_by.email
+            else:
+                contact = obj.replied_to.conversation.contact
+                sent_by_name = contact.name or contact.phone
+
             return {
                 'id': obj.replied_to.id,
                 'body': obj.replied_to.body,
                 'msg_type': obj.replied_to.msg_type,
                 'media_url': obj.replied_to.media_url,
-                'sent_by_name': obj.replied_to.sent_by.get_full_name() if obj.replied_to.sent_by else None
+                'sent_by_name': sent_by_name
             }
         return None
 
