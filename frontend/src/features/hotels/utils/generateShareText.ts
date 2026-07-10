@@ -59,23 +59,5 @@ export function generateShareText(
     if (options.contactDetails_phone) text += `*Phone:* ${room.owner_phone || 'N/A'}\n\n`;
   }
 
-  let imgUrls: string[] = [];
-  if (options.images_room && room.room_images?.length > 0) {
-     const rmImgs = room.room_images.filter((_: any, i: number) => options[`images_room_${i}`]);
-     imgUrls.push(...rmImgs.map((img: any) => img.url || img.image));
-  }
-  const propImgs = room.property_images || room.property?.images || [];
-  if (options.images_property && propImgs.length > 0) {
-     const pImgs = propImgs.filter((_: any, i: number) => options[`images_property_${i}`]);
-     imgUrls.push(...pImgs.map((img: any) => img.url || img.image));
-  }
-  
-  if (imgUrls.length > 0) {
-     text += `\n*Images:*\n`;
-     imgUrls.forEach((url, i) => {
-        text += `${i+1}. ${url}\n`;
-     });
-  }
-
-  return text;
+  return text.trim();
 }
