@@ -14,6 +14,7 @@ export function Inbox() {
   const [store] = useMessagingStore();
   const [newMessageText, setNewMessageText] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<any>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Handle prefilled text from URL (e.g. from Hotels "Share to Chat")
@@ -67,6 +68,7 @@ export function Inbox() {
           messagingStore.setState({ isLoadingMessages: false });
         });
     }
+    setReplyingTo(null);
   }, [store.activeConversationId]);
 
   const activeConversation = store.conversations.find(c => c.id === store.activeConversationId);
@@ -85,7 +87,13 @@ export function Inbox() {
     setNewMessageText("");
 
     try {
-      const res = await messagingApi.sendMessage(store.activeConversationId, { body: textToSend });
+      const payload: any = { body: textToSend };
+      if (replyingTo) {
+        payload.reply_to_message_id = replyingTo.id;
+      }
+      const res = await messagingApi.sendMessage(store.activeConversationId, payload);
+      setReplyingTo(null);
+      
       messagingStore.pushMessage(store.activeConversationId, res.data);
       messagingStore.updateConversationMeta(store.activeConversationId, {
         last_message: {
@@ -100,6 +108,52 @@ export function Inbox() {
       console.error("Failed to send message:", error);
       setNewMessageText(textToSend);
       alert("Failed to send message. Please try again.");
+    } finally {
+      setIsSending(false);
+    }
+  };
+
+  const handleMediaSelect = async (file: File) => {
+    if (!store.activeConversationId || isSending || !windowOpen) return;
+    
+    setIsSending(true);
+    try {
+      //  Upload file to Django backend
+      const uploadRes = await messagingApi.uploadMedia(file);
+      const mediaUrl = uploadRes.data.url;
+      
+      //  Determine msg_type
+      let msgType = 'document';
+      if (file.type.startsWith('image/')) msgType = 'image';
+      else if (file.type.startsWith('video/')) msgType = 'video';
+      else if (file.type.startsWith('audio/')) msgType = 'audio';
+
+      //  Send message with media
+      const payload: any = { 
+        msg_type: msgType, 
+        media_url: mediaUrl,
+        body: file.name 
+      };
+      if (replyingTo) {
+        payload.reply_to_message_id = replyingTo.id;
+      }
+      
+      const res = await messagingApi.sendMessage(store.activeConversationId, payload);
+      setReplyingTo(null);
+
+      messagingStore.pushMessage(store.activeConversationId, res.data);
+      messagingStore.updateConversationMeta(store.activeConversationId, {
+        last_message: {
+          body: res.data.body,
+          direction: res.data.direction,
+          msg_type: res.data.msg_type,
+          media_url: res.data.media_url,
+        },
+        last_message_at: res.data.timestamp,
+      });
+    } catch (error) {
+      console.error("Failed to upload/send media:", error);
+      alert("Failed to send media. Please try again.");
     } finally {
       setIsSending(false);
     }
@@ -124,12 +178,16 @@ export function Inbox() {
               conversation={activeConversation}
               messages={activeMessages}
               isLoading={store.isLoadingMessages}
+              onReply={(msg) => setReplyingTo(msg)}
             />
             <MessageComposer
               value={newMessageText}
               onChange={setNewMessageText}
               onSubmit={handleSendMessage}
+              onMediaSelect={handleMediaSelect}
               disabled={!windowOpen}
+              replyingTo={replyingTo}
+              onCancelReply={() => setReplyingTo(null)}
             />
           </>
         )}

@@ -4,7 +4,7 @@ from .views import (
     ContactViewSet,
     ConversationListAPIView, ConversationDetailAPIView,
     ConversationSendMessageAPIView, ConversationMarkReadAPIView,
-    MessageDeleteAPIView, WebhookView
+    MessageDeleteAPIView, WebhookView, MediaUploadAPIView
 )
 
 router = DefaultRouter()
@@ -21,6 +21,7 @@ urlpatterns = [
     path('conversations/<int:pk>/mark-read/', ConversationMarkReadAPIView.as_view(), name='conversation-mark-read'),
 
     # Messages
+    path('upload/', MediaUploadAPIView.as_view(), name='media-upload'),
     path('messages/<int:pk>/', MessageDeleteAPIView.as_view(), name='message-delete'),
 
     # Meta Cloud API webhook — must be publicly accessible

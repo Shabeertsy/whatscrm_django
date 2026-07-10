@@ -19,6 +19,7 @@ export interface LastMessage {
   direction: 'inbound' | 'outbound';
   msg_type: string;
   media_url?: string;
+  related_room_uuid?: string | null;
 }
 
 export interface Conversation {
@@ -43,6 +44,13 @@ export interface Message {
   msg_type: string;
   body: string;
   media_url: string;
+  related_room_uuid?: string | null;
+  replied_to_message?: {
+    id: string;
+    body: string;
+    msg_type: string;
+    sent_by_name: string | null;
+  } | null;
   sent_by: string | null;
   sent_by_name: string | null;
   status: 'sent' | 'delivered' | 'read' | 'failed';
@@ -66,7 +74,7 @@ export const messagingApi = {
   },
 
   /** Send an outbound message */
-  sendMessage(conversationId: string, payload: { body?: string; msg_type?: string; media_url?: string }) {
+  sendMessage(conversationId: string, payload: { body?: string; msg_type?: string; media_url?: string; related_room_uuid?: string | null; reply_to_message_id?: string | null }) {
     return apiClient.post<Message>(`${BASE}/conversations/${conversationId}/send/`, payload);
   },
 
@@ -88,5 +96,16 @@ export const messagingApi = {
   /** Save a ghost contact as a real contact */
   saveContact(contactId: string, name: string, tags: string[] = []) {
     return apiClient.post(`${BASE}/contacts/${contactId}/save/`, { name, tags, source: 'manual' });
+  },
+
+  /** Upload media to backend and get URL */
+  uploadMedia(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post<{ url: string; type: string; filename: string }>(`${BASE}/upload/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
   },
 };

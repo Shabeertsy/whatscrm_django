@@ -226,3 +226,4 @@ SIMPLE_JWT = {
 import os
 # Base URL for upstream proxy APIs (like click4trip)
 PROXY_API_BASE_URL = os.environ.get("PROXY_API_BASE_URL", "https://demo.click4trip.in/api")
+BACKEND_PUBLIC_URL = os.environ.get("BACKEND_PUBLIC_URL", "")

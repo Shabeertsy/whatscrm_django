@@ -47,7 +47,7 @@ def broadcast_conversation_update(conv):
 
 import requests
 
-def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url=""):
+def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id=""):
     """
     Sends an outbound message using the Meta WhatsApp Cloud API.
     Supports text, image, video, document, and audio.
@@ -73,6 +73,9 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
             data[msg_type]["caption"] = message_text
     elif msg_type == "audio":
         data["audio"] = {"link": media_url}
+
+    if reply_to_wa_id:
+        data["context"] = {"message_id": reply_to_wa_id}
 
     response = requests.post(url, headers=headers, json=data, timeout=10)
     response.raise_for_status()

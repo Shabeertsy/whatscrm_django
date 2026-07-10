@@ -8,6 +8,35 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
   const { navigate } = useRouter();
   const [selectedShareRoom, setSelectedShareRoom] = useState<any | null>(null);
   const [shareOptions, setShareOptions] = useState<Record<string, boolean>>({});
+
+  const handleSetSelectedShareRoom = (room: any) => {
+    setSelectedShareRoom(room);
+    if (room) {
+      const initial: Record<string, boolean> = {
+        basicDetails: true,
+        basicDetails_roomName: true,
+        basicDetails_roomType: true,
+        basicDetails_occupancy: true,
+        basicDetails_amenities: true,
+        price: true,
+        price_amount: true,
+        images_room: true,
+        images_property: true,
+      };
+      
+      (room.room_images || []).forEach((_: any, i: number) => {
+        initial[`images_room_${i}`] = true;
+      });
+      const propImages = room.property_images || room.property?.images || [];
+      propImages.forEach((_: any, i: number) => {
+        initial[`images_property_${i}`] = true;
+      });
+      
+      setShareOptions(initial);
+    } else {
+      setShareOptions({});
+    }
+  };
   const [expandedShareCategory, setExpandedShareCategory] = useState<string | null>(null);
   const [shareStep, setShareStep] = useState<'options' | 'select_chats'>('options');
   const [shareConversations, setShareConversations] = useState<any[]>([]);
@@ -34,20 +63,29 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
   const handleSendShare = async () => {
     setIsSendingShare(true);
     try {
-      const textOptions = { ...shareOptions, images: false };
+      const textOptions = { ...shareOptions };
       const text = generateShareText(selectedShareRoom, textOptions, filters, amenityOptions, propertyTypeOptions);
       
-      const imagesToInclude = shareOptions.images !== false && selectedShareRoom.room_images 
-          ? selectedShareRoom.room_images.filter((_: any, i: number) => shareOptions[`images_${i}`] !== false) 
-          : [];
+      const imagesToInclude: any[] = [];
+      if (shareOptions.images_room && selectedShareRoom.room_images) {
+        imagesToInclude.push(...selectedShareRoom.room_images.filter((_: any, i: number) => shareOptions[`images_room_${i}`]));
+      }
+      if (shareOptions.images_property) {
+        const propImages = selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
+        imagesToInclude.push(...propImages.filter((_: any, i: number) => shareOptions[`images_property_${i}`]));
+      }
 
       for (const chatId of selectedChats) {
-        const textRes = await messagingApi.sendMessage(chatId, { body: text, msg_type: 'text' });
+        const textRes = await messagingApi.sendMessage(chatId, { 
+          body: text, 
+          msg_type: 'text', 
+          related_room_uuid: selectedShareRoom.uuid 
+        });
         // Import messagingStore at the top of the file to do this
         import('../../../store/messagingStore').then(({ messagingStore }) => {
             messagingStore.pushMessage(chatId, textRes.data);
             messagingStore.updateConversationMeta(chatId, {
-              last_message: { body: textRes.data.body, direction: 'outbound', msg_type: 'text', media_url: '' },
+              last_message: { body: textRes.data.body, direction: 'outbound', msg_type: 'text', media_url: '', related_room_uuid: selectedShareRoom.uuid },
               last_message_at: textRes.data.timestamp
             });
         });
@@ -55,11 +93,16 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
         for (const img of imagesToInclude) {
           const url = img.url || img.image;
           if (url) {
-            const imgRes = await messagingApi.sendMessage(chatId, { body: '', msg_type: 'image', media_url: url });
+            const imgRes = await messagingApi.sendMessage(chatId, { 
+              body: '', 
+              msg_type: 'image', 
+              media_url: url,
+              related_room_uuid: selectedShareRoom.uuid
+            });
             import('../../../store/messagingStore').then(({ messagingStore }) => {
                 messagingStore.pushMessage(chatId, imgRes.data);
                 messagingStore.updateConversationMeta(chatId, {
-                  last_message: { body: '', direction: 'outbound', msg_type: 'image', media_url: url },
+                  last_message: { body: '', direction: 'outbound', msg_type: 'image', media_url: url, related_room_uuid: selectedShareRoom.uuid },
                   last_message_at: imgRes.data.timestamp
                 });
             });
@@ -92,7 +135,7 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
   };
 
   return {
-    selectedShareRoom, setSelectedShareRoom,
+    selectedShareRoom, setSelectedShareRoom: handleSetSelectedShareRoom,
     shareOptions, setShareOptions,
     expandedShareCategory, setExpandedShareCategory,
     shareStep, setShareStep,

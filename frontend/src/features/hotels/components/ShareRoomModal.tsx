@@ -73,41 +73,69 @@ export function ShareRoomModal({
                   if (filters.rooms) {
                     searchFilterItems.push({ subKey: 'filters_rooms', label: `Rooms Needed: ${filters.rooms}` });
                   }
-                  if (selectedShareRoom?.property_type) {
-                    searchFilterItems.push({ subKey: 'filters_propertyTypes', label: `Property Type: ${selectedShareRoom.property_type.name}` });
-                  }
-                  if (selectedShareRoom?.amenities?.length > 0) {
-                    const aNames = selectedShareRoom.amenities.map((a: any) => a.name).join(', ');
-                    searchFilterItems.push({ subKey: 'filters_amenities', label: `Amenities: ${aNames}` });
-                  }
                 }
 
                 const shareItemsList: any[] = [];
                 
+                // 1. Basic Room Details
+                shareItemsList.push({ key: 'basicDetails', label: 'Basic Room Details', subItems: [
+                    { subKey: 'basicDetails_roomName', label: 'Room Name: ' + selectedShareRoom.name },
+                    { subKey: 'basicDetails_roomType', label: 'Room Type: ' + (selectedShareRoom.room_type?.name || 'N/A') },
+                    { subKey: 'basicDetails_occupancy', label: `Max Occupancy: ${selectedShareRoom.max_occupancy} Guests` },
+                    { subKey: 'basicDetails_amenities', label: 'Amenities: ' + (selectedShareRoom.amenities?.map((a: any) => a.name).join(', ') || 'None') }
+                ]});
+
                 if (searchFilterItems.length > 0) {
                   shareItemsList.push({ key: 'searchFilters', label: 'Search Requirements', subItems: searchFilterItems });
                 }
 
+                // 2. Property Details (Owner/Brand/Property Type etc)
                 shareItemsList.push(
                   { key: 'propertyDetails', label: 'Property Details', subItems: [
-                      { subKey: 'propertyDetails_type', label: 'Type: ' + (selectedShareRoom.room_type?.name || 'N/A') },
-                      { subKey: 'propertyDetails_occupancy', label: `Occupancy: ${selectedShareRoom.base_occupancy}-${selectedShareRoom.max_occupancy} Guests` }
-                  ]},
+                      { subKey: 'propertyDetails_name', label: 'Property Name: ' + (selectedShareRoom.owner_brand_name || selectedShareRoom.owner_username || 'N/A') },
+                      { subKey: 'propertyDetails_type', label: 'Property Type: ' + (selectedShareRoom.property_type?.name || 'N/A') }
+                  ]});
+                
+                // 3. Price
+                shareItemsList.push(
                   { key: 'price', label: 'Price', subItems: [
                       { subKey: 'price_amount', label: `Amount: ₹${(selectedShareRoom.price_summary?.grand_total ?? selectedShareRoom.grand_total ?? selectedShareRoom.price)?.toLocaleString()} / night` }
-                  ]},
+                  ]});
+
+                // 4. Location
+                shareItemsList.push(
                   { key: 'location', label: 'Location', subItems: [
                       { subKey: 'location_city', label: `City: ${selectedShareRoom.property_location?.city || 'N/A'}` },
                       { subKey: 'location_state', label: `State: ${selectedShareRoom.property_location?.state || 'N/A'}` }
-                  ]},
+                  ]});
+
+                // 5. Contact Details
+                shareItemsList.push(
                   { key: 'contactDetails', label: 'Contact Details', subItems: [
-                      { subKey: 'contactDetails_owner', label: `Owner: ${selectedShareRoom.owner_username || selectedShareRoom.owner_brand_name || 'N/A'}` },
                       { subKey: 'contactDetails_phone', label: `Phone: ${selectedShareRoom.owner_phone || 'N/A'}` }
-                  ]},
-                  { key: 'images', label: 'Images & Media', subItems: (selectedShareRoom.room_images || []).map((img: any, i: number) => ({
-                      subKey: `images_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
-                  }))}
-                );
+                  ]});
+
+                // 6. Room Images
+                const roomImgs = selectedShareRoom.room_images || [];
+                shareItemsList.push({ 
+                    key: 'images_room', 
+                    label: 'Room Images', 
+                    subItems: roomImgs.map((img: any, i: number) => ({
+                        subKey: `images_room_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
+                    })),
+                    emptyMessage: roomImgs.length === 0 ? 'No media available' : undefined
+                });
+
+                // 7. Property Images
+                const propImages = selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
+                shareItemsList.push({ 
+                    key: 'images_property', 
+                    label: 'Property Images', 
+                    subItems: propImages.map((img: any, i: number) => ({
+                        subKey: `images_property_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
+                    })),
+                    emptyMessage: propImages.length === 0 ? 'No media available' : undefined
+                });
 
                 return shareItemsList.map(opt => (
                 <div key={opt.key} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
@@ -115,7 +143,7 @@ export function ShareRoomModal({
                     <label className="flex items-center gap-2 cursor-pointer group flex-1">
                       <input 
                         type="checkbox" 
-                        checked={shareOptions[opt.key] !== false} 
+                        checked={!!shareOptions[opt.key]} 
                         onChange={e => setShareOptions(prev => ({ ...prev, [opt.key]: e.target.checked }))}
                         className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer" 
                       />
@@ -123,7 +151,7 @@ export function ShareRoomModal({
                         {opt.label}
                       </span>
                     </label>
-                    {opt.subItems.length > 0 && (
+                    {(opt.subItems.length > 0 || opt.emptyMessage) && (
                       <button 
                         onClick={() => setExpandedShareCategory(expandedShareCategory === opt.key ? null : opt.key)}
                         className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
@@ -132,13 +160,16 @@ export function ShareRoomModal({
                       </button>
                     )}
                   </div>
-                  {expandedShareCategory === opt.key && opt.subItems.length > 0 && (
+                  {expandedShareCategory === opt.key && (opt.subItems.length > 0 || opt.emptyMessage) && (
                     <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 space-y-2">
-                      {opt.subItems.map((sub: any) => (
+                      {opt.emptyMessage ? (
+                         <div className="text-[13px] text-slate-400 italic px-1 py-0.5">{opt.emptyMessage}</div>
+                      ) : (
+                        opt.subItems.map((sub: any) => (
                         <label key={sub.subKey} className="flex items-start gap-2 cursor-pointer group">
                           <input 
                             type="checkbox" 
-                            checked={shareOptions[sub.subKey] !== false} 
+                            checked={!!shareOptions[sub.subKey]} 
                             onChange={e => setShareOptions(prev => ({ ...prev, [sub.subKey]: e.target.checked }))}
                             className="h-3.5 w-3.5 rounded accent-[#007e3a] cursor-pointer mt-0.5 flex-shrink-0" 
                           />
@@ -146,7 +177,7 @@ export function ShareRoomModal({
                             {sub.label}
                           </span>
                         </label>
-                      ))}
+                      )))}
                     </div>
                   )}
                 </div>

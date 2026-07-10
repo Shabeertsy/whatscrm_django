@@ -117,6 +117,15 @@ class Message(models.Model):
     msg_type   = models.CharField(max_length=20, choices=TYPE_CHOICES, default='text')
     body       = models.TextField(blank=True)
     media_url  = models.URLField(blank=True)
+    related_room_uuid = models.CharField(max_length=255, null=True, blank=True)
+    
+    replied_to = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='replies'
+    )
 
     sent_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -127,6 +136,7 @@ class Message(models.Model):
     )
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sent')
+  
     # Original WhatsApp timestamp from Meta payload
     timestamp = models.DateTimeField()
 

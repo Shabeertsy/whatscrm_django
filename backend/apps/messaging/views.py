@@ -12,6 +12,9 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from django.core.files.storage import default_storage
+import os
+import uuid
 
 
 from apps.whatsapp.models import WhatsappInstance
@@ -25,6 +28,8 @@ from .serializers import (
     SendMessageSerializer,
 )
 from .utils import broadcast_new_message, broadcast_delete_message, send_whatsapp_message, broadcast_conversation_update
+from django.conf import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +126,16 @@ class ConversationSendMessageAPIView(APIView):
         body = serializer.validated_data.get('body', '')
         msg_type = serializer.validated_data.get('msg_type', 'text')
         media_url = serializer.validated_data.get('media_url', '')
+        related_room_uuid = serializer.validated_data.get('related_room_uuid', '')
         
+        reply_to_message_id = serializer.validated_data.get('reply_to_message_id')
+        replied_to_obj = None
+        reply_to_wa_id = ""
+        if reply_to_message_id:
+            replied_to_obj = Message.objects.filter(id=reply_to_message_id).first()
+            if replied_to_obj and replied_to_obj.wa_message_id:
+                reply_to_wa_id = replied_to_obj.wa_message_id
+                
         # Meta Graph API Call
         wa_message_id = ""
         msg_status = "failed"
@@ -134,7 +148,8 @@ class ConversationSendMessageAPIView(APIView):
                     to_phone=conv.contact.wa_id,
                     message_text=body,
                     msg_type=msg_type,
-                    media_url=media_url
+                    media_url=media_url,
+                    reply_to_wa_id=reply_to_wa_id
                 )
                 if 'messages' in wa_response and len(wa_response['messages']) > 0:
                     wa_message_id = wa_response['messages'][0]['id']
@@ -148,6 +163,8 @@ class ConversationSendMessageAPIView(APIView):
             msg_type=serializer.validated_data.get('msg_type', 'text'),
             body=body,
             media_url=serializer.validated_data.get('media_url', ''),
+            related_room_uuid=related_room_uuid if related_room_uuid else None,
+            replied_to=replied_to_obj,
             sent_by=request.user,
             status=msg_status,
             wa_message_id=wa_message_id,
@@ -174,14 +191,70 @@ class ConversationMarkReadAPIView(APIView):
         return Response({'status': 'ok', 'unread_count': 0})
 
 
+class MediaUploadAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        if file_obj.size == 0:
+            return Response({"detail": "File cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
+            
+        if file_obj.size > 16 * 1024 * 1024:
+            return Response({"detail": "File size exceeds the 16MB limit."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ALLOWED_TYPES = [
+            'image/jpeg', 'image/png', 'image/webp',
+            'application/pdf', 'text/plain', 'application/msword',
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'video/mp4', 'video/mpeg', 'audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/amr', 'audio/aac'
+        ]
+        
+        if file_obj.content_type not in ALLOWED_TYPES:
+            return Response({"detail": f"File type {file_obj.content_type} is not supported."}, status=status.HTTP_400_BAD_REQUEST)
+
+        ext = os.path.splitext(file_obj.name)[1]
+        filename = f"{uuid.uuid4()}{ext}"
+        saved_path = default_storage.save(f"whatsapp_media/{filename}", file_obj)
+        
+        if getattr(settings, 'BACKEND_PUBLIC_URL', None):
+            base_url = settings.BACKEND_PUBLIC_URL.rstrip('/')
+            file_url = f"{base_url}{default_storage.url(saved_path)}"
+        else:
+            file_url = request.build_absolute_uri(default_storage.url(saved_path))
+        
+        return Response({
+            "url": file_url,
+            "filename": file_obj.name,
+            "type": file_obj.content_type
+        }, status=status.HTTP_201_CREATED)
+
+
 class MessageDeleteAPIView(APIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, pk):
         msg = get_object_or_404(Message, pk=pk)
+        
+        # Verify ownership via conversation
+        if msg.conversation.instance and msg.conversation.instance.user != request.user:
+            return Response({"detail": "Not authorized."}, status=status.HTTP_403_FORBIDDEN)
+            
         conv = msg.conversation
         msg_id_str = str(msg.id)
         
+        # Cleanup local media file if it exists
+        if msg.media_url and '/media/whatsapp_media/' in msg.media_url:
+            try:
+                path_suffix = msg.media_url.split('/media/')[-1]
+                if default_storage.exists(path_suffix):
+                    default_storage.delete(path_suffix)
+            except Exception as e:
+                logging.error(f"Failed to delete media file {msg.media_url}: {str(e)}")
+
         msg.delete()
         
         # Recalculate last_message_at
@@ -198,8 +271,6 @@ class MessageDeleteAPIView(APIView):
 class WebhookView(APIView):
     """
     Handles inbound messages from Meta Cloud API.
-    GET  = webhook verification challenge
-    POST = incoming messages / status updates
     """
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -296,6 +367,13 @@ class WebhookView(APIView):
         if msg_type == 'text':
             body = msg_data.get('text', {}).get('body', '')
 
+        # Check for context/replies
+        context_data = msg_data.get('context', {})
+        context_id = context_data.get('id')
+        replied_to_obj = None
+        if context_id:
+            replied_to_obj = Message.objects.filter(wa_message_id=context_id).first()
+
         # Parse timestamp
         ts_raw = msg_data.get('timestamp')
         ts = datetime.fromtimestamp(int(ts_raw), tz=timezone.utc) if ts_raw else django_tz.now()
@@ -307,6 +385,7 @@ class WebhookView(APIView):
             direction='inbound',
             msg_type=msg_type,
             body=body,
+            replied_to=replied_to_obj,
             status='delivered',
             timestamp=ts,
         )

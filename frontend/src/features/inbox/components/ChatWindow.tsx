@@ -2,7 +2,8 @@ import React, { useEffect, useRef, useState } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { messagingStore } from "../../../store/messagingStore";
-import { Check, CheckCheck, Clock, User2, Trash2 } from "lucide-react";
+import { Check, CheckCheck, Clock, User2, Trash2, ExternalLink, Reply } from "lucide-react";
+import { useRouter } from "../../../router";
 import { formatMessageTime } from "../utils";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 
@@ -12,12 +13,14 @@ interface ChatWindowProps {
   conversation: Conversation;
   messages: Message[];
   isLoading?: boolean;
+  onReply?: (msg: any) => void;
 }
 
-export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProps) {
+export function ChatWindow({ conversation, messages, isLoading, onReply }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const { navigate } = useRouter();
 
   const confirmDelete = async () => {
     if (!deleteId) return;
@@ -68,7 +71,7 @@ export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProp
               {conversation.contact.name || conversation.contact.phone}
             </h3>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-              {conversation.contact.name ? conversation.contact.phone : 'Unsaved Contact'}
+              {conversation.contact.name ? conversation.contact.is_saved : 'Unsaved Contact'}
             </p>
           </div>
         </div>
@@ -119,8 +122,17 @@ export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProp
                 key={m.id}
                 className={`flex relative z-10 group items-center ${isOutbound ? "justify-end" : "justify-start"}`}
               >
-                {/* Delete Button (Visible on Hover) */}
-                <div className={`hidden group-hover:flex items-center mx-2 ${isOutbound ? "order-first" : "order-last"}`}>
+                {/* Actions (Visible on Hover) */}
+                <div className={`hidden group-hover:flex items-center mx-2 space-x-1 ${isOutbound ? "order-first" : "order-last"}`}>
+                   {onReply && (
+                     <button 
+                       onClick={() => onReply(m)}
+                       className="p-1.5 text-slate-400 hover:text-blue-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors opacity-0 group-hover:opacity-100"
+                       title="Reply"
+                     >
+                       <Reply className="h-3.5 w-3.5" />
+                     </button>
+                   )}
                    <button 
                      onClick={() => setDeleteId(m.id)}
                      className="p-1.5 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors opacity-0 group-hover:opacity-100"
@@ -137,6 +149,19 @@ export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProp
                       : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-100 dark:border-transparent"
                   }`}
                 >
+                  {(m as any).replied_to_message && (
+                    <div className="mb-2 p-2 rounded bg-black/5 dark:bg-black/20 border-l-2 border-[#007e3a] dark:border-[#00b359] text-xs opacity-90">
+                      <div className="font-semibold text-[10px] text-[#007e3a] dark:text-[#00b359] mb-0.5">
+                        {(m as any).replied_to_message.sent_by_name || "Customer"}
+                      </div>
+                      <div className="line-clamp-1 opacity-80">
+                        {(m as any).replied_to_message.msg_type === 'text' 
+                          ? (m as any).replied_to_message.body 
+                          : `[${(m as any).replied_to_message.msg_type}]`}
+                      </div>
+                    </div>
+                  )}
+
                   {m.msg_type === 'image' && m.media_url ? (
                     <div className="mb-2 rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800">
                       <img src={m.media_url} alt="Attached image" className="max-w-full h-auto object-cover max-h-64" />
@@ -157,14 +182,25 @@ export function ChatWindow({ conversation, messages, isLoading }: ChatWindowProp
                     })}
                   </p>
                   
-                  <div className={`flex items-center justify-end space-x-1 mt-1 text-[9px] ${isOutbound ? "text-[#537e42] dark:text-[#84a98c]" : "text-slate-400"}`}>
-                    {!isOutbound && m.sent_by_name && (
-                       <span>{m.sent_by_name} • </span>
-                    )}
-                    <span>{time}</span>
-                    {isOutbound && (
-                      <span className="ml-1 opacity-80">{renderStatusIcon(m.status)}</span>
-                    )}
+                  <div className={`flex items-center justify-end space-x-2 mt-1 text-[9px] ${isOutbound ? "text-[#537e42] dark:text-[#84a98c]" : "text-slate-400"}`}>
+                    {/* {(m as any).related_room_uuid && (
+                      <button 
+                        onClick={() => navigate(`/hotels/${(m as any).related_room_uuid}`)}
+                        className={`flex items-center gap-1 font-medium hover:underline ${isOutbound ? "text-[#005c4b] dark:text-[#dcf8c6]" : "text-[#007e3a] dark:text-[#00b359]"}`}
+                        title="View Room Details"
+                      >
+                        <ExternalLink className="h-3 w-3" /> View Room
+                      </button>
+                    )} */}
+                    <div className="flex items-center space-x-1">
+                      {!isOutbound && m.sent_by_name && (
+                         <span>{m.sent_by_name} • </span>
+                      )}
+                      <span>{time}</span>
+                      {isOutbound && (
+                        <span className="ml-1 opacity-80">{renderStatusIcon(m.status)}</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
