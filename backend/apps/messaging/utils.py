@@ -143,9 +143,17 @@ def broadcast_new_message(conv, msg):
     """Push a new_message event to the assigned agent's WS group, or global if unassigned."""
     target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
     channel_layer = get_channel_layer()
+    
     contact_name = conv.contact.name
-    if conv.contact.crm_contact:
-        contact_name = conv.contact.crm_contact.name
+    try:
+        if hasattr(conv.contact, 'crm_contact') and conv.contact.crm_contact:
+            contact_name = conv.contact.crm_contact.name
+    except Exception:
+        pass
+
+    contact_phone = conv.contact.phone
+    if not contact_phone:
+        contact_phone = f"+{conv.contact.wa_id}" if conv.contact.wa_id else ""
 
     async_to_sync(channel_layer.group_send)(
         target_group,
@@ -153,7 +161,7 @@ def broadcast_new_message(conv, msg):
             "type":            "new_message",
             "conversation_id": str(conv.id),
             "contact_name":    contact_name,
-            "contact_phone":   conv.contact.phone,
+            "contact_phone":   contact_phone,
             "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
         }
     )

@@ -70,6 +70,8 @@ class InboxConsumer(AsyncWebsocketConsumer):
         await self.send(text_data=json.dumps({
             "type":            "new_message",
             "conversation_id": event["conversation_id"],
+            "contact_name":    event.get("contact_name", ""),
+            "contact_phone":   event.get("contact_phone", ""),
             "message":         event["message"],
         }))
 
@@ -86,5 +88,14 @@ class InboxConsumer(AsyncWebsocketConsumer):
             "type":            "delete_message",
             "conversation_id": event["conversation_id"],
             "message_id":      event["message_id"],
+        }))
+
+    async def message_status_update(self, event):
+        """Broadcast message status updates to the browser."""
+        await self.send(text_data=json.dumps({
+            "type":            "message_status_update",
+            "conversation_id": event["conversation_id"],
+            "message_id":      event["message_id"],
+            "status":          event["status"],
         }))
 
