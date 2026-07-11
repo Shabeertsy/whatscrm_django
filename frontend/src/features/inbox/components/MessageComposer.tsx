@@ -41,10 +41,13 @@ export function MessageComposer({ value, onChange, onSubmit, onMediaSelect, disa
       };
 
       mediaRecorder.onstop = () => {
-        // WhatsApp API requires specific formats. We'll label it as audio/ogg 
-        // since browsers encode voice as Opus, which WhatsApp natively supports in Ogg containers.
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/ogg' });
-        const audioFile = new File([audioBlob], `voice_message_${Date.now()}.ogg`, { type: 'audio/ogg' });
+        const actualMimeType = mediaRecorder.mimeType || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: actualMimeType });
+        
+        // Use the proper extension based on the actual mime type
+        const ext = actualMimeType.includes('mp4') ? 'mp4' : 'webm';
+        const audioFile = new File([audioBlob], `voice_message_${Date.now()}.${ext}`, { type: actualMimeType });
+        
         if (onMediaSelect) onMediaSelect(audioFile);
         stream.getTracks().forEach(track => track.stop());
       };

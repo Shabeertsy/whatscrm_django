@@ -79,6 +79,44 @@ def save_whatsapp_media(file_obj, phone=None):
         subfolder = 'videos'
     elif mime.startswith('audio/'):
         subfolder = 'audio'
+        
+        # WhatsApp strictly requires OGG/Opus. WebM is rejected.
+        if mime == 'audio/webm' or ext == '.webm':
+            try:
+                import imageio_ffmpeg
+                import subprocess
+                import tempfile
+                ffmpeg_exe = imageio_ffmpeg.get_ffmpeg_exe()
+                
+                if hasattr(file_obj, 'seek'):
+                    file_obj.seek(0)
+                    
+                with tempfile.NamedTemporaryFile(suffix='.webm', delete=False) as tf_in:
+                    tf_in.write(file_obj.read())
+                    tf_in.flush()
+                    tf_in_path = tf_in.name
+                    
+                tf_out_path = tf_in_path.replace('.webm', '.ogg')
+                
+                subprocess.run([
+                    ffmpeg_exe, '-y', '-i', tf_in_path, 
+                    '-c:a', 'libopus', '-b:a', '32k',
+                    tf_out_path
+                ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                
+                with open(tf_out_path, 'rb') as f:
+                    ext = '.ogg'
+                    mime = 'audio/ogg'
+                    filename = filename.replace('.webm', '.ogg')
+                    file_obj = ContentFile(f.read(), name=filename)
+                    
+                os.remove(tf_in_path)
+                os.remove(tf_out_path)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Failed to transcode WebM to OGG: {e}")
+                if hasattr(file_obj, 'seek'):
+                    file_obj.seek(0)
     else:
         subfolder = 'documents'
         
@@ -102,12 +140,16 @@ def broadcast_new_message(conv, msg):
     """Push a new_message event to the assigned agent's WS group, or global if unassigned."""
     target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
     channel_layer = get_channel_layer()
+    contact_name = conv.contact.name
+    if conv.contact.crm_contact:
+        contact_name = conv.contact.crm_contact.name
+
     async_to_sync(channel_layer.group_send)(
         target_group,
         {
             "type":            "new_message",
             "conversation_id": str(conv.id),
-            "contact_name":    conv.contact.name,
+            "contact_name":    contact_name,
             "contact_phone":   conv.contact.phone,
             "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
         }
