@@ -57,6 +57,7 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
       if (filters.propertyTypes.length > 0) params.property_type = filters.propertyTypes.join(',');
       if (filters.roomTypes.length > 0) params.room_type = filters.roomTypes.join(',');
       if (filters.amenities.length > 0) params.amenities = filters.amenities.join(',');
+      if (filters.priceMin > 0) params.min_price = filters.priceMin;
       if (filters.priceMax < 20000) params.max_price = filters.priceMax;
 
       const response = await hotelsApi.getCrmRooms(params);
@@ -73,7 +74,7 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
   }, [page, filters, setPageCallback]);
   useEffect(() => {
     fetchRooms();
-  }, [page, filters.propertyTypes, filters.roomTypes, filters.amenities, filters.priceMax, filters.hideUnavailable]);
+  }, [page, filters.propertyTypes, filters.roomTypes, filters.amenities, filters.priceMin, filters.priceMax, filters.hideUnavailable]);
 
   useEffect(() => {
     const t = setTimeout(() => { if (filters.search !== '') fetchRooms(true); }, 500);

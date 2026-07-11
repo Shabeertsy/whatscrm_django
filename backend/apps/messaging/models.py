@@ -117,6 +117,7 @@ class Message(models.Model):
     msg_type   = models.CharField(max_length=20, choices=TYPE_CHOICES, default='text')
     body       = models.TextField(blank=True)
     media_url  = models.URLField(blank=True)
+    storage_path = models.CharField(max_length=512, blank=True, null=True)
     related_room_uuid = models.CharField(max_length=255, null=True, blank=True)
     
     replied_to = models.ForeignKey(

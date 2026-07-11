@@ -21,15 +21,15 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
         price: true,
         price_amount: true,
         images_room: true,
-        images_property: true,
+        images_property: false,
       };
       
       (room.room_images || []).forEach((_: any, i: number) => {
         initial[`images_room_${i}`] = true;
       });
-      const propImages = room.property_images || room.property?.images || [];
+      const propImages = room.property_details?.property_images || room.property_images || room.property?.images || [];
       propImages.forEach((_: any, i: number) => {
-        initial[`images_property_${i}`] = true;
+        initial[`images_property_${i}`] = false;
       });
       
       setShareOptions(initial);
@@ -71,7 +71,7 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
         imagesToInclude.push(...selectedShareRoom.room_images.filter((_: any, i: number) => shareOptions[`images_room_${i}`]));
       }
       if (shareOptions.images_property) {
-        const propImages = selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
+        const propImages = selectedShareRoom.property_details?.property_images || selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
         imagesToInclude.push(...propImages.filter((_: any, i: number) => shareOptions[`images_property_${i}`]));
       }
 

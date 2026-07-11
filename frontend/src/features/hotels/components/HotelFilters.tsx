@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Tag, Building2, Bed, Star } from 'lucide-react';
 import { RoomFilters } from '../hooks/useRoomFilters';
 
@@ -22,16 +22,73 @@ export function HotelFilters({
   filters, updateFilter, toggleArrayFilter, clearFilters,
   propertyTypeOptions, roomTypeOptions, amenityOptions, showFilters, setPage
 }: HotelFiltersProps) {
+  const [localPriceMin, setLocalPriceMin] = useState(filters.priceMin);
+  const [localPriceMax, setLocalPriceMax] = useState(filters.priceMax);
+
+  useEffect(() => {
+    setLocalPriceMin(filters.priceMin);
+    setLocalPriceMax(filters.priceMax);
+  }, [filters.priceMin, filters.priceMax]);
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      let changed = false;
+      if (localPriceMin !== filters.priceMin) {
+        updateFilter('priceMin', localPriceMin);
+        changed = true;
+      }
+      if (localPriceMax !== filters.priceMax) {
+        updateFilter('priceMax', localPriceMax);
+        changed = true;
+      }
+      if (changed) setPage(1);
+    }, 500);
+    return () => clearTimeout(t);
+  }, [localPriceMin, localPriceMax, filters, updateFilter, setPage]);
+
   return (
     <div className={`w-full lg:w-60 flex-shrink-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-5 ${showFilters ? 'block' : 'hidden lg:block'}`}>
       <div>
         <h3 className="text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider mb-3 flex items-center gap-2">
           <Tag className="h-3.5 w-3.5 text-[#007e3a]" /> Price Per Night
         </h3>
-        <input type="range" min="0" max="20000" step="500" value={filters.priceMax}
-          onChange={e => { updateFilter('priceMax', Number(e.target.value)); setPage(1); }}
-          className="w-full accent-[#007e3a]" />
-        <div className="text-xs text-slate-500 mt-1">₹0 – ₹{filters.priceMax.toLocaleString()}</div>
+        <div className="relative h-1.5 mb-6 mx-1 mt-2">
+          <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-full" />
+          <div 
+            className="absolute h-full bg-[#007e3a] rounded-full"
+            style={{ 
+              left: `${(localPriceMin / 20000) * 100}%`, 
+              right: `${100 - (localPriceMax / 20000) * 100}%` 
+            }}
+          />
+          <input 
+            type="range" min="0" max="20000" step="100" 
+            value={localPriceMin}
+            onChange={e => setLocalPriceMin(Math.min(Number(e.target.value), localPriceMax - 100))}
+            className="absolute inset-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#007e3a] [&::-webkit-slider-thumb]:cursor-grab"
+          />
+          <input 
+            type="range" min="0" max="20000" step="100" 
+            value={localPriceMax}
+            onChange={e => setLocalPriceMax(Math.max(Number(e.target.value), localPriceMin + 100))}
+            className="absolute inset-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#007e3a] [&::-webkit-slider-thumb]:cursor-grab"
+          />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex-1">
+            <label className="text-[10px] text-slate-500 mb-1 block">Min (₹)</label>
+            <input type="number" min="0" value={localPriceMin || ''} placeholder="0"
+              onChange={e => setLocalPriceMin(Number(e.target.value))}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007e3a]/50 focus:border-[#007e3a] transition-all" />
+          </div>
+          <div className="text-slate-300 dark:text-slate-600 mt-5 font-medium">-</div>
+          <div className="flex-1">
+            <label className="text-[10px] text-slate-500 mb-1 block">Max (₹)</label>
+            <input type="number" min="0" value={localPriceMax || ''} placeholder="Any"
+              onChange={e => setLocalPriceMax(Number(e.target.value))}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007e3a]/50 focus:border-[#007e3a] transition-all" />
+          </div>
+        </div>
       </div>
       <hr className="border-slate-100 dark:border-slate-800" />
 

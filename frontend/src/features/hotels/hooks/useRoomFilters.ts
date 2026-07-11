@@ -7,6 +7,7 @@ export interface RoomFilters {
     propertyTypes: string[];
     roomTypes: string[];
     amenities: string[];
+    priceMin: number;
     priceMax: number;
     hideUnavailable: boolean;
     adults: number;
@@ -25,6 +26,7 @@ export function useRoomFilters() {
         propertyTypes: [],
         roomTypes: [],
         amenities: [],
+        priceMin: 0,
         priceMax: 15000,
         hideUnavailable: false,
         adults: 1,
@@ -50,6 +52,7 @@ export function useRoomFilters() {
             propertyTypes: [],
             roomTypes: [],
             amenities: [],
+            priceMin: 0,
             priceMax: 15000,
             hideUnavailable: false,
         }));

@@ -7,6 +7,7 @@ import { ContactTable } from './components/ContactTable';
 import { TagManager } from './components/TagManager';
 import { WAImportModal } from './components/WAImportModal';
 import { Contact } from './utils/types';
+import ConfirmDialog from '../../components/shared/ConfirmDialog';
 
 
 
@@ -17,6 +18,7 @@ export function Contacts() {
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [showWAImport, setShowWAImport] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [deleteContactId, setDeleteContactId] = useState<string | null>(null);
 
   const {
     contacts, tags, loading, page, setPage, totalCount, pageSize,
@@ -35,6 +37,13 @@ export function Contacts() {
   const closeForm = () => {
     setEditingContact(null);
     setIsFormOpen(false);
+  };
+
+  const confirmDelete = async () => {
+    if (deleteContactId) {
+      await handleDelete(deleteContactId);
+      setDeleteContactId(null);
+    }
   };
 
   return (
@@ -96,7 +105,7 @@ export function Contacts() {
               contacts={contacts}
               loading={loading}
               onEdit={openEditForm}
-              onDelete={handleDelete}
+              onDelete={(id) => setDeleteContactId(id)}
             />
           </div>
           <div className="flex items-center justify-between mt-4">
@@ -149,6 +158,15 @@ export function Contacts() {
         isOpen={showWAImport}
         onClose={() => setShowWAImport(false)}
         onImported={handleWAImported}
+      />
+
+      <ConfirmDialog
+        isOpen={!!deleteContactId}
+        title="Delete Contact"
+        description="Are you sure you want to delete this contact? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteContactId(null)}
       />
     </div>
   );

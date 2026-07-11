@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { contactsApi } from '../../../api/contacts';
 import { Contact, CTag } from '../utils/types';
+import { showToast } from '../../../utils/toast';
 
 
 
@@ -42,12 +43,14 @@ export function useContacts(search: string, filterTag: string, filterStatus: str
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this contact?')) return;
     try {
       await contactsApi.deleteContact(id);
       setContacts(prev => prev.filter(c => c.id !== id));
       setTotalCount(prev => prev - 1);
-    } catch {}
+      showToast('Contact Deleted', 'The contact has been removed successfully.', 'success');
+    } catch (error: any) {
+      showToast('Error', error.response?.data?.detail || 'Failed to delete contact.', 'error');
+    }
   };
 
   const handleTagCreated = (tag: CTag) => setTags(prev => [...prev, tag]);
@@ -57,7 +60,10 @@ export function useContacts(search: string, filterTag: string, filterStatus: str
       await contactsApi.deleteTag(id);
       setTags(prev => prev.filter(t => t.id !== id));
       setContacts(prev => prev.map(c => ({ ...c, tags: c.tags.filter(t => t.id !== id) })));
-    } catch {}
+      showToast('Tag Deleted', 'The tag has been removed successfully.', 'success');
+    } catch (error: any) {
+      showToast('Error', error.response?.data?.detail || 'Failed to delete tag.', 'error');
+    }
   };
 
   const handleWAImported = (imported: Contact[]) => {

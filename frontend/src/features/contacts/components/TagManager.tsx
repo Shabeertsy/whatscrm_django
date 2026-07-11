@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { CTag, TAG_COLORS } from '../utils/types';
 import { contactsApi } from '../../../api/contacts';
 import { Tag, Plus, Trash2, Loader2 } from 'lucide-react';
+import { showToast } from '../../../utils/toast';
 
 
 
@@ -24,7 +25,10 @@ export function TagManager({ tags, onCreated, onDeleted }: TagManagerProps) {
       const res = await contactsApi.createTag({ name: newTagName.trim(), color: selectedColor });
       onCreated(res.data);
       setNewTagName('');
-    } catch {}
+      showToast('Tag Created', `Tag "${res.data.name}" was created successfully.`, 'success');
+    } catch (error: any) {
+      showToast('Error', error.response?.data?.detail || 'Failed to create tag.', 'error');
+    }
     setCreating(false);
   };
 

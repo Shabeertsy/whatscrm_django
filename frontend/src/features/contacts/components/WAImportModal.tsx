@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Contact, WAContact } from '../utils/types';
 import { contactsApi } from '../../../api/contacts';
 import { MessageSquare, X, Phone, Loader2, Download } from 'lucide-react';
+import { showToast } from '../../../utils/toast';
 
 interface WAImportModalProps {
   isOpen: boolean;
@@ -38,8 +39,11 @@ export function WAImportModal({ isOpen, onClose, onImported }: WAImportModalProp
     try {
       const res = await contactsApi.importWAContacts(Array.from(selected));
       onImported(res.data.imported);
+      showToast('Import Successful', `Successfully imported ${res.data.imported.length} contacts.`, 'success');
       onClose();
-    } catch {}
+    } catch (error: any) {
+      showToast('Import Failed', error.response?.data?.detail || 'Failed to import contacts.', 'error');
+    }
     setImporting(false);
   };
 

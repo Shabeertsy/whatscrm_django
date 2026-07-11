@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Bed, MapPin, Users, ChevronLeft, ChevronRight,
   Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal, Share2
@@ -11,6 +11,9 @@ import { ShareRoomModal } from '../features/hotels/components/ShareRoomModal';
 
 export function HotelRooms() {
   const { id } = useParams<{ id: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const fromChat = location.state?.fromChat;
   const cachedRoom = useHotelStore(state => state.selectedHotel);
   const imgRef = useRef<HTMLDivElement>(null);
 
@@ -85,9 +88,9 @@ export function HotelRooms() {
   if (error || !room) {
     return (
       <div className="space-y-4">
-        <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 transition">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Rooms
-        </Link>
+        <button onClick={() => navigate(fromChat ? '/messaging' : '/hotels')} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 transition">
+          <ArrowLeft className="h-4 w-4 mr-1" /> {fromChat ? 'Back to Chats' : 'Back to Rooms'}
+        </button>
         <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200">{error || 'Room not found.'}</div>
       </div>
     );
@@ -102,9 +105,9 @@ export function HotelRooms() {
     <div className="space-y-6">
       {/* Back and Share */}
       <div className="flex items-center justify-between">
-        <Link to="/hotels" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
-          <ArrowLeft className="h-4 w-4 mr-1" /> Back to Rooms
-        </Link>
+        <button onClick={() => navigate(fromChat ? '/messaging' : '/hotels')} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 dark:hover:text-white transition">
+          <ArrowLeft className="h-4 w-4 mr-1" /> {fromChat ? 'Back to Chats' : 'Back to Rooms'}
+        </button>
         <button
           onClick={() => shareState.setSelectedShareRoom(room)}
           className="flex items-center gap-2 px-3 py-1.5 bg-[#007e3a]/10 hover:bg-[#007e3a]/20 text-[#007e3a] rounded-lg text-sm font-bold transition-colors"

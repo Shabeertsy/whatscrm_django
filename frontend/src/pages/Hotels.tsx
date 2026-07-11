@@ -157,6 +157,11 @@ export function Hotels() {
                           <span className="block text-[10px] text-slate-400">
                             {room.price_summary?.nights ? `${room.price_summary.nights} night` : 'per night'}
                           </span>
+                          {room.price_summary?.gst_amount > 0 && (
+                            <span className="block text-[9px] text-[#007e3a] font-medium mt-0.5">
+                              Incl. {room.price_summary.gst_pct}% GST
+                            </span>
+                          )}
                         </td>
                         {/* Status */}
                         <td className="px-5 py-3.5">

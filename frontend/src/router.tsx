@@ -27,9 +27,9 @@ export function useRouter() {
     ? "#dashboard"
     : `#${location.pathname.substring(1)}`;
 
-  const navigate = (to: string) => {
+  const navigate = (to: string, options?: any) => {
     const target = to.startsWith("#") ? `/${to.substring(1)}` : to;
-    navigateHook(target);
+    navigateHook(target, options);
   };
 
   return { path, navigate };

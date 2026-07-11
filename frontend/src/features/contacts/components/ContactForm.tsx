@@ -3,6 +3,7 @@ import { CTag, Contact } from '../utils/types';
 import { contactsApi } from '../../../api/contacts';
 import { Loader2, Check, X, Plus } from 'lucide-react';
 import { TagBadge } from './TagBadge';
+import { showToast } from '../../../utils/toast';
 
 interface ContactFormProps {
   isOpen: boolean;
@@ -43,8 +44,17 @@ export function ContactForm({ isOpen, onClose, tags, onSaved, editingContact }: 
         : await contactsApi.createContact(payload);
       onSaved(res.data);
       if (!editingContact) { setName(''); setPhone(''); setEmail(''); setNotes(''); setSelectedTagIds([]); }
+      
+      const title = editingContact ? 'Contact Updated' : 'Contact Created';
+      const msg = editingContact 
+        ? 'The contact details have been updated successfully.' 
+        : 'The new contact has been saved successfully.';
+      
+      showToast(title, msg, 'success');
       onClose();
-    } catch {}
+    } catch (error: any) {
+      showToast('Error', error.response?.data?.detail || 'Failed to save contact.', 'error');
+    }
     setSaving(false);
   };
 

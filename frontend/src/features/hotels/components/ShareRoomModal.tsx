@@ -127,7 +127,7 @@ export function ShareRoomModal({
                 });
 
                 // 7. Property Images
-                const propImages = selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
+                const propImages = selectedShareRoom.property_details?.property_images || selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
                 shareItemsList.push({ 
                     key: 'images_property', 
                     label: 'Property Images', 

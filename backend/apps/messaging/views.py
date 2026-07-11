@@ -27,7 +27,7 @@ from .serializers import (
     MessageSerializer,
     SendMessageSerializer,
 )
-from .utils import broadcast_new_message, broadcast_delete_message, send_whatsapp_message, broadcast_conversation_update
+from .utils import broadcast_new_message, broadcast_delete_message, send_whatsapp_message, broadcast_conversation_update, save_whatsapp_media
 from django.conf import settings
 
 
@@ -136,6 +136,13 @@ class ConversationSendMessageAPIView(APIView):
             if replied_to_obj and replied_to_obj.wa_message_id:
                 reply_to_wa_id = replied_to_obj.wa_message_id
                 
+        storage_path = serializer.validated_data.get('storage_path', '')
+        
+        filename = ""
+        if storage_path:
+            import os
+            filename = os.path.basename(storage_path)
+            
         # Meta Graph API Call
         wa_message_id = ""
         msg_status = "failed"
@@ -149,7 +156,8 @@ class ConversationSendMessageAPIView(APIView):
                     message_text=body,
                     msg_type=msg_type,
                     media_url=media_url,
-                    reply_to_wa_id=reply_to_wa_id
+                    reply_to_wa_id=reply_to_wa_id,
+                    filename=filename
                 )
                 if 'messages' in wa_response and len(wa_response['messages']) > 0:
                     wa_message_id = wa_response['messages'][0]['id']
@@ -163,6 +171,7 @@ class ConversationSendMessageAPIView(APIView):
             msg_type=serializer.validated_data.get('msg_type', 'text'),
             body=body,
             media_url=serializer.validated_data.get('media_url', ''),
+            storage_path=serializer.validated_data.get('storage_path', ''),
             related_room_uuid=related_room_uuid if related_room_uuid else None,
             replied_to=replied_to_obj,
             sent_by=request.user,
@@ -202,23 +211,50 @@ class MediaUploadAPIView(APIView):
         if file_obj.size == 0:
             return Response({"detail": "File cannot be empty."}, status=status.HTTP_400_BAD_REQUEST)
             
-        if file_obj.size > 16 * 1024 * 1024:
-            return Response({"detail": "File size exceeds the 16MB limit."}, status=status.HTTP_400_BAD_REQUEST)
+        MAX_SIZE = {
+            "image": 16 * 1024 * 1024, 
+            "audio": 16 * 1024 * 1024,
+            "video": 16 * 1024 * 1024,
+            "document": 100 * 1024 * 1024,
+        }
+        
+        # We'll re-check true mime via magic inside utils
+        req_type = 'document'
+        if file_obj.content_type.startswith('image/'): req_type = 'image'
+        elif file_obj.content_type.startswith('audio/'): req_type = 'audio'
+        elif file_obj.content_type.startswith('video/'): req_type = 'video'
+        
+        limit = MAX_SIZE.get(req_type, 16 * 1024 * 1024)
+        if file_obj.size > limit:
+            return Response({"detail": f"File size exceeds the {limit // (1024*1024)}MB limit for {req_type}."}, status=status.HTTP_400_BAD_REQUEST)
 
         ALLOWED_TYPES = [
-            'image/jpeg', 'image/png', 'image/webp',
-            'application/pdf', 'text/plain', 'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'video/mp4', 'video/mpeg', 'audio/mpeg', 'audio/mp4', 'audio/ogg', 'audio/amr', 'audio/aac'
+            "image/jpeg",
+            "image/png",
+            "image/webp",
+            "video/mp4",
+            "audio/ogg",
+            "audio/webm",
+            "audio/mpeg",
+            "application/pdf",
         ]
-        
         if file_obj.content_type not in ALLOWED_TYPES:
             return Response({"detail": f"File type {file_obj.content_type} is not supported."}, status=status.HTTP_400_BAD_REQUEST)
 
-        ext = os.path.splitext(file_obj.name)[1]
-        filename = f"{uuid.uuid4()}{ext}"
-        saved_path = default_storage.save(f"whatsapp_media/{filename}", file_obj)
+        conversation_id = request.data.get('conversation_id')
+        phone = None
+        
+        if conversation_id:
+            try:
+                conv = Conversation.objects.get(id=conversation_id)
+                phone = conv.contact.phone
+            except Exception:
+                pass
+                
+        media_data = save_whatsapp_media(file_obj, phone)
+        saved_path = media_data["path"]
+        mime = media_data["mime"]
+        final_size = media_data["size"]
         
         if getattr(settings, 'BACKEND_PUBLIC_URL', None):
             base_url = settings.BACKEND_PUBLIC_URL.rstrip('/')
@@ -228,8 +264,10 @@ class MediaUploadAPIView(APIView):
         
         return Response({
             "url": file_url,
+            "path": saved_path,
             "filename": file_obj.name,
-            "type": file_obj.content_type
+            "type": mime,
+            "size": final_size
         }, status=status.HTTP_201_CREATED)
 
 
@@ -247,13 +285,12 @@ class MessageDeleteAPIView(APIView):
         msg_id_str = str(msg.id)
         
         # Cleanup local media file if it exists
-        if msg.media_url and '/media/whatsapp_media/' in msg.media_url:
+        if msg.storage_path:
             try:
-                path_suffix = msg.media_url.split('/media/')[-1]
-                if default_storage.exists(path_suffix):
-                    default_storage.delete(path_suffix)
+                if default_storage.exists(msg.storage_path):
+                    default_storage.delete(msg.storage_path)
             except Exception as e:
-                logging.error(f"Failed to delete media file {msg.media_url}: {str(e)}")
+                logging.getLogger(__name__).error(f"Failed to delete media file {msg.storage_path}: {str(e)}")
 
         msg.delete()
         

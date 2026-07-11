@@ -7,6 +7,7 @@ import { useInboxSocket } from "./hooks/useInboxSocket";
 import { isWhatsAppWindowOpen } from "./utils";
 import { useMessagingStore, messagingStore } from "../../store/messagingStore";
 import { messagingApi } from "../../api/messaging";
+import { showToast } from "../../utils/toast";
 
 
 
@@ -119,7 +120,7 @@ export function Inbox() {
     setIsSending(true);
     try {
       //  Upload file to Django backend
-      const uploadRes = await messagingApi.uploadMedia(file);
+      const uploadRes = await messagingApi.uploadMedia(file, store.activeConversationId);
       const mediaUrl = uploadRes.data.url;
       
       //  Determine msg_type
@@ -131,8 +132,9 @@ export function Inbox() {
       //  Send message with media
       const payload: any = { 
         msg_type: msgType, 
-        media_url: mediaUrl,
-        body: file.name 
+        media_url: uploadRes.data.url,
+        storage_path: uploadRes.data.path,
+        body: '' 
       };
       if (replyingTo) {
         payload.reply_to_message_id = replyingTo.id;
@@ -151,9 +153,10 @@ export function Inbox() {
         },
         last_message_at: res.data.timestamp,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to upload/send media:", error);
-      alert("Failed to send media. Please try again.");
+      const errorDetail = error.response?.data?.detail || "Failed to send media. Please try again.";
+      showToast('Upload Failed', errorDetail, 'error');
     } finally {
       setIsSending(false);
     }

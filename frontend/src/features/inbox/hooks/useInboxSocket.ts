@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { tokenService } from '../../../api/token';
 import { messagingStore } from '../../../store/messagingStore';
 import type { Message } from '../../../api/messaging';
+import { showToast } from '../../../utils/toast';
 
 const WS_BASE = import.meta.env.VITE_WS_BASE_URL || 'ws://127.0.0.1:8000';
 
@@ -51,6 +52,27 @@ export function useInboxSocket() {
                     .conversations.find((c) => c.id === conversation_id)
                     ?.unread_count ?? 0) + 1,
           });
+
+          // Show browser notification if it's an inbound message and not in the currently active chat
+          if (message.direction === 'inbound' && activeId !== conversation_id) {
+            const currentConversations = messagingStore.getState().conversations;
+            const contactName = currentConversations.find((c) => c.id === conversation_id)?.contact.name || 'Customer';
+            const notificationBody = message.msg_type === 'text' ? message.body : `Sent a ${message.msg_type}`;
+            
+            if (document.hidden) {
+              if (Notification.permission === 'granted') {
+                new Notification(`New message from ${contactName}`, { body: notificationBody });
+              } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then((permission) => {
+                  if (permission === 'granted') {
+                    new Notification(`New message from ${contactName}`, { body: notificationBody });
+                  }
+                });
+              }
+            } else {
+              showToast(`New from ${contactName}`, notificationBody, 'success');
+            }
+          }
         }
 
         if (data.type === 'conversation_update') {

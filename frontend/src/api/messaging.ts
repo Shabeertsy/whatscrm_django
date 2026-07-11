@@ -75,7 +75,7 @@ export const messagingApi = {
   },
 
   /** Send an outbound message */
-  sendMessage(conversationId: string, payload: { body?: string; msg_type?: string; media_url?: string; related_room_uuid?: string | null; reply_to_message_id?: string | null }) {
+  sendMessage(conversationId: string, payload: { body?: string; msg_type?: string; media_url?: string; storage_path?: string; related_room_uuid?: string | null; reply_to_message_id?: string | null }) {
     return apiClient.post<Message>(`${BASE}/conversations/${conversationId}/send/`, payload);
   },
 
@@ -100,10 +100,12 @@ export const messagingApi = {
   },
 
   /** Upload media to backend and get URL */
-  uploadMedia(file: File) {
+  uploadMedia(file: File, conversationId?: string) {
     const formData = new FormData();
     formData.append('file', file);
-    return apiClient.post<{ url: string; type: string; filename: string }>(`${BASE}/upload/`, formData, {
+    if (conversationId) formData.append('conversation_id', conversationId);
+    
+    return apiClient.post<{ url: string; path: string; type: string; filename: string; size: number }>(`${BASE}/upload/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
