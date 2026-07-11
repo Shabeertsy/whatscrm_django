@@ -98,11 +98,14 @@ def save_whatsapp_media(file_obj, phone=None):
                     
                 tf_out_path = tf_in_path.replace('.webm', '.ogg')
                 
-                subprocess.run([
+                result = subprocess.run([
                     ffmpeg_exe, '-y', '-i', tf_in_path, 
                     '-c:a', 'libopus', '-b:a', '32k',
                     tf_out_path
-                ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                ], capture_output=True, text=True)
+                
+                if result.returncode != 0:
+                    result.check_returncode()
                 
                 with open(tf_out_path, 'rb') as f:
                     ext = '.ogg'
