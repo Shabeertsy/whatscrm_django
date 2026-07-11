@@ -107,6 +107,8 @@ def broadcast_new_message(conv, msg):
         {
             "type":            "new_message",
             "conversation_id": str(conv.id),
+            "contact_name":    conv.contact.name,
+            "contact_phone":   conv.contact.phone,
             "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
         }
     )
@@ -139,8 +141,74 @@ def broadcast_conversation_update(conv):
 
 
 import requests
+import mimetypes
 
-def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id="", filename=""):
+def download_whatsapp_media(media_id, access_token, phone):
+    """
+    Downloads media from WhatsApp Cloud API and saves it using save_whatsapp_media.
+    """
+    url = f"https://graph.facebook.com/v17.0/{media_id}"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    # 1. Get media URL
+    res = requests.get(url, headers=headers, timeout=10)
+    if not res.ok:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to get media url for {media_id}: {res.text}")
+        return None
+        
+    data = res.json()
+    media_url = data.get('url')
+    mime_type = data.get('mime_type', 'application/octet-stream')
+    
+    if not media_url:
+        return None
+        
+    # 2. Download file
+    res2 = requests.get(media_url, headers=headers, timeout=20)
+    if not res2.ok:
+        return None
+        
+    # 3. Save file
+    ext = mimetypes.guess_extension(mime_type) or '.bin'
+    file_obj = ContentFile(res2.content, name=f"downloaded{ext}")
+    file_obj.content_type = mime_type
+    
+    saved_data = save_whatsapp_media(file_obj, phone)
+    # The URL needs to be constructed so the frontend can display it
+    saved_path = saved_data['path']
+    return {
+        "storage_path": saved_path,
+        "media_url": f"{settings.MEDIA_URL}{saved_path}" if hasattr(settings, 'MEDIA_URL') else f"/media/{saved_path}"
+    }
+
+def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type):
+    """
+    Uploads a local file to WhatsApp Cloud API to get a media ID.
+    This bypasses the need for a publicly accessible localhost URL.
+    """
+    url = f"https://graph.facebook.com/v17.0/{phone_number_id}/media"
+    headers = {"Authorization": f"Bearer {access_token}"}
+    
+    absolute_path = default_storage.path(storage_path)
+    
+    with open(absolute_path, 'rb') as f:
+        files = {
+            'file': (os.path.basename(absolute_path), f, mime_type)
+        }
+        data = {
+            'messaging_product': 'whatsapp',
+            'type': mime_type
+        }
+        res = requests.post(url, headers=headers, files=files, data=data, timeout=30)
+        if not res.ok:
+            import logging
+            logging.getLogger(__name__).error(f"Meta upload failed: {res.text}")
+            
+        res.raise_for_status()
+        return res.json().get('id')
+
+def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id="", filename="", storage_path=""):
     """
     Sends an outbound message using the Meta WhatsApp Cloud API.
     Supports text, image, video, document, and audio.
@@ -160,14 +228,34 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     
     if msg_type == "text":
         data["text"] = {"preview_url": False, "body": message_text}
-    elif msg_type in ["image", "video", "document"]:
-        data[msg_type] = {"link": media_url}
-        if message_text:
-            data[msg_type]["caption"] = message_text
+    elif msg_type in ["image", "video", "document", "audio"]:
+        # Try to upload the file directly if we have a local storage path
+        media_id = None
+        if storage_path:
+            import mimetypes
+            mime_type, _ = mimetypes.guess_type(storage_path)
+            if not mime_type:
+                mime_type = 'application/octet-stream'
+                
+            try:
+                media_id = upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Failed to upload media to Meta: {e}")
+                
+        # Use media_id if upload succeeded, otherwise fallback to link
+        media_payload = {}
+        if media_id:
+            media_payload = {"id": media_id}
+        else:
+            media_payload = {"link": media_url}
+            
+        if message_text and msg_type != "audio":
+            media_payload["caption"] = message_text
         if msg_type == "document" and filename:
-            data[msg_type]["filename"] = filename
-    elif msg_type == "audio":
-        data["audio"] = {"link": media_url}
+            media_payload["filename"] = filename
+            
+        data[msg_type] = media_payload
 
     if reply_to_wa_id:
         data["context"] = {"message_id": reply_to_wa_id}

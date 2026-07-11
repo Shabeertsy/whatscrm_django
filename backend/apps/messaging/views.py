@@ -157,7 +157,8 @@ class ConversationSendMessageAPIView(APIView):
                     msg_type=msg_type,
                     media_url=media_url,
                     reply_to_wa_id=reply_to_wa_id,
-                    filename=filename
+                    filename=filename,
+                    storage_path=storage_path
                 )
                 if 'messages' in wa_response and len(wa_response['messages']) > 0:
                     wa_message_id = wa_response['messages'][0]['id']
@@ -399,10 +400,34 @@ class WebhookView(APIView):
             conv.status = 'open'
             conv.save(update_fields=['status'])
 
-        #  Extract body
+        #  Extract body and handle media
         body = ''
+        media_url = ''
+        storage_path = ''
+        
         if msg_type == 'text':
             body = msg_data.get('text', {}).get('body', '')
+        elif msg_type in ['image', 'video', 'audio', 'document']:
+            media_obj = msg_data.get(msg_type, {})
+            media_id = media_obj.get('id')
+            
+            is_voice = (msg_type == 'audio' and media_obj.get('voice', False))
+            if is_voice:
+                msg_type = 'audio'
+                
+            if msg_type == 'document':
+                body = media_obj.get('filename', '')
+                
+            if media_id and instance and instance.access_token:
+                from .utils import download_whatsapp_media
+                downloaded = download_whatsapp_media(
+                    media_id=media_id,
+                    access_token=instance.access_token,
+                    phone=contact.phone
+                )
+                if downloaded:
+                    storage_path = downloaded.get('storage_path', '')
+                    media_url = downloaded.get('media_url', '')
 
         # Check for context/replies
         context_data = msg_data.get('context', {})
@@ -422,6 +447,8 @@ class WebhookView(APIView):
             direction='inbound',
             msg_type=msg_type,
             body=body,
+            media_url=media_url,
+            storage_path=storage_path,
             replied_to=replied_to_obj,
             status='delivered',
             timestamp=ts,

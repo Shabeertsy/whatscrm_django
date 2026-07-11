@@ -27,10 +27,7 @@ export function useInboxSocket() {
         const data = JSON.parse(event.data);
 
         if (data.type === 'new_message') {
-          const { conversation_id, message } = data as {
-            conversation_id: string;
-            message: Message;
-          };
+          const { message, conversation_id, contact_name, contact_phone } = data;
 
           // Add message to the store
           messagingStore.pushMessage(conversation_id, message);
@@ -55,9 +52,8 @@ export function useInboxSocket() {
 
           // Show browser notification if it's an inbound message and not in the currently active chat
           if (message.direction === 'inbound' && activeId !== conversation_id) {
-            const currentConversations = messagingStore.getState().conversations;
-            const conversationContact = currentConversations.find((c) => c.id === conversation_id)?.contact;
-            const contactName = conversationContact?.name || conversationContact?.phone || 'Customer';
+            // Use contact details directly from the websocket payload to ensure it works even for brand new conversations
+            const contactName = contact_name || contact_phone || 'Customer';
             const notificationBody = message.msg_type === 'text' ? message.body : `Sent a ${message.msg_type}`;
             
             if (document.hidden) {
