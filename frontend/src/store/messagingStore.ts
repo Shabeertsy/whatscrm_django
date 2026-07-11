@@ -106,6 +106,23 @@ class MessagingStore {
     });
   };
 
+  /** Update an existing message in the local store */
+  updateMessage = (conversationId: string, messageId: string, patch: Partial<Message>) => {
+    this.setState((s) => {
+      if (!s.messagesByConvId[conversationId]) return {};
+      return {
+        messagesByConvId: {
+          ...s.messagesByConvId,
+          [conversationId]: s.messagesByConvId[conversationId].map((m) =>
+            m.id === messageId || m.wa_message_id === messageId
+              ? { ...m, ...patch }
+              : m
+          ),
+        },
+      };
+    });
+  };
+
 
 
   /** Update conversation's last_message preview + unread count */

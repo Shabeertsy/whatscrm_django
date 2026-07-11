@@ -470,4 +470,9 @@ class WebhookView(APIView):
         wa_msg_id  = status_data.get('id')
         new_status = status_data.get('status') 
         if wa_msg_id and new_status:
-            Message.objects.filter(wa_message_id=wa_msg_id).update(status=new_status)
+            msg = Message.objects.filter(wa_message_id=wa_msg_id).first()
+            if msg:
+                msg.status = new_status
+                msg.save(update_fields=['status'])
+                from .utils import broadcast_message_status_update
+                broadcast_message_status_update(msg.conversation, wa_msg_id, new_status)

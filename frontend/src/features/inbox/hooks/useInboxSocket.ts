@@ -83,6 +83,11 @@ export function useInboxSocket() {
           // (Optional) We could also trigger a metadata refresh here, but removing it visually is usually enough
         }
 
+        if (data.type === 'message_status_update') {
+          const { conversation_id, message_id, status } = data as { conversation_id: string, message_id: string, status: string };
+          messagingStore.updateMessage(conversation_id, message_id, { status: status as any });
+        }
+
       } catch (err) {
         console.warn('[Inbox WS] Parse error:', err);
       }
