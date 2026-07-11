@@ -14,6 +14,11 @@ from channels.layers import get_channel_layer
 from .serializers import MessageSerializer, ConversationListSerializer
 
 
+import requests
+import mimetypes
+
+
+
 def save_whatsapp_media(file_obj, phone=None):
     mime = file_obj.content_type
     
@@ -207,8 +212,7 @@ def broadcast_conversation_update(conv):
     )
 
 
-import requests
-import mimetypes
+
 
 def download_whatsapp_media(media_id, access_token, phone):
     """
@@ -217,7 +221,7 @@ def download_whatsapp_media(media_id, access_token, phone):
     url = f"https://graph.facebook.com/v17.0/{media_id}"
     headers = {"Authorization": f"Bearer {access_token}"}
     
-    # 1. Get media URL
+    # Get media URL
     res = requests.get(url, headers=headers, timeout=10)
     if not res.ok:
         import logging
@@ -231,23 +235,23 @@ def download_whatsapp_media(media_id, access_token, phone):
     if not media_url:
         return None
         
-    # 2. Download file
+    #  Download file
     res2 = requests.get(media_url, headers=headers, timeout=20)
     if not res2.ok:
         return None
         
-    # 3. Save file
+    # Save file
     ext = mimetypes.guess_extension(mime_type) or '.bin'
     file_obj = ContentFile(res2.content, name=f"downloaded{ext}")
     file_obj.content_type = mime_type
     
     saved_data = save_whatsapp_media(file_obj, phone)
-    # The URL needs to be constructed so the frontend can display it
     saved_path = saved_data['path']
     return {
         "storage_path": saved_path,
         "media_url": f"{settings.MEDIA_URL}{saved_path}" if hasattr(settings, 'MEDIA_URL') else f"/media/{saved_path}"
     }
+
 
 def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type):
     """
@@ -256,7 +260,6 @@ def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type
     """
     url = f"https://graph.facebook.com/v17.0/{phone_number_id}/media"
     headers = {"Authorization": f"Bearer {access_token}"}
-    
     absolute_path = default_storage.path(storage_path)
     
     with open(absolute_path, 'rb') as f:
@@ -274,6 +277,8 @@ def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type
             
         res.raise_for_status()
         return res.json().get('id')
+
+
 
 def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id="", filename="", storage_path=""):
     """
