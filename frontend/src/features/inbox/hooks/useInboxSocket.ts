@@ -56,7 +56,8 @@ export function useInboxSocket() {
           // Show browser notification if it's an inbound message and not in the currently active chat
           if (message.direction === 'inbound' && activeId !== conversation_id) {
             const currentConversations = messagingStore.getState().conversations;
-            const contactName = currentConversations.find((c) => c.id === conversation_id)?.contact.name || 'Customer';
+            const conversationContact = currentConversations.find((c) => c.id === conversation_id)?.contact;
+            const contactName = conversationContact?.name || conversationContact?.phone || 'Customer';
             const notificationBody = message.msg_type === 'text' ? message.body : `Sent a ${message.msg_type}`;
             
             if (document.hidden) {
