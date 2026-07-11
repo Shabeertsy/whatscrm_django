@@ -58,6 +58,23 @@ class MessageSerializer(serializers.ModelSerializer):
             return wa_contact.name or wa_contact.phone
         return None
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if ret.get('media_url') and ret['media_url'].startswith('/media/'):
+            from django.conf import settings
+            base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000')
+     
+            base = base.rstrip('/')
+            ret['media_url'] = f"{base}{ret['media_url']}"
+            
+        if ret.get('replied_to_message') and ret['replied_to_message'].get('media_url') and ret['replied_to_message']['media_url'].startswith('/media/'):
+            from django.conf import settings
+            base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000')
+            base = base.rstrip('/')
+            ret['replied_to_message']['media_url'] = f"{base}{ret['replied_to_message']['media_url']}"
+            
+        return ret
+
     def get_replied_to_message(self, obj):
         if obj.replied_to:
             sent_by_name = None
@@ -100,7 +117,13 @@ class ConversationListSerializer(serializers.ModelSerializer):
     def get_last_message(self, obj):
         msg = obj.messages.order_by('-timestamp').first()
         if msg:
-            return {'body': msg.body, 'direction': msg.direction, 'msg_type': msg.msg_type, 'media_url': msg.media_url}
+            media_url = msg.media_url
+            if media_url and media_url.startswith('/media/'):
+                from django.conf import settings
+                base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000')
+                base = base.rstrip('/')
+                media_url = f"{base}{media_url}"
+            return {'body': msg.body, 'direction': msg.direction, 'msg_type': msg.msg_type, 'media_url': media_url}
         return None
 
     def get_last_inbound_at(self, obj):
