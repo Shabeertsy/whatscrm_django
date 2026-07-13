@@ -17,7 +17,7 @@ class Contact(BaseModel):
     wa_id           = models.CharField(max_length=30, unique=True, db_index=True)
     phone           = models.CharField(max_length=30)
     name            = models.CharField(max_length=255, blank=True)
-    profile_pic_url = models.URLField(blank=True)
+    profile_pic_url = models.URLField(max_length=1024, blank=True)
 
     is_saved        = models.BooleanField(default=False)
     source          = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='inbound')
@@ -116,7 +116,7 @@ class Message(models.Model):
     direction  = models.CharField(max_length=10, choices=DIRECTION_CHOICES)
     msg_type   = models.CharField(max_length=20, choices=TYPE_CHOICES, default='text')
     body       = models.TextField(blank=True)
-    media_url  = models.URLField(blank=True)
+    media_url  = models.URLField(max_length=1024, blank=True)
     storage_path = models.CharField(max_length=512, blank=True, null=True)
     related_room_uuid = models.CharField(max_length=255, null=True, blank=True)
     

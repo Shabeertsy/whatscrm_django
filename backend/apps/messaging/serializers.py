@@ -154,7 +154,7 @@ class ConversationUpdateSerializer(serializers.ModelSerializer):
 
 class SendMessageSerializer(serializers.Serializer):
     body      = serializers.CharField(max_length=4096, allow_blank=True, required=False, default='')
-    media_url = serializers.URLField(required=False, allow_blank=True, default='')
+    media_url = serializers.URLField(max_length=1024, required=False, allow_blank=True, default='')
     storage_path = serializers.CharField(max_length=512, allow_blank=True, required=False, default='')
     related_room_uuid   = serializers.CharField(max_length=255, allow_blank=True, required=False, default='')
     reply_to_message_id = serializers.IntegerField(required=False, allow_null=True)
