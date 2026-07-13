@@ -1,6 +1,6 @@
 import React, { useRef } from "react";
-import { Send, Paperclip, X, Mic, Image as ImageIcon, FileText, Camera, User, BarChart, Square } from "lucide-react";
-import { AudioVisualizer } from "./chat/AudioVisualizer";
+import { Send, Paperclip, X, Mic, Image as ImageIcon, FileText, Camera, User, BarChart, Square, LayoutTemplate } from "lucide-react";
+import { AudioVisualizer } from "./chat/audio/AudioVisualizer";
 
 
 
@@ -10,13 +10,16 @@ interface MessageComposerProps {
   onSubmit: (e: React.FormEvent) => void;
   onMediaSelect?: (file: File) => void;
   disabled?: boolean;
+  isSending?: boolean;
   replyingTo?: any;
   onCancelReply?: () => void;
+  onSendTemplate?: (template: any) => void;
 }
 
 
 
-export function MessageComposer({ value, onChange, onSubmit, onMediaSelect, disabled, replyingTo, onCancelReply }: MessageComposerProps) {
+export function MessageComposer(props: MessageComposerProps) {
+  const { value, onChange, onSubmit, disabled, isSending, replyingTo, onCancelReply, onMediaSelect } = props;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAttachMenu, setShowAttachMenu] = React.useState(false);
   const [attachAccept, setAttachAccept] = React.useState("*");
@@ -28,6 +31,24 @@ export function MessageComposer({ value, onChange, onSubmit, onMediaSelect, disa
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
+
+  // Template states
+  const [showTemplateModal, setShowTemplateModal] = React.useState(false);
+  const [templates, setTemplates] = React.useState<any[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = React.useState(false);
+
+  const fetchTemplates = async () => {
+    setLoadingTemplates(true);
+    try {
+      const { whatsappApi } = await import("../../../api/whatsapp");
+      const res = await whatsappApi.listTemplates();
+      setTemplates(Array.isArray(res.data) ? res.data : (res.data as any).results || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -125,8 +146,47 @@ export function MessageComposer({ value, onChange, onSubmit, onMediaSelect, disa
           </button>
         </div>
       )}
+
+      {/* Template Modal */}
+      {showTemplateModal && (
+        <div className="absolute bottom-full left-0 mb-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 flex flex-col max-h-[400px]">
+          <div className="flex justify-between items-center p-3 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <LayoutTemplate className="h-4 w-4 text-[#007e3a]" /> Select Template
+            </h3>
+            <button onClick={() => setShowTemplateModal(false)} className="text-slate-400 hover:text-slate-600">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+            {loadingTemplates ? (
+              <div className="p-4 text-center text-xs text-slate-500">Loading templates...</div>
+            ) : templates.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-500">No templates found. Go to Templates section to sync.</div>
+            ) : (
+              templates.map((tmpl) => (
+                <div key={tmpl.id} className="p-3 border border-slate-100 dark:border-slate-800 rounded-lg hover:border-[#007e3a] cursor-pointer transition"
+                     onClick={() => {
+                        if (props.onSendTemplate) {
+                           props.onSendTemplate(tmpl);
+                        }
+                        setShowTemplateModal(false);
+                     }}>
+                  <div className="flex justify-between items-start mb-1">
+                    <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{tmpl.name}</span>
+                    <span className="text-[10px] uppercase text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{tmpl.language}</span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 line-clamp-2">
+                    {tmpl.components?.find((c: any) => c.type === 'BODY')?.text || "No body text"}
+                  </p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
       
-      <form onSubmit={onSubmit} className="p-4 flex items-center space-x-2 relative">
+      <form onSubmit={props.onSubmit} className="p-4 flex items-center space-x-2 relative">
         <input 
           type="file" 
           ref={fileInputRef} 
@@ -177,12 +237,25 @@ export function MessageComposer({ value, onChange, onSubmit, onMediaSelect, disa
         
         <button
           type="button"
-          disabled={disabled || isRecording}
+          disabled={props.disabled || isRecording}
           onClick={() => setShowAttachMenu(!showAttachMenu)}
-          className={`p-2 flex items-center justify-center rounded-full transition relative ${disabled || isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          className={`p-2 flex items-center justify-center rounded-full transition relative ${props.disabled || isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
           title="Attach File"
         >
           <Paperclip className="h-5 w-5" />
+        </button>
+
+        <button
+          type="button"
+          disabled={isRecording}
+          onClick={() => {
+            if (!showTemplateModal) fetchTemplates();
+            setShowTemplateModal(!showTemplateModal);
+          }}
+          className={`p-2 flex items-center justify-center rounded-full transition ${isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          title="Send Template"
+        >
+          <LayoutTemplate className="h-5 w-5" />
         </button>
         {isRecording ? (
           <div className="flex-grow flex items-center bg-slate-50 dark:bg-slate-800 border border-red-200 dark:border-red-900/30 rounded-full px-4 py-2.5 h-[44px]">
@@ -194,22 +267,32 @@ export function MessageComposer({ value, onChange, onSubmit, onMediaSelect, disa
             <button type="button" onClick={cancelRecording} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium px-2 py-1">Cancel</button>
           </div>
         ) : (
-          <textarea
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                if (!disabled) onSubmit(e);
-              }
-            }}
-            disabled={disabled}
-            placeholder={disabled ? "Messaging disabled..." : "Type an automated response or reply as agent..."}
-            className={`flex-grow bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-4 py-3 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[44px] max-h-[150px] custom-scrollbar ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
-            rows={value.split('\n').length > 1 ? Math.min(value.split('\n').length, 5) : 1}
-          />
+          <div className="flex-grow relative flex items-center">
+            <textarea
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  if (!disabled && !isSending) onSubmit(e);
+                }
+              }}
+              disabled={disabled || isSending}
+              placeholder={disabled ? "Messaging disabled..." : "Type an automated response or reply as agent..."}
+              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-4 py-3 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[44px] max-h-[150px] custom-scrollbar ${disabled || isSending ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
+              rows={value.split('\n').length > 1 ? Math.min(value.split('\n').length, 5) : 1}
+            />
+          </div>
         )}
-        {value.trim() !== '' ? (
+        {isSending ? (
+          <button
+            type="button"
+            disabled={true}
+            className="p-2.5 flex items-center justify-center rounded-full transition bg-[#007e3a] text-white shadow-sm cursor-not-allowed opacity-70"
+          >
+            <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
+          </button>
+        ) : value.trim() !== '' ? (
           <button
             type="submit"
             disabled={disabled}

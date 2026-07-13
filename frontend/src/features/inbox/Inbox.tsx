@@ -162,6 +162,49 @@ export function Inbox() {
     }
   };
 
+  const handleSendTemplate = async (template: any) => {
+    if (!store.activeConversationId || isSending) return;
+    
+    setIsSending(true);
+    try {
+      const headerText = template.components?.find((c: any) => c.type === 'HEADER')?.text;
+      const bodyText = template.components?.find((c: any) => c.type === 'BODY')?.text || '';
+      const footerText = template.components?.find((c: any) => c.type === 'FOOTER')?.text;
+      
+      let previewText = `[Template: ${template.name}]\n`;
+      if (headerText) previewText += `*${headerText}*\n\n`;
+      previewText += bodyText;
+      if (footerText) previewText += `\n\n_${footerText}_`;
+
+      const payload: any = { 
+        msg_type: 'template', 
+        template_name: template.name,
+        template_language: template.language,
+        body: previewText 
+      };
+      
+      const res = await messagingApi.sendMessage(store.activeConversationId, payload);
+      
+      messagingStore.pushMessage(store.activeConversationId, res.data);
+      messagingStore.updateConversationMeta(store.activeConversationId, {
+        last_message: {
+          body: res.data.body,
+          direction: res.data.direction,
+          msg_type: res.data.msg_type,
+          media_url: res.data.media_url,
+        },
+        last_message_at: res.data.timestamp,
+      });
+      showToast('Template Sent', `Template ${template.name} sent successfully.`, 'success');
+    } catch (error: any) {
+      console.error("Failed to send template:", error);
+      const errorDetail = error.response?.data?.detail || "Failed to send template. Please try again.";
+      showToast('Send Failed', errorDetail, 'error');
+    } finally {
+      setIsSending(false);
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-10rem)] flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition duration-200">
       <ChatList
@@ -189,8 +232,10 @@ export function Inbox() {
               onSubmit={handleSendMessage}
               onMediaSelect={handleMediaSelect}
               disabled={!windowOpen}
+              isSending={isSending}
               replyingTo={replyingTo}
               onCancelReply={() => setReplyingTo(null)}
+              onSendTemplate={handleSendTemplate}
             />
           </>
         )}

@@ -1,21 +1,23 @@
+import os
+import uuid
 import json
 import logging
 from datetime import datetime, timezone
 
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
+from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone as django_tz
+from django.core.files.storage import default_storage
+
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.core.files.storage import default_storage
-import os
-import uuid
-
 
 from apps.whatsapp.models import WhatsappInstance
 from .models import Contact, Conversation, Message
@@ -27,9 +29,14 @@ from .serializers import (
     MessageSerializer,
     SendMessageSerializer,
 )
-from .utils import broadcast_new_message, broadcast_delete_message, send_whatsapp_message, broadcast_conversation_update, save_whatsapp_media
-from django.conf import settings
 
+from .utils import (
+    broadcast_new_message, 
+    broadcast_delete_message, 
+    send_whatsapp_message, 
+    broadcast_conversation_update, 
+    save_whatsapp_media
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +134,8 @@ class ConversationSendMessageAPIView(APIView):
         msg_type = serializer.validated_data.get('msg_type', 'text')
         media_url = serializer.validated_data.get('media_url', '')
         related_room_uuid = serializer.validated_data.get('related_room_uuid', '')
+        template_name = serializer.validated_data.get('template_name', '')
+        template_language = serializer.validated_data.get('template_language', 'en')
         
         reply_to_message_id = serializer.validated_data.get('reply_to_message_id')
         replied_to_obj = None
@@ -140,7 +149,6 @@ class ConversationSendMessageAPIView(APIView):
         
         filename = ""
         if storage_path:
-            import os
             filename = os.path.basename(storage_path)
             
         # Meta Graph API Call
@@ -158,7 +166,9 @@ class ConversationSendMessageAPIView(APIView):
                     media_url=media_url,
                     reply_to_wa_id=reply_to_wa_id,
                     filename=filename,
-                    storage_path=storage_path
+                    storage_path=storage_path,
+                    template_name=template_name,
+                    template_language=template_language
                 )
                 if 'messages' in wa_response and len(wa_response['messages']) > 0:
                     wa_message_id = wa_response['messages'][0]['id']
@@ -307,9 +317,6 @@ class MessageDeleteAPIView(APIView):
 
 # Webhook View 
 class WebhookView(APIView):
-    """
-    Handles inbound messages from Meta Cloud API.
-    """
     permission_classes = [AllowAny]
     authentication_classes = []
 
@@ -336,13 +343,21 @@ class WebhookView(APIView):
             entry   = payload.get('entry', [])
 
             for e in entry:
+                waba_id = e.get('id')
+                
                 for change in e.get('changes', []):
+                    field = change.get('field')
                     value = change.get('value', {})
-                    self._process_webhook_value(value)
+                    
+                    if field == 'message_template_status_update':
+                        self._handle_template_status_update(value, waba_id)
+                    elif field == 'messages':
+                        self._process_webhook_value(value)
+                    else:
+                        self._process_webhook_value(value)
 
         except Exception as exc:
             logger.exception(f"Webhook processing error: {exc}")
-
         # Always return 200 to Meta — otherwise it retries indefinitely
         return Response({'status': 'ok'})
 
@@ -440,7 +455,6 @@ class WebhookView(APIView):
         ts_raw = msg_data.get('timestamp')
         ts = datetime.fromtimestamp(int(ts_raw), tz=timezone.utc) if ts_raw else django_tz.now()
 
-        # Save message
         msg = Message.objects.create(
             conversation=conv,
             wa_message_id=wa_msg_id,
@@ -476,3 +490,36 @@ class WebhookView(APIView):
                 msg.save(update_fields=['status'])
                 from .utils import broadcast_message_status_update
                 broadcast_message_status_update(msg.conversation, wa_msg_id, new_status)
+
+
+    def _handle_template_status_update(self, value: dict, waba_id: str):
+        from apps.whatsapp.models import WhatsappTemplate
+        
+        event = value.get('event') 
+        template_id = str(value.get('message_template_id', ''))
+        template_name = value.get('message_template_name')
+        template_language = value.get('message_template_language')
+        reason = value.get('reason', '')
+        
+        if not event or not template_id:
+            return
+            
+        try:
+            # lookup by meta_id
+            template = WhatsappTemplate.objects.filter(meta_id=template_id).first()
+            
+            # Fallback to name/language if meta_id isn't saved yet
+            if not template and template_name and template_language:
+                template = WhatsappTemplate.objects.filter(
+                    name=template_name, 
+                    language=template_language
+                ).order_by('-created_at').first()
+                
+            if template:
+                template.status = event
+                template.rejection_reason = reason if event == 'REJECTED' else ''
+                template.meta_id = template_id 
+                template.save(update_fields=['status', 'rejection_reason', 'meta_id'])
+                logger.info(f"Webhook updated template {template_name} to {event}")
+        except Exception as e:
+            logger.error(f"Error updating template status from webhook: {e}")

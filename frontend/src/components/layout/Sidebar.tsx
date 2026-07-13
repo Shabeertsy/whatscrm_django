@@ -16,7 +16,8 @@ import {
   PhoneCall,
   Contact2,
   Bot,
-  Building2
+  Building2,
+  FileText
 } from "lucide-react";
 import { useRouter } from "../../router";
 import { useTeamStore } from "../../store/teamStore";
@@ -38,7 +39,8 @@ export function Sidebar() {
     { id: "#messaging", label: "Chats", icon: MessageSquare },
     // { id: "#ai-agent", label: "AI Agent", icon: Bot },
     // { id: "#automations", label: "Flow Builder", icon: GitFork },
-    // { id: "#campaigns", label: "Campaigns", icon: Radio },
+    { id: "#templates", label: "Templates", icon: FileText },
+    // { id: "#campaigns", label: "Campaigns & Templates", icon: Radio },
     // { id: "#voice", label: "Voice/Calls", icon: PhoneCall },
   ];
 

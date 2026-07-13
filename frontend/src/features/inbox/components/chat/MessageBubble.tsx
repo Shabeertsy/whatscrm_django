@@ -4,11 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import type { Message } from '../../../../api/messaging';
 
 import { ReplyPreview } from './ReplyPreview';
-import { TextMessage } from './TextMessage';
-import { ImageMessage } from './ImageMessage';
-import { VideoMessage } from './VideoMessage';
-import { AudioMessage } from './AudioMessage';
-import { DocumentMessage } from './DocumentMessage';
+import { TextMessage } from './text/TextMessage';
+import { ImageMessage } from './photo/ImageMessage';
+import { VideoMessage } from './video/VideoMessage';
+import { AudioMessage } from './audio/AudioMessage';
+import { DocumentMessage } from './document/DocumentMessage';
+import { TemplateMessage } from './template/TemplateMessage';
 import { MessageStatus } from './MessageStatus';
 
 
@@ -19,6 +20,8 @@ interface MessageBubbleProps {
   onReply?: (m: Message) => void;
   onDelete?: (id: string) => void;
 }
+
+
 
 export function MessageBubble({ message, isOutbound, onReply, onDelete }: MessageBubbleProps) {
   const navigate = useNavigate();
@@ -67,11 +70,12 @@ export function MessageBubble({ message, isOutbound, onReply, onDelete }: Messag
         {message.msg_type === 'image' && message.media_url && <ImageMessage mediaUrl={message.media_url} />}
         {message.msg_type === 'video' && message.media_url && <VideoMessage mediaUrl={message.media_url} />}
         {message.msg_type === 'audio' && message.media_url && <AudioMessage mediaUrl={message.media_url} />}
-        {message.msg_type !== 'text' && !['image', 'video', 'audio'].includes(message.msg_type) && (
+        {message.msg_type !== 'text' && message.msg_type !== 'template' && !['image', 'video', 'audio'].includes(message.msg_type) && (
           <DocumentMessage msgType={message.msg_type} mediaUrl={message.media_url} />
         )}
 
-        {message.msg_type !== 'audio' && message.body && <TextMessage body={message.body} />}
+        {message.msg_type === 'template' && message.body && <TemplateMessage body={message.body} />}
+        {message.msg_type !== 'audio' && message.msg_type !== 'template' && message.body && <TextMessage body={message.body} />}
 
         {/* Room Details Link */}
         <div className="flex justify-end">
@@ -101,6 +105,15 @@ export function MessageBubble({ message, isOutbound, onReply, onDelete }: Messag
             title="Reply"
           >
             <Reply className="h-3.5 w-3.5" />
+          </button>
+        )}
+        {onDelete && (
+          <button 
+            onClick={() => onDelete(message.id)}
+            className="p-1.5 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
+            title="Delete message"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         )}
       </div>

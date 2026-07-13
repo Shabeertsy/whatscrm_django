@@ -21,4 +21,21 @@ export const whatsappApi = {
     apiClient.post<{ id: string; is_active: boolean }>(
       `/whatsapp/instances/${id}/toggle-active/`
     ),
+
+  syncTemplates: (id: string) =>
+    apiClient.post<{ status: string; synced: number; total: number }>(
+      `/whatsapp/templates/sync/${id}/`
+    ),
+
+  listTemplates: () =>
+    apiClient.get<any[]>('/whatsapp/templates/'),
+
+  createTemplate: (payload: any) =>
+    apiClient.post<any>('/whatsapp/templates/', payload),
+
+  updateTemplate: (id: string, payload: any) =>
+    apiClient.patch<any>(`/whatsapp/templates/${id}/`, payload),
+
+  deleteTemplate: (id: string) =>
+    apiClient.delete(`/whatsapp/templates/${id}/`),
 };

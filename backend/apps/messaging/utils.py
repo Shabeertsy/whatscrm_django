@@ -280,7 +280,7 @@ def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type
 
 
 
-def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id="", filename="", storage_path=""):
+def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id="", filename="", storage_path="", template_name="", template_language="en"):
     """
     Sends an outbound message using the Meta WhatsApp Cloud API.
     Supports text, image, video, document, and audio.
@@ -328,6 +328,12 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
             media_payload["filename"] = filename
             
         data[msg_type] = media_payload
+        
+    elif msg_type == "template":
+        data["template"] = {
+            "name": template_name,
+            "language": {"code": template_language}
+        }
 
     if reply_to_wa_id:
         data["context"] = {"message_id": reply_to_wa_id}

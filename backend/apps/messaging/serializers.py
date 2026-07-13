@@ -162,3 +162,5 @@ class SendMessageSerializer(serializers.Serializer):
         choices=['text', 'template', 'image', 'document', 'video', 'audio'],
         default='text',
     )
+    template_name       = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
+    template_language   = serializers.CharField(max_length=50, required=False, allow_blank=True, default='en')

@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import AiAgent from "./pages/AiAgent";
 import Hotels from "./pages/Hotels";
 import HotelRooms from "./pages/HotelRooms";
+import Templates from "./pages/Templates";
 
 
 export function RouterProvider({ children }: { children: React.ReactNode }) {
@@ -46,6 +47,7 @@ export function Router() {
       <Route path="/messaging" element={<Inbox />} />
       <Route path="/automations" element={<Automation />} />
       <Route path="/campaigns" element={<Campaigns />} />
+      <Route path="/templates" element={<Templates />} />
       <Route path="/voice" element={<Voice />} />
       <Route path="/contacts" element={<Contacts />} />
       <Route path="/pipeline" element={<Pipeline />} />

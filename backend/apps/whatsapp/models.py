@@ -41,3 +41,44 @@ class WhatsappInstance(BaseModel):
 
     def __str__(self):
         return f"{self.display_name} ({self.user})"
+
+
+class WhatsappTemplate(BaseModel):
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pending"
+        APPROVED = "APPROVED", "Approved"
+        REJECTED = "REJECTED", "Rejected"
+        PAUSED = "PAUSED", "Paused"
+        DISABLED = "DISABLED", "Disabled"
+
+    class Category(models.TextChoices):
+        MARKETING = "MARKETING", "Marketing"
+        UTILITY = "UTILITY", "Utility"
+        AUTHENTICATION = "AUTHENTICATION", "Authentication"
+
+    instance = models.ForeignKey(WhatsappInstance,on_delete=models.CASCADE,related_name="templates")
+    meta_id = models.CharField(max_length=100,unique=True,db_index=True,blank=True,null=True,)
+    name = models.CharField(max_length=255)
+    language = models.CharField(max_length=20)
+    components = models.JSONField(default=list)
+    rejection_reason = models.TextField(blank=True)
+    quality_score = models.CharField(max_length=20, blank=True)
+    last_synced_at = models.DateTimeField(null=True, blank=True)
+    
+    category = models.CharField(
+        max_length=30,
+        choices=Category.choices,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    class Meta:
+        unique_together = ('instance', 'name', 'language')
+        verbose_name = "WhatsApp Template"
+        verbose_name_plural = "WhatsApp Templates"
+        ordering = ["name"]
+
+    def __str__(self):
+        return f"{self.name} ({self.language})"

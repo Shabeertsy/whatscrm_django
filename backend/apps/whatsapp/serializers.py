@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import WhatsappInstance
+from .models import WhatsappInstance, WhatsappTemplate
 
 
 class WhatsappInstanceSerializer(serializers.ModelSerializer):
@@ -38,3 +38,10 @@ class WhatsappInstanceListSerializer(serializers.ModelSerializer):
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]
+
+
+class WhatsappTemplateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WhatsappTemplate
+        fields = "__all__"
+        read_only_fields = ["id", "created_at", "updated_at"]
