@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "channels",
     "corsheaders",
     "rest_framework_simplejwt.token_blacklist",
+    "storages",
     
     # Local apps
     "apps.accounts",
@@ -223,10 +224,8 @@ SIMPLE_JWT = {
     'JTI_CLAIM': 'jti',
 }
 
-import os
-# Base URL for upstream proxy APIs (like click4trip)
-PROXY_API_BASE_URL = os.environ.get("PROXY_API_BASE_URL", "https://demo.click4trip.in/api")
-BACKEND_PUBLIC_URL = os.environ.get("BACKEND_PUBLIC_URL", "")
+PROXY_API_BASE_URL = os.getenv("PROXY_API_BASE_URL", "")
+BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "")
 
 LOGGING = {
     'version': 1,
@@ -266,3 +265,21 @@ LOGGING = {
         }
     },
 }
+
+
+## s3 
+AWS_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
+
+AWS_STORAGE_BUCKET_NAME = os.getenv("R2_BUCKET_NAME", "")
+
+AWS_S3_ENDPOINT_URL = os.getenv("R2_ENDPOINT_URL", "")
+
+AWS_S3_REGION_NAME = "auto"
+
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+
+AWS_DEFAULT_ACL = None
+
+AWS_QUERYSTRING_AUTH = True
+

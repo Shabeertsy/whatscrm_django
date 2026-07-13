@@ -5,8 +5,8 @@ import re
 from io import BytesIO
 from PIL import Image, ImageOps
 from django.utils import timezone
-from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from .storage_backends import get_whatsapp_storage
 from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from asgiref.sync import async_to_sync
@@ -133,8 +133,10 @@ def save_whatsapp_media(file_obj, phone=None):
     if not phone_dir: phone_dir = "general"
     
     month_path = timezone.now().strftime('%Y/%m')
-    base_path = f"whatsapp_media/{phone_dir}/{month_path}/{subfolder}"
-    saved_path = default_storage.save(f"{base_path}/{filename}", file_obj)
+    storage = get_whatsapp_storage()
+    # Note: R2MediaStorage and Local fallback both prefix with whatsapp_media automatically
+    base_path = f"{phone_dir}/{month_path}/{subfolder}"
+    saved_path = storage.save(f"{base_path}/{filename}", file_obj)
     
     return {
         "path": saved_path,
@@ -260,11 +262,11 @@ def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type
     """
     url = f"https://graph.facebook.com/v17.0/{phone_number_id}/media"
     headers = {"Authorization": f"Bearer {access_token}"}
-    absolute_path = default_storage.path(storage_path)
+    storage = get_whatsapp_storage()
     
-    with open(absolute_path, 'rb') as f:
+    with storage.open(storage_path, 'rb') as f:
         files = {
-            'file': (os.path.basename(absolute_path), f, mime_type)
+            'file': (os.path.basename(storage_path), f, mime_type)
         }
         data = {
             'messaging_product': 'whatsapp',

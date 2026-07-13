@@ -9,6 +9,7 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone as django_tz
 from django.core.files.storage import default_storage
+from .storage_backends import get_whatsapp_storage
 
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
@@ -267,11 +268,16 @@ class MediaUploadAPIView(APIView):
         mime = media_data["mime"]
         final_size = media_data["size"]
         
-        if getattr(settings, 'BACKEND_PUBLIC_URL', None):
-            base_url = settings.BACKEND_PUBLIC_URL.rstrip('/')
-            file_url = f"{base_url}{default_storage.url(saved_path)}"
+        storage = get_whatsapp_storage()
+        url = storage.url(saved_path)
+        if url.startswith('http://') or url.startswith('https://'):
+            file_url = url
         else:
-            file_url = request.build_absolute_uri(default_storage.url(saved_path))
+            if getattr(settings, 'BACKEND_PUBLIC_URL', None):
+                base_url = settings.BACKEND_PUBLIC_URL.rstrip('/')
+                file_url = f"{base_url}{url}"
+            else:
+                file_url = request.build_absolute_uri(url)
         
         return Response({
             "url": file_url,
@@ -298,8 +304,9 @@ class MessageDeleteAPIView(APIView):
         # Cleanup local media file if it exists
         if msg.storage_path:
             try:
-                if default_storage.exists(msg.storage_path):
-                    default_storage.delete(msg.storage_path)
+                storage = get_whatsapp_storage()
+                if storage.exists(msg.storage_path):
+                    storage.delete(msg.storage_path)
             except Exception as e:
                 logging.getLogger(__name__).error(f"Failed to delete media file {msg.storage_path}: {str(e)}")
 
