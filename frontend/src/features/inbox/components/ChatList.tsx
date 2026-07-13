@@ -1,4 +1,4 @@
-import React from "react";
+import React, { memo } from "react";
 import { Search } from "lucide-react";
 import type { Conversation } from "../../../api/messaging";
 import { formatChatListTime } from "../utils";
@@ -13,7 +13,7 @@ interface ChatListProps {
 }
 
 
-export function ChatList({ chats, selectedChatId, onSelectChat, isLoading }: ChatListProps) {
+export const ChatList = memo(function ChatList({ chats, selectedChatId, onSelectChat, isLoading }: ChatListProps) {
   return (
     <div className="w-80 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/40 dark:bg-slate-900/50 h-full transition duration-200">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -82,6 +82,6 @@ export function ChatList({ chats, selectedChatId, onSelectChat, isLoading }: Cha
       </div>
     </div>
   );
-}
+});
 
 export default ChatList;

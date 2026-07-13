@@ -8,12 +8,13 @@ import { isWhatsAppWindowOpen } from "./utils";
 import { useMessagingStore, messagingStore } from "../../store/messagingStore";
 import { messagingApi } from "../../api/messaging";
 import { showToast } from "../../utils/toast";
+import { useCallback } from "react";
 
 
 
 export function Inbox() {
   const [store] = useMessagingStore();
-  const [newMessageText, setNewMessageText] = useState("");
+  const [initialComposerText, setInitialComposerText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,7 +23,9 @@ export function Inbox() {
   useEffect(() => {
     const text = searchParams.get('text');
     if (text) {
-      setNewMessageText(text);
+      setInitialComposerText(text);
+      // Wait for it to apply then clear it so it doesn't persist
+      setTimeout(() => setInitialComposerText(""), 100);
       searchParams.delete('text');
       setSearchParams(searchParams, { replace: true });
     }
@@ -79,13 +82,10 @@ export function Inbox() {
 
   const windowOpen = isWhatsAppWindowOpen(activeConversation, activeMessages, store.isLoadingMessages);
 
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newMessageText.trim() || !store.activeConversationId || isSending || !windowOpen) return;
+  const handleSendMessage = async (textToSend: string) => {
+    if (!textToSend.trim() || !store.activeConversationId || isSending || !windowOpen) return;
 
     setIsSending(true);
-    const textToSend = newMessageText;
-    setNewMessageText("");
 
     try {
       const payload: any = { body: textToSend };
@@ -107,8 +107,8 @@ export function Inbox() {
       });
     } catch (error) {
       console.error("Failed to send message:", error);
-      setNewMessageText(textToSend);
       alert("Failed to send message. Please try again.");
+      throw error; 
     } finally {
       setIsSending(false);
     }
@@ -121,7 +121,6 @@ export function Inbox() {
     try {
       //  Upload file to Django backend
       const uploadRes = await messagingApi.uploadMedia(file, store.activeConversationId);
-      const mediaUrl = uploadRes.data.url;
       
       //  Determine msg_type
       let msgType = 'document';
@@ -205,13 +204,21 @@ export function Inbox() {
     }
   };
 
+  const handleSelectChat = useCallback((id: string) => {
+    messagingStore.setActiveConversation(id);
+  }, []);
+
+  const handleReply = useCallback((msg: any) => {
+    setReplyingTo(msg);
+  }, []);
+
   return (
     <div className="h-[calc(100vh-10rem)] flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition duration-200">
       <ChatList
         chats={store.conversations}
         selectedChatId={store.activeConversationId}
         isLoading={store.isLoadingConversations}
-        onSelectChat={id => messagingStore.setActiveConversation(id)}
+        onSelectChat={handleSelectChat}
       />
       <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
         {!activeConversation ? (
@@ -224,11 +231,11 @@ export function Inbox() {
               conversation={activeConversation}
               messages={activeMessages}
               isLoading={store.isLoadingMessages}
-              onReply={(msg) => setReplyingTo(msg)}
+              onReply={handleReply}
             />
             <MessageComposer
-              value={newMessageText}
-              onChange={setNewMessageText}
+              initialValue={initialComposerText}
+              onClearInitial={() => setInitialComposerText("")}
               onSubmit={handleSendMessage}
               onMediaSelect={handleMediaSelect}
               disabled={!windowOpen}

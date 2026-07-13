@@ -1,13 +1,13 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { Send, Paperclip, X, Mic, Image as ImageIcon, FileText, Camera, User, BarChart, Square, LayoutTemplate } from "lucide-react";
 import { AudioVisualizer } from "./chat/audio/AudioVisualizer";
 
 
 
 interface MessageComposerProps {
-  value: string;
-  onChange: (val: string) => void;
-  onSubmit: (e: React.FormEvent) => void;
+  initialValue?: string;
+  onClearInitial?: () => void;
+  onSubmit: (text: string) => Promise<void>;
   onMediaSelect?: (file: File) => void;
   disabled?: boolean;
   isSending?: boolean;
@@ -19,10 +19,30 @@ interface MessageComposerProps {
 
 
 export function MessageComposer(props: MessageComposerProps) {
-  const { value, onChange, onSubmit, disabled, isSending, replyingTo, onCancelReply, onMediaSelect } = props;
+  const { initialValue, onClearInitial, onSubmit, disabled, isSending, replyingTo, onCancelReply, onMediaSelect } = props;
+  const [value, setValue] = React.useState(initialValue || "");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showAttachMenu, setShowAttachMenu] = React.useState(false);
   const [attachAccept, setAttachAccept] = React.useState("*");
+
+  useEffect(() => {
+    if (initialValue) {
+      setValue(initialValue);
+      if (onClearInitial) onClearInitial();
+    }
+  }, [initialValue, onClearInitial]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!value.trim() || disabled || isSending) return;
+    const currentVal = value;
+    setValue("");
+    try {
+      await onSubmit(currentVal);
+    } catch {
+      setValue(currentVal);
+    }
+  };
   
   // Recording states
   const [isRecording, setIsRecording] = React.useState(false);
@@ -186,7 +206,7 @@ export function MessageComposer(props: MessageComposerProps) {
         </div>
       )}
       
-      <form onSubmit={props.onSubmit} className="p-4 flex items-center space-x-2 relative">
+      <form onSubmit={handleSubmit} className="p-4 flex items-center space-x-2 relative">
         <input 
           type="file" 
           ref={fileInputRef} 
@@ -270,11 +290,11 @@ export function MessageComposer(props: MessageComposerProps) {
           <div className="flex-grow relative flex items-center">
             <textarea
               value={value}
-              onChange={(e) => onChange(e.target.value)}
+              onChange={(e) => setValue(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  if (!disabled && !isSending) onSubmit(e);
+                  if (!disabled && !isSending) handleSubmit(e);
                 }
               }}
               disabled={disabled || isSending}

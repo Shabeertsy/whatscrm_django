@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, memo } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { messagingStore } from "../../../store/messagingStore";
 import { Check, CheckCheck, Clock, User2, Trash2, ExternalLink, Reply, ChevronDown } from "lucide-react";
 import { useRouter } from "../../../router";
-import { formatMessageTime } from "../utils";
+
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { MessageBubble } from './chat/MessageBubble';
 
@@ -17,7 +17,7 @@ interface ChatWindowProps {
   onReply?: (msg: any) => void;
 }
 
-export function ChatWindow({ conversation, messages, isLoading, onReply }: ChatWindowProps) {
+export const ChatWindow = memo(function ChatWindow({ conversation, messages, isLoading, onReply }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -158,6 +158,6 @@ export function ChatWindow({ conversation, messages, isLoading, onReply }: ChatW
       />
     </div>
   );
-}
+});
 
 export default ChatWindow;

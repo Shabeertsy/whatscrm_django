@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Reply, Trash2, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import type { Message } from '../../../../api/messaging';
@@ -23,7 +23,7 @@ interface MessageBubbleProps {
 
 
 
-export function MessageBubble({ message, isOutbound, onReply, onDelete }: MessageBubbleProps) {
+export const MessageBubble = memo(function MessageBubble({ message, isOutbound, onReply, onDelete }: MessageBubbleProps) {
   const navigate = useNavigate();
 
   return (
@@ -119,4 +119,4 @@ export function MessageBubble({ message, isOutbound, onReply, onDelete }: Messag
       </div>
     </div>
   );
-}
+});

@@ -32,16 +32,16 @@ export function Sidebar() {
   const credits = teamState.credits;
 
   const navItems = [
-    { id: "#dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "#hotels", label: "Hotels and Resorts", icon: Building2 },
-    { id: "#contacts", label: "Contacts", icon: Contact2 },
-    // { id: "#pipeline", label: "Pipeline", icon: Sliders },
-    { id: "#messaging", label: "Chats", icon: MessageSquare },
-    // { id: "#ai-agent", label: "AI Agent", icon: Bot },
-    // { id: "#automations", label: "Flow Builder", icon: GitFork },
-    { id: "#templates", label: "Templates", icon: FileText },
-    // { id: "#campaigns", label: "Campaigns & Templates", icon: Radio },
-    // { id: "#voice", label: "Voice/Calls", icon: PhoneCall },
+    { id: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { id: "/hotels", label: "Hotels and Resorts", icon: Building2 },
+    { id: "/contacts", label: "Contacts", icon: Contact2 },
+    // { id: "/pipeline", label: "Pipeline", icon: Sliders },
+    { id: "/messaging", label: "Chats", icon: MessageSquare },
+    // { id: "/ai-agent", label: "AI Agent", icon: Bot },
+    // { id: "/automations", label: "Flow Builder", icon: GitFork },
+    { id: "/templates", label: "Templates", icon: FileText },
+    // { id: "/campaigns", label: "Campaigns & Templates", icon: Radio },
+    // { id: "/voice", label: "Voice/Calls", icon: PhoneCall },
   ];
 
   return (
@@ -100,7 +100,7 @@ export function Sidebar() {
       {/* Footer Area */}
       <div className="h-16 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex items-center px-4">
         <div className="w-12 flex justify-center shrink-0">
-          <span onClick={() => navigate("#settings")} className="hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer" title="Settings">
+          <span onClick={() => navigate("/settings")} className="hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer" title="Settings">
             <Settings className="h-5 w-5 text-slate-400" />
           </span>
         </div>

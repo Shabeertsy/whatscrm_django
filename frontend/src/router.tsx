@@ -1,5 +1,5 @@
 import React from "react";
-import { HashRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import Analytics from "./pages/Analytics";
 import Inbox from "./pages/Inbox";
 import Automation from "./pages/Automation";
@@ -16,7 +16,7 @@ import Templates from "./pages/Templates";
 
 
 export function RouterProvider({ children }: { children: React.ReactNode }) {
-  return <HashRouter>{children}</HashRouter>;
+  return <BrowserRouter>{children}</BrowserRouter>;
 }
 
 export function useRouter() {
@@ -24,9 +24,7 @@ export function useRouter() {
   const location = useLocation();
 
 
-  const path = location.pathname === "/" || location.pathname === "/dashboard"
-    ? "#dashboard"
-    : `#${location.pathname.substring(1)}`;
+  const path = location.pathname === "/" ? "/dashboard" : location.pathname;
 
   const navigate = (to: string, options?: any) => {
     const target = to.startsWith("#") ? `/${to.substring(1)}` : to;

@@ -45,7 +45,7 @@ export function isWhatsAppWindowOpen(
  * Format a timestamp into a short HH:MM time string.
  */
 export function formatMessageTime(timestamp: string): string {
-  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 /**
@@ -57,7 +57,7 @@ export function formatChatListTime(timestamp: string | null): string {
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
   if (isToday) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
   }
   return date.toLocaleDateString([], { day: '2-digit', month: 'short' });
 }

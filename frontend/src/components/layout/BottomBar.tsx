@@ -6,8 +6,8 @@ export function BottomBar() {
   const { path, navigate } = useRouter();
 
   const navItems = [
-    { id: "#dashboard", label: "Home", icon: LayoutDashboard },
-    { id: "#hotels", label: "Hotels", icon: Building2 },
+    { id: "/dashboard", label: "Home", icon: LayoutDashboard },
+    { id: "/hotels", label: "Hotels", icon: Building2 },
     // Add more here if they fit
   ];
 

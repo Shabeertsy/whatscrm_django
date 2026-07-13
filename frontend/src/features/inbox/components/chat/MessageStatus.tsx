@@ -1,5 +1,5 @@
-import React from 'react';
 import { Check, CheckCheck, Clock } from 'lucide-react';
+import { formatMessageTime } from '../../utils';
 
 interface MessageStatusProps {
   status: string;
@@ -8,7 +8,7 @@ interface MessageStatusProps {
 }
 
 export function MessageStatus({ status, isOutbound, timestamp }: MessageStatusProps) {
-  const timeStr = new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const timeStr = formatMessageTime(timestamp as string);
 
   return (
     <div className={`flex items-center justify-end space-x-1.5 mt-1 text-[9px] ${isOutbound ? "text-[#537e42] dark:text-[#84a98c]" : "text-slate-400"}`}>
