@@ -54,7 +54,7 @@ class WhatsappTemplateSyncAPIView(APIView):
         headers = {"Authorization": f"Bearer {instance.access_token}"}
         
         try:
-            res = requests.get(url, headers=headers)
+            res = requests.get(url, headers=headers, params={"limit": 1000})
             res.raise_for_status()
             data = res.json().get("data", [])
             
