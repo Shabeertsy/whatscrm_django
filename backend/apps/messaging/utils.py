@@ -45,9 +45,14 @@ def save_whatsapp_media(file_obj, phone=None):
                 # Preserve EXIF orientation
                 img = ImageOps.exif_transpose(img)
                 
-                # Handle transparency safely
-                if img.mode not in ("RGB", "RGBA"):
+                # Handle transparency safely for JPEG
+                if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
                     img = img.convert("RGBA")
+                    bg = Image.new("RGB", img.size, (255, 255, 255))
+                    bg.paste(img, mask=img.split()[3])
+                    img = bg
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
                     
                 # Resize before compression
                 if hasattr(Image, 'Resampling'):
@@ -58,18 +63,18 @@ def save_whatsapp_media(file_obj, phone=None):
                 quality = 90
                 output = BytesIO()
                 
-                # Compress to WebP and ensure size is < 1MB
+                # Compress to JPEG and ensure size is < 1MB
                 while quality > 10:
                     output.seek(0)
                     output.truncate(0)
-                    img.save(output, format='WEBP', quality=quality)
+                    img.save(output, format='JPEG', quality=quality)
                     if output.tell() <= 1024 * 1024:
                         break
                     quality -= 10
                 
                 output.seek(0)
-                ext = '.webp'
-                mime = 'image/webp'
+                ext = '.jpg'
+                mime = 'image/jpeg'
                 filename = f"{date_str}_{short_uuid}{ext}"
                 file_obj = ContentFile(output.read(), name=filename)
             except Exception as e:
