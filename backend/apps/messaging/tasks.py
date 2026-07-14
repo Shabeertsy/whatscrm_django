@@ -204,7 +204,11 @@ def compress_chat_video(self, message_id):
             storage.delete(old_storage_path)
 
         # Broadcast update
-        broadcast_message_status_update(conv, msg.wa_message_id or msg.id, msg.status, error=error_msg)
+        from .utils import broadcast_message_update, broadcast_message_status_update
+        if msg.status == 'sent':
+            broadcast_message_update(conv, msg)
+        else:
+            broadcast_message_status_update(conv, msg.id, msg.status, error=error_msg)
 
         print(f'finished processing chat video {message_id}..................')
 
@@ -226,6 +230,7 @@ def _mark_failed(message_id, error=None):
         msg.status = 'failed'
         msg.save(update_fields=['status'])
         if msg.conversation:
-            broadcast_message_status_update(msg.conversation, msg.wa_message_id or msg.id, 'failed', error=error)
+            from .utils import broadcast_message_status_update
+            broadcast_message_status_update(msg.conversation, msg.id, 'failed', error=error)
     except Exception:
         pass

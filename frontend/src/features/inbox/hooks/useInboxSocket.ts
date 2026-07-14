@@ -92,6 +92,11 @@ export function useInboxSocket() {
           }
         }
 
+        if (data.type === 'message_update') {
+          const { conversation_id, message } = data as { conversation_id: string, message: Message };
+          messagingStore.updateMessage(conversation_id, message.id, message);
+        }
+
       } catch (err) {
         console.warn('[Inbox WS] Parse error:', err);
       }
