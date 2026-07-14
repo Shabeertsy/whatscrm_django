@@ -158,7 +158,8 @@ class ConversationSendMessageAPIView(APIView):
         msg_status = "failed"
         
         if conv.instance and conv.instance.is_active:
-            if msg_type == 'video' and getattr(settings, 'CELERY_ENABLED', True):
+            if msg_type == 'video' and storage_path and getattr(settings, 'CELERY_ENABLED', True):
+                # Only queue Celery compression for directly uploaded video files
                 msg_status = "pending"
             else:
                 try:
