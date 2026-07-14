@@ -22,6 +22,7 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
         price_amount: true,
         images_room: true,
         images_property: false,
+        videos_property: false,
       };
       
       (room.room_images || []).forEach((_: any, i: number) => {
@@ -30,6 +31,10 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
       const propImages = room.property_details?.property_images || room.property_images || room.property?.images || [];
       propImages.forEach((_: any, i: number) => {
         initial[`images_property_${i}`] = false;
+      });
+      const propVideos = room.property_details?.property_videos || room.property_videos || room.property?.videos || [];
+      propVideos.forEach((_: any, i: number) => {
+        initial[`videos_property_${i}`] = false;
       });
       
       setShareOptions(initial);
@@ -66,13 +71,17 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
       const textOptions = { ...shareOptions };
       const text = generateShareText(selectedShareRoom, textOptions, filters, amenityOptions, propertyTypeOptions);
       
-      const imagesToInclude: any[] = [];
+      const mediaToInclude: any[] = [];
       if (shareOptions.images_room && selectedShareRoom.room_images) {
-        imagesToInclude.push(...selectedShareRoom.room_images.filter((_: any, i: number) => shareOptions[`images_room_${i}`]));
+        mediaToInclude.push(...selectedShareRoom.room_images.filter((_: any, i: number) => shareOptions[`images_room_${i}`]).map((img: any) => ({ ...img, msg_type: 'image' })));
       }
       if (shareOptions.images_property) {
         const propImages = selectedShareRoom.property_details?.property_images || selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
-        imagesToInclude.push(...propImages.filter((_: any, i: number) => shareOptions[`images_property_${i}`]));
+        mediaToInclude.push(...propImages.filter((_: any, i: number) => shareOptions[`images_property_${i}`]).map((img: any) => ({ ...img, msg_type: 'image' })));
+      }
+      if (shareOptions.videos_property) {
+        const propVideos = selectedShareRoom.property_details?.property_videos || selectedShareRoom.property_videos || selectedShareRoom.property?.videos || [];
+        mediaToInclude.push(...propVideos.filter((_: any, i: number) => shareOptions[`videos_property_${i}`]).map((vid: any) => ({ ...vid, msg_type: 'video' })));
       }
 
       for (const chatId of selectedChats) {
@@ -90,20 +99,21 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
             });
         });
 
-        for (const img of imagesToInclude) {
-          const url = img.url || img.image;
+        for (const media of mediaToInclude) {
+          const url = media.url || media.image || media.video;
           if (url) {
-            const imgRes = await messagingApi.sendMessage(chatId, { 
+            const msgType = media.msg_type || 'image';
+            const mediaRes = await messagingApi.sendMessage(chatId, { 
               body: '', 
-              msg_type: 'image', 
+              msg_type: msgType, 
               media_url: url,
               related_room_uuid: selectedShareRoom.uuid
             });
             import('../../../store/messagingStore').then(({ messagingStore }) => {
-                messagingStore.pushMessage(chatId, imgRes.data);
+                messagingStore.pushMessage(chatId, mediaRes.data);
                 messagingStore.updateConversationMeta(chatId, {
-                  last_message: { body: '', direction: 'outbound', msg_type: 'image', media_url: url, related_room_uuid: selectedShareRoom.uuid },
-                  last_message_at: imgRes.data.timestamp
+                  last_message: { body: '', direction: 'outbound', msg_type: msgType, media_url: url, related_room_uuid: selectedShareRoom.uuid },
+                  last_message_at: mediaRes.data.timestamp
                 });
             });
           }

@@ -100,7 +100,7 @@ class MessagingStore {
       return {
         messagesByConvId: {
           ...s.messagesByConvId,
-          [conversationId]: s.messagesByConvId[conversationId].filter(m => m.id !== messageId),
+          [conversationId]: s.messagesByConvId[conversationId].filter(m => String(m.id) !== String(messageId)),
         },
       };
     });
@@ -114,7 +114,7 @@ class MessagingStore {
         messagesByConvId: {
           ...s.messagesByConvId,
           [conversationId]: s.messagesByConvId[conversationId].map((m) =>
-            m.id === messageId || m.wa_message_id === messageId
+            String(m.id) === String(messageId) || m.wa_message_id === messageId
               ? { ...m, ...patch }
               : m
           ),

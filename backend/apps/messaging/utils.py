@@ -187,18 +187,21 @@ def broadcast_delete_message(conv, msg_id_str):
         }
     )
 
-def broadcast_message_status_update(conv, wa_msg_id, status):
+def broadcast_message_status_update(conv, wa_msg_id, status, error=None):
     """Push a message status update to the frontend."""
     target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
     channel_layer = get_channel_layer()
+    payload = {
+        "type":            "message_status_update",
+        "conversation_id": str(conv.id),
+        "message_id":      str(wa_msg_id),
+        "status":          status,
+    }
+    if error:
+        payload["error"] = error
+        
     async_to_sync(channel_layer.group_send)(
-        target_group,
-        {
-            "type":            "message_status_update",
-            "conversation_id": str(conv.id),
-            "message_id":      str(wa_msg_id),
-            "status":          status,
-        }
+        target_group, payload
     )
 
 def broadcast_conversation_update(conv):

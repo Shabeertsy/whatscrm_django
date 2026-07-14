@@ -117,17 +117,39 @@ export function Inbox() {
   const handleMediaSelect = async (file: File) => {
     if (!store.activeConversationId || isSending || !windowOpen) return;
     
+    // Determine msg_type
+    let msgType = 'document';
+    if (file.type.startsWith('image/')) msgType = 'image';
+    else if (file.type.startsWith('video/')) msgType = 'video';
+    else if (file.type.startsWith('audio/')) msgType = 'audio';
+
+    const isCeleryEnabled = import.meta.env.VITE_CELERY_ENABLED === 'true';
+    
+    let limit = 16 * 1024 * 1024; // 16MB default
+    if (msgType === 'document') {
+      limit = 100 * 1024 * 1024;
+    } else if (msgType === 'video' && isCeleryEnabled) {
+      limit = 200 * 1024 * 1024;
+    }
+
+    if (file.size > limit) {
+      if (msgType === 'video' && !isCeleryEnabled) {
+         showToast('Video Too Large', 'File size exceeds the 16MB limit. Enable background processing for larger videos.', 'error');
+      } else {
+         showToast('File Too Large', `File size exceeds the ${limit / (1024 * 1024)}MB limit for ${msgType}.`, 'error');
+      }
+      return;
+    }
+
+    if (msgType === 'video' && isCeleryEnabled && file.size > 16 * 1024 * 1024) {
+      showToast('Video Compression', 'Videos larger than 16MB will be compressed due to Meta API restrictions. This may take a while.', 'info');
+    }
+
     setIsSending(true);
     try {
       //  Upload file to Django backend
       const uploadRes = await messagingApi.uploadMedia(file, store.activeConversationId);
       
-      //  Determine msg_type
-      let msgType = 'document';
-      if (file.type.startsWith('image/')) msgType = 'image';
-      else if (file.type.startsWith('video/')) msgType = 'video';
-      else if (file.type.startsWith('audio/')) msgType = 'audio';
-
       //  Send message with media
       const payload: any = { 
         msg_type: msgType, 

@@ -38,6 +38,7 @@ from .utils import (
     broadcast_conversation_update, 
     save_whatsapp_media
 )
+from .tasks import compress_chat_video
 
 logger = logging.getLogger(__name__)
 
@@ -157,25 +158,28 @@ class ConversationSendMessageAPIView(APIView):
         msg_status = "failed"
         
         if conv.instance and conv.instance.is_active:
-            try:
-                wa_response = send_whatsapp_message(
-                    phone_number_id=conv.instance.phone_number_id,
-                    access_token=conv.instance.access_token,
-                    to_phone=conv.contact.wa_id,
-                    message_text=body,
-                    msg_type=msg_type,
-                    media_url=media_url,
-                    reply_to_wa_id=reply_to_wa_id,
-                    filename=filename,
-                    storage_path=storage_path,
-                    template_name=template_name,
-                    template_language=template_language
-                )
-                if 'messages' in wa_response and len(wa_response['messages']) > 0:
-                    wa_message_id = wa_response['messages'][0]['id']
-                    msg_status = "sent"
-            except Exception as e:
-                logger.error(f"Failed to send WhatsApp message: {e}")
+            if msg_type == 'video' and getattr(settings, 'CELERY_ENABLED', True):
+                msg_status = "pending"
+            else:
+                try:
+                    wa_response = send_whatsapp_message(
+                        phone_number_id=conv.instance.phone_number_id,
+                        access_token=conv.instance.access_token,
+                        to_phone=conv.contact.wa_id,
+                        message_text=body,
+                        msg_type=msg_type,
+                        media_url=media_url,
+                        reply_to_wa_id=reply_to_wa_id,
+                        filename=filename,
+                        storage_path=storage_path,
+                        template_name=template_name,
+                        template_language=template_language
+                    )
+                    if 'messages' in wa_response and len(wa_response['messages']) > 0:
+                        wa_message_id = wa_response['messages'][0]['id']
+                        msg_status = "sent"
+                except Exception as e:
+                    logger.error(f"Failed to send WhatsApp message: {e}")
 
         msg = Message.objects.create(
             conversation=conv,
@@ -191,6 +195,9 @@ class ConversationSendMessageAPIView(APIView):
             wa_message_id=wa_message_id,
             timestamp=django_tz.now(),
         )
+
+        if msg_type == 'video' and msg_status == 'pending' and getattr(settings, 'CELERY_ENABLED', True):
+            compress_chat_video.delay(msg.id)
 
         # Update conversation's last_message_at
         conv.last_message_at = msg.timestamp
@@ -237,6 +244,10 @@ class MediaUploadAPIView(APIView):
         elif file_obj.content_type.startswith('video/'): req_type = 'video'
         
         limit = MAX_SIZE.get(req_type, 16 * 1024 * 1024)
+        
+        if req_type == 'video' and getattr(settings, 'CELERY_ENABLED', True):
+            limit = 200 * 1024 * 1024
+            
         if file_obj.size > limit:
             return Response({"detail": f"File size exceeds the {limit // (1024*1024)}MB limit for {req_type}."}, status=status.HTTP_400_BAD_REQUEST)
 

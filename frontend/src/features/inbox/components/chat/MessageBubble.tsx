@@ -68,7 +68,17 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
         )}
 
         {message.msg_type === 'image' && message.media_url && <ImageMessage mediaUrl={message.media_url} />}
-        {message.msg_type === 'video' && message.media_url && <VideoMessage mediaUrl={message.media_url} />}
+        {message.msg_type === 'video' && message.media_url && (
+          <div className="flex flex-col gap-1">
+            <VideoMessage mediaUrl={message.media_url} />
+            {message.status === 'pending' && import.meta.env.VITE_CELERY_ENABLED === 'true' && (
+              <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 rounded-md mt-1 animate-pulse">
+                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                <span>Processing video...</span>
+              </div>
+            )}
+          </div>
+        )}
         {message.msg_type === 'audio' && message.media_url && <AudioMessage mediaUrl={message.media_url} />}
         {message.msg_type !== 'text' && message.msg_type !== 'template' && !['image', 'video', 'audio'].includes(message.msg_type) && (
           <DocumentMessage msgType={message.msg_type} mediaUrl={message.media_url} />

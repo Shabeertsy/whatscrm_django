@@ -137,6 +137,17 @@ export function ShareRoomModal({
                     emptyMessage: propImages.length === 0 ? 'No media available' : undefined
                 });
 
+                // 8. Property Videos
+                const propVideos = selectedShareRoom.property_details?.property_videos || selectedShareRoom.property_videos || selectedShareRoom.property?.videos || [];
+                shareItemsList.push({ 
+                    key: 'videos_property', 
+                    label: 'Property Videos', 
+                    subItems: propVideos.map((vid: any, i: number) => ({
+                        subKey: `videos_property_${i}`, label: `Video ${i + 1}: ${vid.video || vid.url}`
+                    })),
+                    emptyMessage: propVideos.length === 0 ? 'No media available' : undefined
+                });
+
                 return shareItemsList.map(opt => (
                 <div key={opt.key} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50">

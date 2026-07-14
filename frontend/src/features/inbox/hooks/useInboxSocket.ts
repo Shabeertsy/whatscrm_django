@@ -84,8 +84,12 @@ export function useInboxSocket() {
         }
 
         if (data.type === 'message_status_update') {
-          const { conversation_id, message_id, status } = data as { conversation_id: string, message_id: string, status: string };
+          const { conversation_id, message_id, status, error } = data as { conversation_id: string, message_id: string, status: string, error?: string };
           messagingStore.updateMessage(conversation_id, message_id, { status: status as any });
+          
+          if (status === 'failed' && error) {
+             showToast('Message Failed', error, 'error');
+          }
         }
 
       } catch (err) {

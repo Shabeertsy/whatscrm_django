@@ -54,7 +54,7 @@ export interface Message {
   } | null;
   sent_by: string | null;
   sent_by_name: string | null;
-  status: 'sent' | 'delivered' | 'read' | 'failed';
+  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
   timestamp: string;
 }
 

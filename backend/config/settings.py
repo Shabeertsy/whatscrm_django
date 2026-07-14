@@ -283,3 +283,11 @@ AWS_DEFAULT_ACL = None
 
 AWS_QUERYSTRING_AUTH = True
 
+# Celery Configuration
+CELERY_BROKER_URL = os.getenv("REDIS_URL", "")
+CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "")
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = TIME_ZONE
+CELERY_ENABLED = os.getenv("CELERY_ENABLED", "True").lower() in ("true", "1", "t")
