@@ -92,10 +92,20 @@ class InboxConsumer(AsyncWebsocketConsumer):
 
     async def message_status_update(self, event):
         """Broadcast message status updates to the browser."""
-        await self.send(text_data=json.dumps({
+        payload = {
             "type":            "message_status_update",
             "conversation_id": event["conversation_id"],
             "message_id":      event["message_id"],
             "status":          event["status"],
-        }))
+        }
+        if event.get("error"):
+            payload["error"] = event["error"]
+        await self.send(text_data=json.dumps(payload))
 
+    async def message_update(self, event):
+        """Broadcast a full message update (e.g. after Celery video compression)."""
+        await self.send(text_data=json.dumps({
+            "type":            "message_update",
+            "conversation_id": event["conversation_id"],
+            "message":         event["message"],
+        }))
