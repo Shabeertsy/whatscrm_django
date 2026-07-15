@@ -14,20 +14,27 @@ import {
   CheckCircle2,
   AlertTriangle,
   Pencil,
+  Globe,
 } from 'lucide-react';
 import { whatsappApi } from '../api/whatsapp';
 import type { WhatsappInstance, WhatsappInstancePayload } from '../types/whatsapp';
+import { coreApi, ProxyURL, ProxyURLPayload } from '../api/core';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Sidebar tab definition
 // ─────────────────────────────────────────────────────────────────────────────
-type SettingsTab = 'whatsapp';
+type SettingsTab = 'whatsapp' | 'proxy_urls';
 
 const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   {
     id: 'whatsapp',
     label: 'WhatsApp Instances',
     icon: <MessageSquare className="h-4 w-4" />,
+  },
+  {
+    id: 'proxy_urls',
+    label: 'Proxy URLs',
+    icon: <Globe className="h-4 w-4" />,
   },
 ];
 
@@ -434,6 +441,230 @@ function WhatsappInstancesTab() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Proxy URLs Tab
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ProxyURLModal({
+  initial,
+  onClose,
+  onSave,
+}: {
+  initial?: ProxyURL | null;
+  onClose: () => void;
+  onSave: (payload: ProxyURLPayload) => Promise<void>;
+}) {
+  const isEdit = !!initial;
+  const [form, setForm] = useState<ProxyURLPayload>(
+    initial ? { name: initial.name, url: initial.url } : { name: '', url: '' }
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const set = (key: keyof ProxyURLPayload) => (val: string) =>
+    setForm((f) => ({ ...f, [key]: val }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      await onSave(form);
+      onClose();
+    } catch {
+      setError('Failed to save. Please check your inputs and try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-[#007e3a]/10 flex items-center justify-center">
+              <Globe className="h-4 w-4 text-[#007e3a]" />
+            </div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              {isEdit ? 'Edit Proxy URL' : 'New Proxy URL'}
+            </h2>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <FormField
+            label="Name"
+            name="name"
+            value={form.name}
+            onChange={set('name')}
+            placeholder="e.g. Production Proxy"
+            required
+          />
+          <FormField
+            label="Proxy URL"
+            name="url"
+            value={form.url}
+            onChange={set('url')}
+            placeholder="https://api.example.com"
+            required
+          />
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-[#007e3a] hover:bg-[#00602d] rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEdit ? 'Save Changes' : 'Create Proxy'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ProxyURLsTab() {
+  const [proxies, setProxies] = useState<ProxyURL[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<ProxyURL | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+
+  const fetchProxies = async () => {
+    try {
+      const res = await coreApi.listProxyURLs();
+      const data = res.data;
+      setProxies(Array.isArray(data) ? data : (data as any).results ?? []);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProxies();
+  }, []);
+
+  const handleSave = async (payload: ProxyURLPayload) => {
+    if (editTarget) {
+      await coreApi.updateProxyURL(editTarget.id, payload);
+    } else {
+      await coreApi.createProxyURL(payload);
+    }
+    await fetchProxies();
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this Proxy URL? This cannot be undone.')) return;
+    setDeletingId(id);
+    try {
+      await coreApi.deleteProxyURL(id);
+      setProxies((prev) => prev.filter((i) => i.id !== id));
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const handleToggle = async (id: string) => {
+    setTogglingId(id);
+    try {
+      await coreApi.toggleProxyURLActive(id);
+      await fetchProxies();
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const openCreate = () => {
+    setEditTarget(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (proxy: ProxyURL) => {
+    setEditTarget(proxy);
+    setModalOpen(true);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">Proxy URLs</h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Manage fallback proxy URLs for third-party API integrations.
+          </p>
+        </div>
+        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-[#007e3a] hover:bg-[#00602d] text-white text-sm font-semibold rounded-lg transition">
+          <Plus className="h-4 w-4" />
+          Add Proxy
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-[#007e3a]" />
+        </div>
+      ) : proxies.length === 0 ? (
+        <div className="bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-12 text-center">
+          <Globe className="h-10 w-10 mx-auto text-slate-300 mb-3" />
+          <p className="font-semibold text-slate-600 dark:text-slate-400">No proxies yet</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Click <strong>"Add Proxy"</strong> to create a new Proxy URL.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {proxies.map((proxy) => (
+            <div key={proxy.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-colors hover:border-slate-200 dark:hover:border-slate-700">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 ${proxy.is_active ? 'bg-[#007e3a]/10' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                  <Globe className={`h-5 w-5 ${proxy.is_active ? 'text-[#007e3a]' : 'text-slate-400'}`} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-slate-900 dark:text-white truncate">{proxy.name}</p>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${proxy.is_active ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'}`}>
+                      {proxy.is_active ? <><CheckCircle2 className="h-3 w-3" /> Active</> : 'Inactive'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5 font-mono truncate">{proxy.url}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => handleToggle(proxy.id)} disabled={togglingId === proxy.id} title={proxy.is_active ? 'Deactivate' : 'Activate'} className="p-2 rounded-lg text-slate-400 hover:text-[#007e3a] hover:bg-green-50 dark:hover:bg-green-900/20 transition">
+                  {togglingId === proxy.id ? <Loader2 className="h-4 w-4 animate-spin" /> : proxy.is_active ? <ToggleRight className="h-5 w-5 text-[#007e3a]" /> : <ToggleLeft className="h-5 w-5" />}
+                </button>
+                <button onClick={() => openEdit(proxy)} title="Edit" className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button onClick={() => handleDelete(proxy.id)} disabled={deletingId === proxy.id} title="Delete" className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                  {deletingId === proxy.id ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : <Trash2 className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modalOpen && <ProxyURLModal initial={editTarget} onClose={() => setModalOpen(false)} onSave={handleSave} />}
+    </div>
+  );
+}
+
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Settings Page
 // ─────────────────────────────────────────────────────────────────────────────
 export function Settings() {
@@ -476,6 +707,7 @@ export function Settings() {
         {/* Content panel */}
         <div className="flex-1 min-h-[400px]">
           {activeTab === 'whatsapp' && <WhatsappInstancesTab />}
+          {activeTab === 'proxy_urls' && <ProxyURLsTab />}
         </div>
       </div>
     </div>

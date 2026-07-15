@@ -1,3 +1,4 @@
+from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -7,6 +8,32 @@ import urllib.request
 import json
 import time
 import hashlib
+from .models import ProxyURL, UserActiveProxy
+from .serializers import ProxyURLSerializer
+
+
+def get_proxy_url(user):
+    active = UserActiveProxy.objects.filter(user=user).first()
+    if active:
+        return active.proxy.url.rstrip('/')
+    return settings.PROXY_API_BASE_URL.rstrip('/')
+
+class ProxyURLViewSet(viewsets.ModelViewSet):
+    serializer_class = ProxyURLSerializer
+    permission_classes = [IsAuthenticated]
+    queryset = ProxyURL.objects.all()
+
+    def update(self, request, *args, **kwargs):
+        is_active = request.data.get('is_active')
+        if is_active is not None:
+            proxy = self.get_object()
+            if is_active:
+                UserActiveProxy.objects.update_or_create(user=request.user, defaults={'proxy': proxy})
+            else:
+                UserActiveProxy.objects.filter(user=request.user, proxy=proxy).delete()
+            return Response(self.get_serializer(proxy).data)
+        return super().update(request, *args, **kwargs)
+
 
 
 class HotelsProxyView(APIView):
@@ -14,7 +41,8 @@ class HotelsProxyView(APIView):
 
     def get(self, request):
         query_params = request.GET.urlencode()
-        base = settings.PROXY_API_BASE_URL.rstrip('/')
+        base = get_proxy_url(request.user)
+        print(base,'base')
         url = f"{base}/list-properties/?{query_params}" if query_params else f"{base}/list-properties/?page=1&page_size=9&check_in=2026-07-04&check_out=2026-07-05&adults=2&children=0&rooms=1&hide_unavailable=false"
         
         # Create a unique cache key based on the URL
@@ -48,7 +76,8 @@ class RoomsProxyView(APIView):
         uuid = request.query_params.get('uuid')
         query_params = request.GET.urlencode()
         
-        base = settings.PROXY_API_BASE_URL.rstrip('/')
+        base = get_proxy_url(request.user)
+        print(base,'base')
         if uuid:
             url = f"{base}/crm/rooms/{uuid}/?{query_params}"
         else:
@@ -80,7 +109,7 @@ class RoomConfigProxyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        base = settings.PROXY_API_BASE_URL.rstrip('/')
+        base = get_proxy_url(request.user)
         url = f"{base}/crm/room-config/"
         
         cache_key = 'room_config_api_' + hashlib.md5(url.encode()).hexdigest()
@@ -103,7 +132,7 @@ class PropertyConfigProxyView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        base = settings.PROXY_API_BASE_URL.rstrip('/')
+        base = get_proxy_url(request.user)
         url = f"{base}/crm/property-config/"
         
         cache_key = 'property_config_api_' + hashlib.md5(url.encode()).hexdigest()
@@ -127,7 +156,7 @@ class CRMRoomsProxyView(APIView):
 
     def get(self, request, uuid=None):
         query_params = request.GET.urlencode()
-        base = settings.PROXY_API_BASE_URL.rstrip('/')
+        base = get_proxy_url(request.user)
         
         if uuid:
             url = f"{base}/crm/rooms/{uuid}/"
@@ -137,7 +166,7 @@ class CRMRoomsProxyView(APIView):
             url = f"{base}/crm/rooms/"
             if query_params:
                 url += f"?{query_params}"
-                
+        
         cache_key = 'crm_rooms_api_' + hashlib.md5(url.encode()).hexdigest()
         cached_data = cache.get(cache_key)
         
