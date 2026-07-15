@@ -34,6 +34,7 @@ export function HotelRooms() {
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [roomsCount, setRoomsCount] = useState(1);
+  const [appliedRoomsCount, setAppliedRoomsCount] = useState(1);
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
   const guestRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +63,7 @@ export function HotelRooms() {
       const res = await hotelsApi.getCrmRoomDetail(id, params);
       if (res.data) {
         setRoom(res.data);
+        setAppliedRoomsCount(roomsCount);
       } else if (cachedRoom) {
         setRoom(cachedRoom);
       } else {
@@ -304,6 +306,8 @@ export function HotelRooms() {
                     <tr>
                       <th className="pb-2 text-left">Date</th>
                       <th className="pb-2 text-right">Base Price</th>
+                      {(room?.extra_adults_count > 0) && <th className="pb-2 text-right">Extra Adults</th>}
+                      {(room?.children_count > 0) && <th className="pb-2 text-right">Children</th>}
                       <th className="pb-2 text-right">Markup</th>
                       <th className="pb-2 text-right">GST</th>
                       <th className="pb-2 text-right font-bold text-slate-700 dark:text-slate-200">Total</th>
@@ -314,6 +318,8 @@ export function HotelRooms() {
                       <tr key={i}>
                         <td className="py-2">{b.date}</td>
                         <td className="py-2 text-right">₹{b.base_price?.toLocaleString()}</td>
+                        {(room?.extra_adults_count > 0) && <td className="py-2 text-right">₹{b.extra_adult_charge?.toLocaleString() ?? 0}</td>}
+                        {(room?.children_count > 0) && <td className="py-2 text-right">₹{b.child_charge?.toLocaleString() ?? 0}</td>}
                         <td className="py-2 text-right">₹{b.markup_amount?.toLocaleString()}</td>
                         <td className="py-2 text-right">₹{b.gst_amount?.toLocaleString()}</td>
                         <td className="py-2 text-right font-bold text-slate-800 dark:text-white">₹{b.total_with_gst?.toLocaleString()}</td>
@@ -361,14 +367,37 @@ export function HotelRooms() {
 
           {/* Pricing Summary */}
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
-              <Tag className="h-4 w-4 text-[#007e3a]" /> Pricing Summary
+            <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
+              <span className="flex items-center gap-2">
+                <Tag className="h-4 w-4 text-[#007e3a]" /> Pricing Summary
+              </span>
+              {(summary.nights ?? 0) > 0 && (
+                <span className="text-xs font-medium text-slate-500 bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 rounded-full">
+                  {summary.nights} night{summary.nights > 1 ? 's' : ''}, {appliedRoomsCount} room{appliedRoomsCount > 1 ? 's' : ''}
+                </span>
+              )}
             </h3>
             <div className="space-y-2.5 text-sm">
               {[
-                { label: 'Avg. per night', val: `₹${summary.avg_per_night?.toLocaleString() ?? '—'}` },
+                { 
+                  label: 'Avg. per night', 
+                  val: (() => {
+                    const included = [];
+                    if (parseFloat(room?.markup_amount ?? 0) > 0) included.push('markup');
+                    if (parseFloat(room?.extra_adult_charge ?? 0) > 0) included.push('extra adults');
+                    if (parseFloat(room?.child_charge ?? 0) > 0) included.push('children');
+                    
+                    return included.length > 0 ? (
+                      <div className="flex flex-col items-end leading-tight">
+                        <span>₹{summary.avg_per_night?.toLocaleString() ?? '—'}</span>
+                        <span className="text-[10px] text-slate-400 font-normal mt-0.5">(incl. {included.join(', ')})</span>
+                      </div>
+                    ) : `₹${summary.avg_per_night?.toLocaleString() ?? '—'}`;
+                  })()
+                },
+                (room?.extra_adults_count > 0) && { label: 'Extra Adults', val: room.extra_adults_count },
+                (room?.children_count > 0) && { label: 'Children', val: room.children_count },
                 { label: `Subtotal (${summary.nights ?? '?'} night${(summary.nights ?? 0) > 1 ? 's' : ''})`, val: `₹${summary.subtotal?.toLocaleString() ?? '—'}` },
-                room.markup_amount > 0 && { label: 'Markup', val: `₹${room.markup_amount?.toLocaleString()}` },
                 { label: `GST (${summary.gst_pct ?? 0}%)`, val: `₹${summary.gst_amount?.toLocaleString() ?? '0'}` },
               ].filter(Boolean).map((row: any) => (
                 <div key={row.label} className="flex justify-between items-center text-slate-600 dark:text-slate-400">

@@ -97,9 +97,11 @@ export function ShareRoomModal({
                   ]});
                 
                 // 3. Price
+                const nights = selectedShareRoom.price_summary?.nights || 1;
+                const roomsCount = filters?.rooms || 1;
                 shareItemsList.push(
                   { key: 'price', label: 'Price', subItems: [
-                      { subKey: 'price_amount', label: `Amount: ₹${(selectedShareRoom.price_summary?.grand_total ?? selectedShareRoom.grand_total ?? selectedShareRoom.price)?.toLocaleString()} / night` }
+                      { subKey: 'price_amount', label: `Amount: ₹${(selectedShareRoom.price_summary?.grand_total ?? selectedShareRoom.grand_total ?? selectedShareRoom.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})` }
                   ]});
 
                 // 4. Location

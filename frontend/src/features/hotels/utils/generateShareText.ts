@@ -44,7 +44,9 @@ export function generateShareText(
   }
   
   if (options.price && options.price_amount) {
-    text += `*Price:* ₹${(room.price_summary?.grand_total ?? room.grand_total ?? room.price)?.toLocaleString()} / night\n\n`;
+    const nights = room.price_summary?.nights || 1;
+    const roomsCount = filters?.rooms || 1;
+    text += `*Price:* ₹${(room.price_summary?.grand_total ?? room.grand_total ?? room.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})\n\n`;
   }
   
   if (options.location) {
