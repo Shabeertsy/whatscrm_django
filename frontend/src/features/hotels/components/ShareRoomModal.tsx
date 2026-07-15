@@ -160,10 +160,10 @@ export function ShareRoomModal({
                         onChange={e => {
                           const isChecked = e.target.checked;
                           setShareOptions(prev => {
-                            const newOpts = { ...prev, [opt.key]: isChecked };
+                            const newOpts: Record<string, boolean> = { ...prev, [opt.key as string]: isChecked };
                             if (opt.subItems) {
                               opt.subItems.forEach((sub: any) => {
-                                newOpts[sub.subKey] = isChecked;
+                                newOpts[sub.subKey as string] = isChecked;
                               });
                             }
                             return newOpts;
@@ -197,11 +197,11 @@ export function ShareRoomModal({
                             onChange={e => {
                               const isChecked = e.target.checked;
                               setShareOptions(prev => {
-                                const newOpts = { ...prev, [sub.subKey]: isChecked };
+                                const newOpts: Record<string, boolean> = { ...prev, [sub.subKey as string]: isChecked };
                                 const anyChecked = opt.subItems.some((s: any) => 
                                   s.subKey === sub.subKey ? isChecked : !!prev[s.subKey]
                                 );
-                                newOpts[opt.key] = anyChecked;
+                                newOpts[opt.key as string] = anyChecked;
                                 return newOpts;
                               });
                             }}
