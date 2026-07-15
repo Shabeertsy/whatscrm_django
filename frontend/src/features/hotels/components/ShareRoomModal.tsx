@@ -155,7 +155,18 @@ export function ShareRoomModal({
                       <input 
                         type="checkbox" 
                         checked={!!shareOptions[opt.key]} 
-                        onChange={e => setShareOptions(prev => ({ ...prev, [opt.key]: e.target.checked }))}
+                        onChange={e => {
+                          const isChecked = e.target.checked;
+                          setShareOptions(prev => {
+                            const newOpts = { ...prev, [opt.key]: isChecked };
+                            if (opt.subItems) {
+                              opt.subItems.forEach((sub: any) => {
+                                newOpts[sub.subKey] = isChecked;
+                              });
+                            }
+                            return newOpts;
+                          });
+                        }}
                         className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer" 
                       />
                       <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
@@ -181,7 +192,17 @@ export function ShareRoomModal({
                           <input 
                             type="checkbox" 
                             checked={!!shareOptions[sub.subKey]} 
-                            onChange={e => setShareOptions(prev => ({ ...prev, [sub.subKey]: e.target.checked }))}
+                            onChange={e => {
+                              const isChecked = e.target.checked;
+                              setShareOptions(prev => {
+                                const newOpts = { ...prev, [sub.subKey]: isChecked };
+                                const anyChecked = opt.subItems.some((s: any) => 
+                                  s.subKey === sub.subKey ? isChecked : !!prev[s.subKey]
+                                );
+                                newOpts[opt.key] = anyChecked;
+                                return newOpts;
+                              });
+                            }}
                             className="h-3.5 w-3.5 rounded accent-[#007e3a] cursor-pointer mt-0.5 flex-shrink-0" 
                           />
                           <span className="text-[13px] text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors break-all leading-tight">
