@@ -24,6 +24,9 @@ export function HotelFilters({
 }: HotelFiltersProps) {
   const [localPriceMin, setLocalPriceMin] = useState(filters.priceMin);
   const [localPriceMax, setLocalPriceMax] = useState(filters.priceMax);
+  const [showAllPropertyTypes, setShowAllPropertyTypes] = useState(false);
+  const [showAllRoomTypes, setShowAllRoomTypes] = useState(false);
+  const [showAllAmenities, setShowAllAmenities] = useState(false);
 
   useEffect(() => {
     setLocalPriceMin(filters.priceMin);
@@ -97,7 +100,7 @@ export function HotelFilters({
           <Building2 className="h-3.5 w-3.5 text-[#007e3a]" /> Property Type
         </h3>
         <div className="space-y-2">
-          {propertyTypeOptions.map(t => {
+          {(showAllPropertyTypes ? propertyTypeOptions : propertyTypeOptions.slice(0, 6)).map(t => {
             const idVal = t.uuid || t.id;
             const nameVal = t.property_type_name || t.name;
             return (
@@ -109,6 +112,12 @@ export function HotelFilters({
               </label>
             );
           })}
+          {propertyTypeOptions.length > 6 && (
+            <button onClick={() => setShowAllPropertyTypes(!showAllPropertyTypes)}
+              className="text-xs font-semibold text-[#007e3a] hover:text-[#00602d] transition-colors mt-2 text-left w-full">
+              {showAllPropertyTypes ? '- Show Less' : `+ Show ${propertyTypeOptions.length - 6} More`}
+            </button>
+          )}
         </div>
       </div>
       <hr className="border-slate-100 dark:border-slate-800" />
@@ -118,7 +127,7 @@ export function HotelFilters({
           <Bed className="h-3.5 w-3.5 text-[#007e3a]" /> Room Type
         </h3>
         <div className="space-y-2">
-          {roomTypeOptions.map(t => {
+          {(showAllRoomTypes ? roomTypeOptions : roomTypeOptions.slice(0, 6)).map(t => {
             const idVal = t.uuid || t.id;
             return (
               <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
@@ -129,6 +138,12 @@ export function HotelFilters({
               </label>
             );
           })}
+          {roomTypeOptions.length > 6 && (
+            <button onClick={() => setShowAllRoomTypes(!showAllRoomTypes)}
+              className="text-xs font-semibold text-[#007e3a] hover:text-[#00602d] transition-colors mt-2 text-left w-full">
+              {showAllRoomTypes ? '- Show Less' : `+ Show ${roomTypeOptions.length - 6} More`}
+            </button>
+          )}
         </div>
       </div>
       <hr className="border-slate-100 dark:border-slate-800" />
@@ -138,7 +153,7 @@ export function HotelFilters({
           <Star className="h-3.5 w-3.5 text-[#007e3a]" /> Amenities
         </h3>
         <div className="space-y-2">
-          {amenityOptions.map(a => {
+          {(showAllAmenities ? amenityOptions : amenityOptions.slice(0, 6)).map(a => {
             const idVal = a.uuid || a.id;
             return (
               <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
@@ -152,6 +167,12 @@ export function HotelFilters({
               </label>
             );
           })}
+          {amenityOptions.length > 6 && (
+            <button onClick={() => setShowAllAmenities(!showAllAmenities)}
+              className="text-xs font-semibold text-[#007e3a] hover:text-[#00602d] transition-colors mt-2 text-left w-full">
+              {showAllAmenities ? '- Show Less' : `+ Show ${amenityOptions.length - 6} More`}
+            </button>
+          )}
         </div>
       </div>
       <hr className="border-slate-100 dark:border-slate-800" />
