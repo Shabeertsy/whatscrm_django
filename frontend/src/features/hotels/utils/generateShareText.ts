@@ -50,10 +50,11 @@ export function generateShareText(
   }
   
   if (options.location) {
+    const locName = options.location_name ? (room.property_location?.name || 'N/A') : '';
     const city = options.location_city ? (room.property_location?.city || 'N/A') : '';
     const state = options.location_state ? (room.property_location?.state || 'N/A') : '';
-    if (city || state) {
-      text += `*Location:* ${[city, state].filter(Boolean).join(', ')}\n\n`;
+    if (locName || city || state) {
+      text += `*Location:* ${[locName, city, state].filter(Boolean).join(', ')}\n\n`;
     }
   }
   

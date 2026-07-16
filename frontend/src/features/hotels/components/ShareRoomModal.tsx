@@ -54,7 +54,7 @@ export function ShareRoomModal({
               <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedShareRoom.name}</span>
             </div>
             <div className="text-sm text-slate-600 dark:text-slate-400">
-              {selectedShareRoom.owner_username || selectedShareRoom.owner_brand_name} • {selectedShareRoom.property_location?.city}
+              {selectedShareRoom.owner_username || selectedShareRoom.owner_brand_name} • {selectedShareRoom.property_location?.name ? `${selectedShareRoom.property_location.name}, ` : ''}{selectedShareRoom.property_location?.city}
             </div>
           </div>
 
@@ -107,6 +107,7 @@ export function ShareRoomModal({
                 // 4. Location
                 shareItemsList.push(
                   { key: 'location', label: 'Location', subItems: [
+                      { subKey: 'location_name', label: `Name: ${selectedShareRoom.property_location?.name || 'N/A'}` },
                       { subKey: 'location_city', label: `City: ${selectedShareRoom.property_location?.city || 'N/A'}` },
                       { subKey: 'location_state', label: `State: ${selectedShareRoom.property_location?.state || 'N/A'}` }
                   ]});

@@ -129,11 +129,19 @@ export function Hotels() {
                         </td>
                         {/* Location */}
                         <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
-                            <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0" />
-                            <span className="truncate max-w-[130px]">{room.property_location?.city || '—'}</span>
+                          <div className="flex items-start gap-1.5 max-w-[160px]">
+                            <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300 line-clamp-2 leading-tight" title={room.property_location?.name || room.property_location?.city || '—'}>
+                                {room.property_location?.name || room.property_location?.city || '—'}
+                              </p>
+                              <p className="text-[10px] text-slate-400 mt-1 truncate">
+                                {room.property_location?.name 
+                                  ? [room.property_location.city, room.property_location.state].filter(Boolean).join(', ')
+                                  : room.property_location?.state}
+                              </p>
+                            </div>
                           </div>
-                          <span className="text-[10px] text-slate-400 ml-5">{room.property_location?.state}</span>
                         </td>
                         {/* Phone */}
                         <td className="px-5 py-3.5">
