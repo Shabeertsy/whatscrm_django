@@ -49,3 +49,87 @@ class Contact(BaseModel, SoftDeleteModel):
     def __str__(self):
         return f"{self.name} ({self.phone})"
 
+
+class Pipeline(BaseModel):
+    name = models.CharField(max_length=255)
+    description = models.TextField(blank=True, default='')
+    is_active = models.BooleanField(default=False)
+    auto_create_deals = models.BooleanField(
+        default=False,
+        help_text="Only the active pipeline can have this enabled"
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='pipelines'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+
+    def activate(self):
+        """Make this pipeline active and deactivate all others for this owner."""
+        Pipeline.objects.filter(owner=self.owner, is_active=True).update(is_active=False)
+        self.is_active = True
+        self.save(update_fields=['is_active'])
+
+
+class PipelineStage(BaseModel):
+    pipeline = models.ForeignKey(
+        Pipeline,
+        on_delete=models.CASCADE,
+        related_name='stages',
+        null=True, blank=True 
+    )
+    title = models.CharField(max_length=100)
+    order = models.PositiveIntegerField(default=0)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='pipeline_stages'
+    )
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return self.title
+
+
+class PipelineDeal(BaseModel):
+    pipeline = models.ForeignKey(
+        Pipeline,
+        on_delete=models.CASCADE,
+        related_name='deals',
+        null=True, blank=True  
+    )
+    name = models.CharField(max_length=255)
+    value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    stage = models.ForeignKey(
+        PipelineStage, 
+        on_delete=models.CASCADE, 
+        related_name='deals'
+    )
+    # connection with whatsapp message contact (apps.messaging.models.Contact)
+    wa_contact = models.ForeignKey(
+        'messaging.Contact', 
+        on_delete=models.SET_NULL, 
+        null=True, blank=True,
+        related_name='pipeline_deals'
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='pipeline_deals'
+    )
+    note = models.TextField(blank=True, default='')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.name
+

@@ -498,6 +498,9 @@ class WebhookView(APIView):
         broadcast_new_message(conv, msg)
         broadcast_conversation_update(conv)
 
+        # Auto-create pipeline deal on first inbound message 
+        self._maybe_create_pipeline_deal(contact, conv, instance)
+
     def _handle_status_update(self, status_data: dict):
         """Update message delivery/read status from Meta callbacks."""
         wa_msg_id  = status_data.get('id')
@@ -542,3 +545,56 @@ class WebhookView(APIView):
                 logger.info(f"Webhook updated template {template_name} to {event}")
         except Exception as e:
             logger.error(f"Error updating template status from webhook: {e}")
+
+
+    def _maybe_create_pipeline_deal(self, wa_contact, conv, instance):
+        """
+        Auto-create a deal in the active pipeline when a new inbound contact
+        messages for the first time, if the pipeline has auto_create_deals=True.
+        Scoped to the instance owner for multi-tenancy safety.
+        """
+        try:
+            from apps.contacts.models import Pipeline, PipelineDeal
+
+            # Find the instance owner
+            owner = instance.owner if instance and hasattr(instance, 'owner') else None
+            if not owner:
+                return
+
+            # Look for the active pipeline with auto-create enabled
+            pipeline = Pipeline.objects.filter(
+                owner=owner,
+                is_active=True,
+                auto_create_deals=True,
+            ).first()
+            if not pipeline:
+                return
+
+            # Only create one deal per wa_contact per pipeline
+            if PipelineDeal.objects.filter(pipeline=pipeline, wa_contact=wa_contact).exists():
+                return
+
+            # Get or create the first stage
+            stage = pipeline.stages.order_by('order').first()
+            if not stage:
+                from apps.contacts.models import PipelineStage
+                stage = PipelineStage.objects.create(
+                    pipeline=pipeline,
+                    title='Incoming Leads',
+                    order=1,
+                    owner=owner,
+                )
+
+            deal_name = wa_contact.name or wa_contact.phone or 'New Lead'
+            PipelineDeal.objects.create(
+                pipeline=pipeline,
+                stage=stage,
+                owner=owner,
+                wa_contact=wa_contact,
+                name=deal_name,
+                value=0,
+                note=f'Auto-created from inbound WhatsApp message.',
+            )
+            logger.info(f"Auto-created pipeline deal for contact {wa_contact.phone} in pipeline '{pipeline.name}'")
+        except Exception as e:
+            logger.error(f"Error in _maybe_create_pipeline_deal: {e}")

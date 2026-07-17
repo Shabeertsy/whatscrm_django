@@ -6,9 +6,10 @@ interface KanbanBoardProps {
   stages: { id: string; title: string }[];
   deals: Deal[];
   onMoveDeal: (id: string, nextStage: string) => void;
+  onEditDeal: (deal: Deal) => void;
 }
 
-export function KanbanBoard({ stages, deals, onMoveDeal }: KanbanBoardProps) {
+export function KanbanBoard({ stages, deals, onMoveDeal, onEditDeal }: KanbanBoardProps) {
   return (
     <div className="flex space-x-4 overflow-x-auto pb-4">
       {stages.map((col) => (
@@ -18,6 +19,7 @@ export function KanbanBoard({ stages, deals, onMoveDeal }: KanbanBoardProps) {
           stage={col.id}
           deals={deals}
           onMoveDeal={onMoveDeal}
+          onEditDeal={onEditDeal}
           stages={stages}
         />
       ))}

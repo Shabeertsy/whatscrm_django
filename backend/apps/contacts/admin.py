@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Contact, ContactTag
+from .models import Contact, ContactTag,Pipeline,PipelineDeal,PipelineStage
 
 @admin.register(Contact)
 class ContactAdmin(admin.ModelAdmin):
@@ -10,3 +10,18 @@ class ContactAdmin(admin.ModelAdmin):
 @admin.register(ContactTag)
 class ContactTagAdmin(admin.ModelAdmin):
     list_display = ('name', 'owner', 'color')
+
+
+@admin.register(Pipeline)
+class PipelineAdmin(admin.ModelAdmin):
+    list_display = ("name", "description", "owner", "is_active")
+
+
+@admin.register(PipelineStage)
+class PipelineStageAdmin(admin.ModelAdmin):
+    list_display = ("title", "pipeline", "order")
+
+
+@admin.register(PipelineDeal)
+class PipelineDealAdmin(admin.ModelAdmin):
+    list_display = ("name", "stage", "pipeline")

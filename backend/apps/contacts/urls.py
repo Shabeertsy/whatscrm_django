@@ -3,6 +3,9 @@ from .views import (
     ContactListCreateView, ContactDetailView,
     ContactTagListCreateView, ContactTagDetailView,
     WAContactsListView, WAContactsImportView,
+    PipelineListCreateView, PipelineDetailView, PipelineActivateView,
+    PipelineStageListCreateView, PipelineStageDetailView,
+    PipelineDealListCreateView, PipelineDealDetailView,
 )
 
 urlpatterns = [
@@ -12,4 +15,17 @@ urlpatterns = [
     path('tags/<uuid:pk>/', ContactTagDetailView.as_view(), name='tag_detail'),
     path('wa-contacts/', WAContactsListView.as_view(), name='wa_contacts_list'),
     path('wa-import/', WAContactsImportView.as_view(), name='wa_contacts_import'),
+
+    # Pipeline
+    path('pipelines/', PipelineListCreateView.as_view(), name='pipeline_list'),
+    path('pipelines/<uuid:pk>/', PipelineDetailView.as_view(), name='pipeline_detail'),
+    path('pipelines/<uuid:pk>/activate/', PipelineActivateView.as_view(), name='pipeline_activate'),
+
+    # Stages
+    path('pipeline/stages/', PipelineStageListCreateView.as_view(), name='pipeline_stage_list'),
+    path('pipeline/stages/<uuid:pk>/', PipelineStageDetailView.as_view(), name='pipeline_stage_detail'),
+
+    # Deals
+    path('pipeline/deals/', PipelineDealListCreateView.as_view(), name='pipeline_deal_list'),
+    path('pipeline/deals/<uuid:pk>/', PipelineDealDetailView.as_view(), name='pipeline_deal_detail'),
 ]
