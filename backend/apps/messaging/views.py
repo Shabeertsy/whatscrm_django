@@ -556,8 +556,8 @@ class WebhookView(APIView):
         try:
             from apps.contacts.models import Pipeline, PipelineDeal
 
-            # Find the instance owner
-            owner = instance.owner if instance and hasattr(instance, 'owner') else None
+            # Find the instance owner (user)
+            owner = instance.user if instance and hasattr(instance, 'user') else None
             if not owner:
                 return
 
