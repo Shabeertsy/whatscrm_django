@@ -181,7 +181,7 @@ export function usePipeline() {
   };
 
   const handleSaveDeal = async (data: {
-    id?: string; name: string; value: number; wa_contact?: string; note?: string;
+    id?: string; name: string; value: number; wa_contact?: string | null; note?: string | null;
   }): Promise<boolean> => {
     if (!activePipeline) { toast.error("No active pipeline selected"); return false; }
     try {

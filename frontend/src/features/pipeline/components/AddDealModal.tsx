@@ -3,9 +3,9 @@ import { X } from "lucide-react";
 
 interface Props {
   contacts: any[];
-  initialData?: { id?: string; name: string; value: number; wa_contact?: string; note?: string };
+  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; note?: string | null };
   onClose: () => void;
-  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string; note?: string }) => Promise<boolean>;
+  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; note?: string | null }) => Promise<boolean>;
 }
 
 export function AddDealModal({ contacts, initialData, onClose, onSubmit }: Props) {
