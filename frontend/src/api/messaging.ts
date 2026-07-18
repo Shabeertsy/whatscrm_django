@@ -84,6 +84,11 @@ export const messagingApi = {
     return apiClient.post(`${BASE}/conversations/${conversationId}/mark-read/`);
   },
 
+  /** Start a conversation with a new number via template */
+  startConversation(payload: { phone: string; instance_id: string; template_name: string; template_language?: string; body?: string; name?: string; save_contact?: boolean }) {
+    return apiClient.post<{ conversation: Conversation; message: Message }>(`${BASE}/conversations/start/`, payload);
+  },
+
   /** Delete a message */
   deleteMessage(messageId: string) {
     return apiClient.delete(`${BASE}/messages/${messageId}/`);

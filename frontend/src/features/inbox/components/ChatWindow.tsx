@@ -80,7 +80,7 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
               {conversation.contact.name || conversation.contact.phone}
             </h3>
             <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-              {conversation.contact.name ? conversation.contact.is_saved : 'Unsaved Contact'}
+              {conversation.contact.name ? conversation.contact.phone : 'Unsaved Contact'}
             </p>
           </div>
         </div>

@@ -1,23 +1,30 @@
 import React, { memo } from "react";
-import { Search } from "lucide-react";
+import { Search, Plus } from "lucide-react";
 import type { Conversation } from "../../../api/messaging";
 import { formatChatListTime } from "../utils";
-
-
 
 interface ChatListProps {
   chats: Conversation[];
   selectedChatId: string | null;
   onSelectChat: (id: string) => void;
+  onStartNewChat: () => void;
   isLoading?: boolean;
 }
 
-
-export const ChatList = memo(function ChatList({ chats, selectedChatId, onSelectChat, isLoading }: ChatListProps) {
+export const ChatList = memo(function ChatList({ chats, selectedChatId, onSelectChat, onStartNewChat, isLoading }: ChatListProps) {
   return (
     <div className="w-80 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/40 dark:bg-slate-900/50 h-full transition duration-200">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-        <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm mb-2">Conversations</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Conversations</h3>
+          <button
+            onClick={onStartNewChat}
+            className="flex items-center gap-1 text-[#007e3a] hover:text-[#00662f] bg-[#007e3a]/10 hover:bg-[#007e3a]/20 px-2 py-1 rounded-md transition-colors text-xs font-bold"
+          >
+            <Plus className="h-3 w-3 stroke-[3]" />
+            New
+          </button>
+        </div>
         <div className="relative">
           <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5" />
           <input

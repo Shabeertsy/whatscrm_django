@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { ChatList } from "./components/ChatList";
 import { ChatWindow } from "./components/ChatWindow";
 import { MessageComposer } from "./components/MessageComposer";
+import { StartChatModal } from "./components/StartChatModal";
 import { useInboxSocket } from "./hooks/useInboxSocket";
 import { isWhatsAppWindowOpen } from "./utils";
 import { useMessagingStore, messagingStore } from "../../store/messagingStore";
@@ -17,6 +18,7 @@ export function Inbox() {
   const [initialComposerText, setInitialComposerText] = useState("");
   const [isSending, setIsSending] = useState(false);
   const [replyingTo, setReplyingTo] = useState<any>(null);
+  const [showStartChat, setShowStartChat] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Handle prefilled text from URL (e.g. from Hotels "Share to Chat")
@@ -234,6 +236,25 @@ export function Inbox() {
     setReplyingTo(msg);
   }, []);
 
+  const handleStartNewChat = async (data: { phone: string; instance_id: string; template_name: string; template_language: string; body: string; name?: string; save_contact?: boolean }) => {
+    try {
+      const res = await messagingApi.startConversation(data);
+      // Add conversation to store if not exists
+      const exists = store.conversations.find(c => c.id === res.data.conversation.id);
+      if (!exists) {
+        messagingStore.setConversations([res.data.conversation, ...store.conversations]);
+      }
+      // Push message
+      messagingStore.pushMessage(res.data.conversation.id, res.data.message);
+      // Switch to this conversation
+      messagingStore.setActiveConversation(res.data.conversation.id);
+      showToast('Chat Started', `Template sent to ${data.phone}`, 'success');
+    } catch (err: any) {
+      console.error(err);
+      showToast('Failed to Start Chat', err.response?.data?.error || err.response?.data?.detail || 'An error occurred', 'error');
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-10rem)] flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition duration-200">
       <ChatList
@@ -241,6 +262,7 @@ export function Inbox() {
         selectedChatId={store.activeConversationId}
         isLoading={store.isLoadingConversations}
         onSelectChat={handleSelectChat}
+        onStartNewChat={() => setShowStartChat(true)}
       />
       <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
         {!activeConversation ? (
@@ -269,6 +291,13 @@ export function Inbox() {
           </>
         )}
       </div>
+
+      {showStartChat && (
+        <StartChatModal
+          onClose={() => setShowStartChat(false)}
+          onSubmit={handleStartNewChat}
+        />
+      )}
     </div>
   );
 }

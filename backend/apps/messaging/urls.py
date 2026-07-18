@@ -4,6 +4,7 @@ from .views import (
     ContactViewSet,
     ConversationListAPIView, ConversationDetailAPIView,
     ConversationSendMessageAPIView, ConversationMarkReadAPIView,
+    StartConversationAPIView,
     MessageDeleteAPIView, WebhookView, MediaUploadAPIView
 )
 
@@ -16,6 +17,7 @@ urlpatterns = [
 
     # Conversations
     path('conversations/', ConversationListAPIView.as_view(), name='conversation-list'),
+    path('conversations/start/', StartConversationAPIView.as_view(), name='conversation-start'),
     path('conversations/<int:pk>/', ConversationDetailAPIView.as_view(), name='conversation-detail'),
     path('conversations/<int:pk>/send/', ConversationSendMessageAPIView.as_view(), name='conversation-send-message'),
     path('conversations/<int:pk>/mark-read/', ConversationMarkReadAPIView.as_view(), name='conversation-mark-read'),

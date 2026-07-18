@@ -148,6 +148,117 @@ class ConversationSendMessageAPIView(APIView):
                 reply_to_wa_id = replied_to_obj.wa_message_id
                 
         storage_path = serializer.validated_data.get('storage_path', '')
+
+
+class StartConversationAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        phone = request.data.get('phone')
+        instance_id = request.data.get('instance_id')
+        template_name = request.data.get('template_name', '')
+        template_language = request.data.get('template_language', 'en')
+        body = request.data.get('body', '')
+
+        name = request.data.get('name', '')
+        save_contact = request.data.get('save_contact', False)
+
+        if not phone or not instance_id or not template_name:
+            return Response({"error": "Phone, instance_id, and template_name are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Get the instance
+        instance = get_object_or_404(WhatsappInstance, id=instance_id)
+
+        # Clean the phone number (remove + if present for WA ID)
+        wa_id = phone.replace('+', '').replace(' ', '')
+        phone_with_plus = f"+{wa_id}"
+
+        contact, created_contact = Contact.objects.get_or_create(
+            wa_id=wa_id,
+            defaults={
+                'phone': phone_with_plus,
+                'is_saved': False,
+                'source': 'outbound',
+                'name': name if name else '',
+            }
+        )
+        
+        # If the user  wants to save
+        if save_contact:
+            contact.is_saved = True
+            if name:
+                contact.name = name
+            contact.save(update_fields=['is_saved', 'name', 'updated_at'])
+            
+            # Add to CRM Contacts
+            from apps.contacts.models import Contact as CRMContact
+            crm_contact, _ = CRMContact.objects.get_or_create(
+                phone=phone_with_plus,
+                owner=request.user,
+                defaults={
+                    'name': name or phone_with_plus,
+                    'wa_id': wa_id,
+                }
+            )
+            # Link them if not linked
+            if not contact.crm_contact:
+                contact.crm_contact = crm_contact
+                contact.save(update_fields=['crm_contact'])
+
+        # Get or Create Conversation
+        conv, created = Conversation.objects.get_or_create(
+            contact=contact,
+            instance=instance,
+            status__in=['open', 'pending'],
+            defaults={'status': 'open'}
+        )
+        if not created and conv.status == 'resolved':
+            conv.status = 'open'
+            conv.save(update_fields=['status'])
+
+        #  Send the template via Meta Cloud API
+        msg_status = "failed"
+        wa_message_id = ""
+        try:
+            wa_response = send_whatsapp_message(
+                phone_number_id=instance.phone_number_id,
+                access_token=instance.access_token,
+                to_phone=wa_id,
+                message_text=body,
+                msg_type='template',
+                template_name=template_name,
+                template_language=template_language
+            )
+            if 'messages' in wa_response and len(wa_response['messages']) > 0:
+                wa_message_id = wa_response['messages'][0]['id']
+                msg_status = "sent"
+        except Exception as e:
+            logger.error(f"Failed to send template to new number {wa_id}: {e}")
+
+        # Save Message
+        msg = Message.objects.create(
+            conversation=conv,
+            direction='outbound',
+            msg_type='template',
+            body=body,
+            sent_by=request.user,
+            status=msg_status,
+            wa_message_id=wa_message_id,
+            timestamp=django_tz.now(),
+        )
+
+        conv.last_message_at = msg.timestamp
+        conv.save(update_fields=['last_message_at'])
+
+        # Broadcast to UI
+        if created:
+            broadcast_conversation_update(conv)
+        broadcast_new_message(conv, msg)
+
+        return Response({
+            "conversation": ConversationListSerializer(conv).data,
+            "message": MessageSerializer(msg).data
+        }, status=status.HTTP_201_CREATED)
         
         filename = ""
         if storage_path:

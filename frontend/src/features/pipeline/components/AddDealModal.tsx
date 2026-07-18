@@ -53,7 +53,7 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit }: Props
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Associated Contact</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"> Contact</label>
             <select
               value={form.wa_contact}
               onChange={e => setForm({ ...form, wa_contact: e.target.value })}
