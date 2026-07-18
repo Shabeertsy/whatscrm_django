@@ -1,7 +1,9 @@
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import { Search, Plus } from "lucide-react";
 import type { Conversation } from "../../../api/messaging";
 import { formatChatListTime } from "../utils";
+
+
 
 interface ChatListProps {
   chats: Conversation[];
@@ -12,6 +14,16 @@ interface ChatListProps {
 }
 
 export const ChatList = memo(function ChatList({ chats, selectedChatId, onSelectChat, onStartNewChat, isLoading }: ChatListProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredChats = chats.filter(c => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    const name = (c.contact.name || "").toLowerCase();
+    const phone = (c.contact.phone || "").toLowerCase();
+    return name.includes(q) || phone.includes(q);
+  });
+
   return (
     <div className="w-80 border-r border-slate-200 dark:border-slate-800 flex flex-col bg-slate-50/40 dark:bg-slate-900/50 h-full transition duration-200">
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
@@ -30,6 +42,8 @@ export const ChatList = memo(function ChatList({ chats, selectedChatId, onSelect
           <input
             type="text"
             placeholder="Search chats..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pl-8 pr-4 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#007e3a]/40"
           />
         </div>
@@ -38,10 +52,12 @@ export const ChatList = memo(function ChatList({ chats, selectedChatId, onSelect
       <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
         {isLoading ? (
           <div className="p-8 text-center text-xs text-slate-500">Loading conversations...</div>
-        ) : chats.length === 0 ? (
-          <div className="p-8 text-center text-xs text-slate-500">No active conversations.</div>
+        ) : filteredChats.length === 0 ? (
+          <div className="p-8 text-center text-xs text-slate-500">
+            {searchQuery ? "No chats found." : "No active conversations."}
+          </div>
         ) : (
-          chats.map((c) => {
+          filteredChats.map((c) => {
             const hasUnread = c.unread_count > 0;
             const timeStr = formatChatListTime(c.last_message_at);
 

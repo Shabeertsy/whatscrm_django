@@ -9,6 +9,7 @@ from .views import (
 router = DefaultRouter()
 router.register(r'proxy-urls', ProxyURLViewSet, basename='proxy-urls')
 
+
 urlpatterns = [
     path('hotels/', HotelsProxyView.as_view(), name='hotels_proxy'),
     path('rooms/', RoomsProxyView.as_view(), name='rooms_proxy'),

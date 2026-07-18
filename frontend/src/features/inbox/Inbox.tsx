@@ -8,6 +8,7 @@ import { useInboxSocket } from "./hooks/useInboxSocket";
 import { isWhatsAppWindowOpen } from "./utils";
 import { useMessagingStore, messagingStore } from "../../store/messagingStore";
 import { messagingApi } from "../../api/messaging";
+import { fetchAiAgentConfig } from "../../api/ai";
 import { showToast } from "../../utils/toast";
 import { useCallback } from "react";
 
@@ -20,6 +21,12 @@ export function Inbox() {
   const [replyingTo, setReplyingTo] = useState<any>(null);
   const [showStartChat, setShowStartChat] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
+  const [isAiActive, setIsAiActive] = useState(false);
+
+  // Fetch AI agent global status
+  useEffect(() => {
+    fetchAiAgentConfig().then(config => setIsAiActive(config.is_active)).catch(console.error);
+  }, []);
 
   // Handle prefilled text from URL (e.g. from Hotels "Share to Chat")
   useEffect(() => {
@@ -275,6 +282,7 @@ export function Inbox() {
               conversation={activeConversation}
               messages={activeMessages}
               isLoading={store.isLoadingMessages}
+              isAiActive={isAiActive}
               onReply={handleReply}
             />
             <MessageComposer

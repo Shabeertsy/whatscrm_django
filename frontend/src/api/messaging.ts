@@ -34,6 +34,7 @@ export interface Conversation {
   last_message: LastMessage | null;
   last_message_at: string | null;
   last_inbound_at: string | null;
+  ai_active: boolean;
 }
 
 export interface Message {
@@ -94,9 +95,9 @@ export const messagingApi = {
     return apiClient.delete(`${BASE}/messages/${messageId}/`);
   },
 
-  /** Update conversation status */
-  updateStatus(conversationId: string, status: string) {
-    return apiClient.patch(`${BASE}/conversations/${conversationId}/`, { status });
+  /** Update conversation status or ai_active */
+  updateConversation(conversationId: string, data: { status?: string; assigned_agent?: string | null; ai_active?: boolean }) {
+    return apiClient.patch(`${BASE}/conversations/${conversationId}/`, data);
   },
 
   /** Save a ghost contact as a real contact */

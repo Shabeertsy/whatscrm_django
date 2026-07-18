@@ -22,3 +22,4 @@ class ProxyURLSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         return UserActiveProxy.objects.filter(user=request.user, proxy=obj).exists()
+

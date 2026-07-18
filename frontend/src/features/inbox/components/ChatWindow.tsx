@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, memo } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { messagingStore } from "../../../store/messagingStore";
-import { Check, CheckCheck, Clock, User2, Trash2, ExternalLink, Reply, ChevronDown } from "lucide-react";
+import { Check, CheckCheck, Clock, User2, Trash2, ExternalLink, Reply, ChevronDown, Bot } from "lucide-react";
 import { useRouter } from "../../../router";
 
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
@@ -14,10 +14,11 @@ interface ChatWindowProps {
   conversation: Conversation;
   messages: Message[];
   isLoading?: boolean;
+  isAiActive?: boolean;
   onReply?: (msg: any) => void;
 }
 
-export const ChatWindow = memo(function ChatWindow({ conversation, messages, isLoading, onReply }: ChatWindowProps) {
+export const ChatWindow = memo(function ChatWindow({ conversation, messages, isLoading, isAiActive, onReply }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -100,13 +101,18 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
                Agent: {conversation.agent_name}
              </span>
           )}
+          {isAiActive && (
+             <div className="flex items-center space-x-1.5 px-2 py-1 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 rounded-full" title="Global AI is Active">
+               <Bot className="h-3.5 w-3.5" />
+               <span className="text-[10px] font-bold">AI Active</span>
+             </div>
+          )}
         </div>
       </div>
 
       {/* Messages Body */}
       <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2] dark:bg-slate-950/50 relative">
         
-        {/* Simple pattern overlay for WhatsApp feel */}
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/r_QPEkMbpXb.png")' }}></div>
 
         {isLoading ? (

@@ -31,6 +31,7 @@ urlpatterns = [
     path("api/core/", include("apps.core.urls")),
     path("api/whatsapp/", include("apps.whatsapp.urls")),
     path("api/contacts/", include("apps.contacts.urls")),
+    path("api/ai/", include("apps.ai.urls")),
 ]
 
 if settings.DEBUG:

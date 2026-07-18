@@ -9,10 +9,11 @@ import Contacts from "./pages/Contacts";
 import Pipeline from "./pages/Pipeline";
 import Settings from "./pages/Settings";
 import Login from "./pages/Login";
-import AiAgent from "./pages/AiAgent";
+import AiAgent from "./features/ai/AiAgent";
 import Hotels from "./pages/Hotels";
 import HotelRooms from "./pages/HotelRooms";
 import Templates from "./pages/Templates";
+
 
 
 export function RouterProvider({ children }: { children: React.ReactNode }) {

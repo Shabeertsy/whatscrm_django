@@ -12,6 +12,8 @@ from .models import ProxyURL, UserActiveProxy
 from .serializers import ProxyURLSerializer
 
 
+
+
 def get_proxy_url(user):
     active = UserActiveProxy.objects.filter(user=user).first()
     if active:
@@ -42,7 +44,6 @@ class HotelsProxyView(APIView):
     def get(self, request):
         query_params = request.GET.urlencode()
         base = get_proxy_url(request.user)
-        print(base,'base')
         url = f"{base}/list-properties/?{query_params}" if query_params else f"{base}/list-properties/?page=1&page_size=9&check_in=2026-07-04&check_out=2026-07-05&adults=2&children=0&rooms=1&hide_unavailable=false"
         
         # Create a unique cache key based on the URL
@@ -50,7 +51,6 @@ class HotelsProxyView(APIView):
         cached_data = cache.get(cache_key)
         
         if cached_data:
-            print("HotelsProxyView: Returned from Cache instantly!")
             return Response(cached_data)
 
         start_time = time.time()
@@ -58,8 +58,6 @@ class HotelsProxyView(APIView):
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req) as response:
                 data = json.loads(response.read().decode())
-                print(f"HotelsProxyView (Click4Trip API) Response Time: {time.time() - start_time:.3f} seconds")
-                
                 # Cache the response for 5 minutes (300 seconds)
                 cache.set(cache_key, data, timeout=300)
                 
@@ -181,8 +179,8 @@ class CRMRoomsProxyView(APIView):
                 
                 cache.set(cache_key, data, timeout=60)
                 return Response(data)
+                
         except urllib.error.HTTPError as e:
-            # Try to read error body if available
             try:
                 error_body = json.loads(e.read().decode())
                 return Response(error_body, status=e.code)
@@ -190,4 +188,6 @@ class CRMRoomsProxyView(APIView):
                 return Response({"error": str(e)}, status=e.code)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
+
+
 

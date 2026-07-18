@@ -70,6 +70,7 @@ class Conversation(models.Model):
         related_name='assigned_conversations',
     )
     status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
+    ai_active       = models.BooleanField(default=True)
     unread_count    = models.PositiveIntegerField(default=0)
     last_message_at = models.DateTimeField(null=True, blank=True)
 

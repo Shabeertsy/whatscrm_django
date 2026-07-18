@@ -109,7 +109,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
         model  = Conversation
         fields = [
             'id', 'contact', 'instance', 'instance_name',
-            'assigned_agent', 'agent_name', 'status',
+            'assigned_agent', 'agent_name', 'status', 'ai_active',
             'unread_count', 'last_message', 'last_message_at', 'last_inbound_at',
         ]
         read_only_fields = ['id', 'unread_count', 'last_message_at']
@@ -149,7 +149,7 @@ class ConversationDetailSerializer(ConversationListSerializer):
 class ConversationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Conversation
-        fields = ['status', 'assigned_agent']
+        fields = ['status', 'assigned_agent', 'ai_active']
 
 
 class SendMessageSerializer(serializers.Serializer):

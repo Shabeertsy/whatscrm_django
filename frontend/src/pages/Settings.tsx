@@ -20,10 +20,16 @@ import { whatsappApi } from '../api/whatsapp';
 import type { WhatsappInstance, WhatsappInstancePayload } from '../types/whatsapp';
 import { coreApi, ProxyURL, ProxyURLPayload } from '../api/core';
 
+import { fetchAiProviders, createAiProvider, updateAiProvider, deleteAiProvider, AiProviderConfig, AiProviderPayload } from '../api/ai';
+import { Bot } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Sidebar tab definition
 // ─────────────────────────────────────────────────────────────────────────────
-type SettingsTab = 'whatsapp' | 'proxy_urls';
+type SettingsTab = 'whatsapp' | 'proxy_urls' | 'ai_providers';
 
 const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
   {
@@ -35,6 +41,11 @@ const TABS: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
     id: 'proxy_urls',
     label: 'Proxy URLs',
     icon: <Globe className="h-4 w-4" />,
+  },
+  {
+    id: 'ai_providers',
+    label: 'AI Providers',
+    icon: <Bot className="h-4 w-4" />,
   },
 ];
 
@@ -92,6 +103,8 @@ function FormField({
     </div>
   );
 }
+
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Create / Edit Modal
@@ -275,12 +288,19 @@ function WhatsappInstancesTab() {
   }, []);
 
   const handleSave = async (payload: WhatsappInstancePayload) => {
-    if (editTarget) {
-      await whatsappApi.updateInstance(editTarget.id, payload);
-    } else {
-      await whatsappApi.createInstance(payload);
+    try {
+      if (editTarget) {
+        await whatsappApi.updateInstance(editTarget.id, payload);
+        toast.success('Instance updated successfully');
+      } else {
+        await whatsappApi.createInstance(payload);
+        toast.success('Instance created successfully');
+      }
+      await fetchInstances();
+    } catch (error) {
+      toast.error('Failed to save instance');
+      throw error;
     }
-    await fetchInstances();
   };
 
   const handleDelete = async (id: string) => {
@@ -289,6 +309,9 @@ function WhatsappInstancesTab() {
     try {
       await whatsappApi.deleteInstance(id);
       setInstances((prev) => prev.filter((i) => i.id !== id));
+      toast.success('Instance deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete instance');
     } finally {
       setDeletingId(null);
     }
@@ -301,6 +324,9 @@ function WhatsappInstancesTab() {
       setInstances((prev) =>
         prev.map((i) => (i.id === id ? { ...i, is_active: res.data.is_active } : i))
       );
+      toast.success('Instance status toggled');
+    } catch (error) {
+      toast.error('Failed to toggle instance');
     } finally {
       setTogglingId(null);
     }
@@ -557,12 +583,19 @@ function ProxyURLsTab() {
   }, []);
 
   const handleSave = async (payload: ProxyURLPayload) => {
-    if (editTarget) {
-      await coreApi.updateProxyURL(editTarget.id, payload);
-    } else {
-      await coreApi.createProxyURL(payload);
+    try {
+      if (editTarget) {
+        await coreApi.updateProxyURL(editTarget.id, payload);
+        toast.success('Proxy URL updated successfully');
+      } else {
+        await coreApi.createProxyURL(payload);
+        toast.success('Proxy URL created successfully');
+      }
+      await fetchProxies();
+    } catch (error) {
+      toast.error('Failed to save proxy URL');
+      throw error;
     }
-    await fetchProxies();
   };
 
   const handleDelete = async (id: string) => {
@@ -571,6 +604,9 @@ function ProxyURLsTab() {
     try {
       await coreApi.deleteProxyURL(id);
       setProxies((prev) => prev.filter((i) => i.id !== id));
+      toast.success('Proxy URL deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete proxy URL');
     } finally {
       setDeletingId(null);
     }
@@ -581,6 +617,9 @@ function ProxyURLsTab() {
     try {
       await coreApi.toggleProxyURLActive(id);
       await fetchProxies();
+      toast.success('Proxy URL activated');
+    } catch (error) {
+      toast.error('Failed to toggle proxy URL');
     } finally {
       setTogglingId(null);
     }
@@ -665,6 +704,254 @@ function ProxyURLsTab() {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// AI Providers Tab
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AiProviderModal({
+  initial,
+  onClose,
+  onSave,
+}: {
+  initial?: AiProviderConfig | null;
+  onClose: () => void;
+  onSave: (payload: AiProviderPayload) => Promise<void>;
+}) {
+  const isEdit = !!initial;
+  const [form, setForm] = useState<AiProviderPayload>(
+    initial
+      ? {
+          name: initial.name,
+          ai_provider_name: initial.ai_provider_name,
+          ai_provider_api_key: initial.ai_provider_api_key ?? '',
+          ai_provider_secret_key: initial.ai_provider_secret_key ?? '',
+        }
+      : { name: '', ai_provider_name: 'openai', ai_provider_api_key: '', ai_provider_secret_key: '' }
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  const set = (key: keyof AiProviderPayload) => (val: string) =>
+    setForm((f) => ({ ...f, [key]: val }));
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      await onSave(form);
+      onClose();
+    } catch {
+      setError('Failed to save. Please check your inputs and try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="h-8 w-8 rounded-lg bg-[#007e3a]/10 flex items-center justify-center">
+              <Bot className="h-4 w-4 text-[#007e3a]" />
+            </div>
+            <h2 className="text-base font-bold text-slate-900 dark:text-white">
+              {isEdit ? 'Edit AI Provider' : 'New AI Provider'}
+            </h2>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md transition">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <FormField
+            label="Provider Profile Name"
+            name="name"
+            value={form.name}
+            onChange={set('name')}
+            placeholder="e.g. My Primary OpenAI Key"
+            required
+          />
+          <div>
+            <label className="block text-xs font-semibold text-slate-600 dark:text-slate-400 mb-1.5 uppercase tracking-wider">
+              Provider Name <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={form.ai_provider_name}
+              onChange={(e) => set('ai_provider_name')(e.target.value)}
+              className="w-full px-3 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007e3a]/40 focus:border-[#007e3a] transition"
+            >
+              <option value="openai">OpenAI</option>
+              <option value="claude">Claude</option>
+              <option value="gemini">Gemini</option>
+            </select>
+          </div>
+          <FormField
+            label="API Key"
+            name="ai_provider_api_key"
+            type="password"
+            value={form.ai_provider_api_key ?? ''}
+            onChange={set('ai_provider_api_key')}
+            placeholder="Your API key"
+            required
+          />
+          <FormField
+            label="Secret Key (Optional)"
+            name="ai_provider_secret_key"
+            type="password"
+            value={form.ai_provider_secret_key ?? ''}
+            onChange={set('ai_provider_secret_key')}
+            placeholder="Any additional secret key"
+          />
+          {error && (
+            <div className="flex items-center gap-2 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg">
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
+              {error}
+            </div>
+          )}
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-2.5 text-sm font-semibold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+              Cancel
+            </button>
+            <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 text-sm font-semibold text-white bg-[#007e3a] hover:bg-[#00602d] rounded-lg transition flex items-center justify-center gap-2 disabled:opacity-60">
+              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isEdit ? 'Save Changes' : 'Create Provider'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AiProvidersTab() {
+  const [providers, setProviders] = useState<AiProviderConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<AiProviderConfig | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const fetchList = async () => {
+    try {
+      const data = await fetchAiProviders();
+      setProviders(data);
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchList();
+  }, []);
+
+  const handleSave = async (payload: AiProviderPayload) => {
+    try {
+      if (editTarget) {
+        await updateAiProvider(editTarget.id, payload);
+        toast.success('AI Provider updated successfully');
+      } else {
+        await createAiProvider(payload);
+        toast.success('AI Provider created successfully');
+      }
+      await fetchList();
+    } catch (error) {
+      toast.error('Failed to save AI Provider');
+      throw error;
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Delete this AI Provider? This cannot be undone.')) return;
+    setDeletingId(id);
+    try {
+      await deleteAiProvider(id);
+      setProviders((prev) => prev.filter((i) => i.id !== id));
+      toast.success('AI Provider deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete AI Provider');
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  const openCreate = () => {
+    setEditTarget(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (proxy: AiProviderConfig) => {
+    setEditTarget(proxy);
+    setModalOpen(true);
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h2 className="text-lg font-bold text-slate-900 dark:text-white">AI Providers</h2>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Configure your AI Provider credentials (OpenAI, Claude, Gemini) for the AI Agent.
+          </p>
+        </div>
+        <button onClick={openCreate} className="flex items-center gap-2 px-4 py-2 bg-[#007e3a] hover:bg-[#00602d] text-white text-sm font-semibold rounded-lg transition">
+          <Plus className="h-4 w-4" />
+          Add Provider
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-[#007e3a]" />
+        </div>
+      ) : providers.length === 0 ? (
+        <div className="bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-12 text-center">
+          <Bot className="h-10 w-10 mx-auto text-slate-300 mb-3" />
+          <p className="font-semibold text-slate-600 dark:text-slate-400">No AI Providers yet</p>
+          <p className="text-sm text-slate-400 mt-1">
+            Click <strong>"Add Provider"</strong> to create a new provider configuration.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {providers.map((p) => (
+            <div key={p.id} className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 transition-colors hover:border-slate-200 dark:hover:border-slate-700">
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                <div className={`h-10 w-10 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#007e3a]/10`}>
+                  <Bot className={`h-5 w-5 text-[#007e3a]`} />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-slate-900 dark:text-white truncate">{p.name}</p>
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      {p.ai_provider_name}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5 font-mono truncate">API Key Configured: {p.ai_provider_api_key ? 'Yes' : 'No'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => openEdit(p)} title="Edit" className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
+                  <Pencil className="h-4 w-4" />
+                </button>
+                <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} title="Delete" className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                  {deletingId === p.id ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : <Trash2 className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {modalOpen && <AiProviderModal initial={editTarget} onClose={() => setModalOpen(false)} onSave={handleSave} />}
+    </div>
+  );
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Main Settings Page
 // ─────────────────────────────────────────────────────────────────────────────
 export function Settings() {
@@ -708,6 +995,7 @@ export function Settings() {
         <div className="flex-1 min-h-[400px]">
           {activeTab === 'whatsapp' && <WhatsappInstancesTab />}
           {activeTab === 'proxy_urls' && <ProxyURLsTab />}
+          {activeTab === 'ai_providers' && <AiProvidersTab />}
         </div>
       </div>
     </div>

@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.whatsapp",
     "apps.contacts",
+    "apps.ai",
 ]
 
 MIDDLEWARE = [

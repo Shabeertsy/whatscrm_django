@@ -37,7 +37,7 @@ export function Sidebar() {
     { id: "/contacts", label: "Contacts", icon: Contact2 },
     { id: "/pipeline", label: "Pipeline", icon: Sliders },
     { id: "/messaging", label: "Chats", icon: MessageSquare },
-    // { id: "/ai-agent", label: "AI Agent", icon: Bot },
+    { id: "/ai-agent", label: "AI Agent", icon: Bot },
     // { id: "/automations", label: "Flow Builder", icon: GitFork },
     { id: "/templates", label: "Templates", icon: FileText },
     // { id: "/campaigns", label: "Campaigns & Templates", icon: Radio },
