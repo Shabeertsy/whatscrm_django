@@ -26,6 +26,7 @@ export function Pipeline() {
     handleAddStage,
     handleMoveDeal,
     handleSaveDeal,
+    handleDeleteDeal,
   } = usePipeline();
 
   const [showAddDealModal, setShowAddDealModal] = useState(false);
@@ -90,6 +91,17 @@ export function Pipeline() {
             setEditingDeal(null);
           }}
           onSubmit={handleSaveDeal}
+          onDelete={
+            editingDeal 
+              ? async () => { 
+                  const success = await handleDeleteDeal(editingDeal.id);
+                  if (success) {
+                    setShowAddDealModal(false);
+                    setEditingDeal(null);
+                  }
+                } 
+              : undefined
+          }
         />
       )}
 

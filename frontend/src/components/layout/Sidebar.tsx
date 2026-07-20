@@ -20,26 +20,23 @@ import {
   FileText
 } from "lucide-react";
 import { useRouter } from "../../router";
-import { useTeamStore } from "../../store/teamStore";
+
 
 export function Sidebar() {
   const { path, navigate } = useRouter();
-  const [teamState, setTeamState] = useTeamStore();
-  const [showTenantDropdown, setShowTenantDropdown] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
-  const currentTenant = teamState.currentTenant;
-  const credits = teamState.credits;
 
   const navItems = [
     { id: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "/hotels", label: "Hotels and Resorts", icon: Building2 },
-    { id: "/contacts", label: "Contacts", icon: Contact2 },
-    { id: "/pipeline", label: "Pipeline", icon: Sliders },
     { id: "/messaging", label: "Chats", icon: MessageSquare },
-    // { id: "/ai-agent", label: "AI Agent", icon: Bot },
-    // { id: "/automations", label: "Flow Builder", icon: GitFork },
+    { id: "/pipeline", label: "Pipeline", icon: Sliders },
+    { id: "/contacts", label: "Contacts", icon: Contact2 },
+    { id: "/hotels", label: "Hotels and Resorts", icon: Building2 },
     { id: "/templates", label: "Templates", icon: FileText },
+
+    { id: "/ai-agent", label: "AI Agent", icon: Bot },
+    // { id: "/automations", label: "Flow Builder", icon: GitFork },
     // { id: "/campaigns", label: "Campaigns & Templates", icon: Radio },
     // { id: "/voice", label: "Voice/Calls", icon: PhoneCall },
   ];

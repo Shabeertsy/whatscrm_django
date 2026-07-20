@@ -98,3 +98,19 @@ export const updateAiProvider = async (id: string, payload: AiProviderPayload): 
 export const deleteAiProvider = async (id: string): Promise<void> => {
   await apiClient.delete(`/ai/ai-providers/${id}/`);
 };
+
+export const testAiAgent = async (messages: any[], agentConfig: AiAgentConfig): Promise<{reply: string, error?: string}> => {
+  try {
+    const { data } = await apiClient.post("/ai/test-agent/", {
+      messages: messages,
+      agent_config: agentConfig
+    });
+    return data;
+  } catch (error: any) {
+    if (error.response && error.response.data && error.response.data.error) {
+      return { reply: "", error: error.response.data.error };
+    }
+    return { reply: "", error: "Failed to connect to the test agent." };
+  }
+};
+

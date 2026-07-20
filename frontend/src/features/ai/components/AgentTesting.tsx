@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Send, Terminal } from "lucide-react";
-import { AiAgentConfig } from "../../../api/ai";
+import { AiAgentConfig, testAiAgent } from "../../../api/ai";
 
 
 interface AgentTestingProps {
@@ -12,6 +12,15 @@ interface TestMessage {
   text: string;
 }
 
+const formatWhatsAppText = (text: string) => {
+  if (!text) return "";
+  let formatted = text.replace(/\*(.*?)\*/g, '<strong>$1</strong>');
+  formatted = formatted.replace(/_(.*?)_/g, '<em>$1</em>');
+  formatted = formatted.replace(/~(.*?)~/g, '<del>$1</del>');
+  formatted = formatted.replace(/\n/g, '<br />');
+  return formatted;
+};
+
 export function AgentTesting({ config }: AgentTestingProps) {
   const [messages, setMessages] = useState<TestMessage[]>([
     { sender: "agent", text: "Hello! I am ready to test your system instructions. How can I help you today?" }
@@ -19,21 +28,28 @@ export function AgentTesting({ config }: AgentTestingProps) {
   const [inputVal, setInputVal] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputVal.trim()) return;
 
     const userMsg = inputVal;
-    setMessages((prev) => [...prev, { sender: "user", text: userMsg }]);
+    const newMessages = [...messages, { sender: "user" as const, text: userMsg }];
+    setMessages(newMessages);
     setInputVal("");
     setIsTyping(true);
 
-    // Simulate Agent Reply after delay
-    setTimeout(() => {
+    try {
+      const response = await testAiAgent(newMessages, config);
       setIsTyping(false);
-      const agentReplyText = `[AI Simulation: ${config.model_name}] Received instruction to reply based on prompt: "${config.system_prompt.slice(0, 40)}...". Temperature set to ${config.temperature}.`;
-      setMessages((prev) => [...prev, { sender: "agent", text: agentReplyText }]);
-    }, config.auto_reply_delay * 1000 || 1000);
+      if (response.error) {
+        setMessages((prev) => [...prev, { sender: "agent", text: `[Error] ${response.error}` }]);
+      } else {
+        setMessages((prev) => [...prev, { sender: "agent", text: response.reply }]);
+      }
+    } catch (err) {
+      setIsTyping(false);
+      setMessages((prev) => [...prev, { sender: "agent", text: "[Error] Failed to connect to the agent API." }]);
+    }
   };
 
   return (
@@ -61,7 +77,10 @@ export function AgentTesting({ config }: AgentTestingProps) {
                 ? "bg-[#007e3a] text-white rounded-tr-sm" 
                 : "bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-tl-sm"
             }`}>
-              <p className="font-medium leading-relaxed">{m.text}</p>
+              <div 
+                className="font-medium leading-relaxed" 
+                dangerouslySetInnerHTML={{ __html: formatWhatsAppText(m.text) }} 
+              />
             </div>
           </div>
         ))}

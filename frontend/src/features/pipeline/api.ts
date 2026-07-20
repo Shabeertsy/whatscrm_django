@@ -89,3 +89,7 @@ export const updateDeal = async (id: string, data: Partial<Deal>): Promise<Deal>
   const res = await apiClient.patch(`/contacts/pipeline/deals/${id}/`, data);
   return res.data;
 };
+
+export const deleteDeal = async (id: string): Promise<void> => {
+  await apiClient.delete(`/contacts/pipeline/deals/${id}/`);
+};

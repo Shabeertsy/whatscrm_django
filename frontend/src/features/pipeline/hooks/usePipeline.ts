@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import {
   getPipelines, createPipeline, updatePipeline, deletePipeline,
-  activatePipeline, createStage, getDeals, createDeal, updateDeal,
+  activatePipeline, createStage, getDeals, createDeal, updateDeal, deleteDeal,
   Pipeline, Deal,
 } from "../api";
 import { apiClient } from "../../../api/client";
@@ -201,6 +201,19 @@ export function usePipeline() {
     }
   };
 
+  const handleDeleteDeal = async (id: string): Promise<boolean> => {
+    if (!confirm("Are you sure you want to delete this deal?")) return false;
+    try {
+      await deleteDeal(id);
+      setDeals(prev => prev.filter(d => d.id !== id));
+      toast.success("Deal deleted!");
+      return true;
+    } catch {
+      toast.error("Failed to delete deal");
+      return false;
+    }
+  };
+
   return {
     pipelines,
     activePipeline,
@@ -216,5 +229,6 @@ export function usePipeline() {
     handleAddStage,
     handleMoveDeal,
     handleSaveDeal,
+    handleDeleteDeal,
   };
 }

@@ -6,9 +6,10 @@ interface Props {
   initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; note?: string | null };
   onClose: () => void;
   onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; note?: string | null }) => Promise<boolean>;
+  onDelete?: () => void;
 }
 
-export function AddDealModal({ contacts, initialData, onClose, onSubmit }: Props) {
+export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelete }: Props) {
   const [form, setForm] = React.useState({
     name: initialData?.name || "",
     value: initialData?.value || 0,
@@ -75,11 +76,23 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit }: Props
             />
           </div>
         </div>
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
-          <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800">Cancel</button>
-          <button onClick={handleSubmit} className="px-4 py-2 bg-[#007e3a] hover:bg-[#00662f] text-white text-sm font-bold rounded-lg">
-            {initialData ? "Save Changes" : "Create Deal"}
-          </button>
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <div>
+            {initialData && onDelete && (
+              <button 
+                onClick={onDelete} 
+                className="px-4 py-2 text-sm font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+              >
+                Delete
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button onClick={onClose} className="px-4 py-2 text-sm font-semibold text-slate-600 hover:text-slate-800">Cancel</button>
+            <button onClick={handleSubmit} className="px-4 py-2 bg-[#007e3a] hover:bg-[#00662f] text-white text-sm font-bold rounded-lg">
+              {initialData ? "Save Changes" : "Create Deal"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
