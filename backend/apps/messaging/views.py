@@ -149,6 +149,11 @@ class ConversationSendMessageAPIView(APIView):
                 
         storage_path = serializer.validated_data.get('storage_path', '')
 
+        # Process external media URLs (download, convert webp, save locally)
+        if media_url and not storage_path:
+            from apps.messaging.utils import process_external_media_url
+            media_url, storage_path = process_external_media_url(media_url, msg_type, phone=conv.contact.phone)
+
         filename = ""
         if storage_path:
             filename = os.path.basename(storage_path)
@@ -185,10 +190,10 @@ class ConversationSendMessageAPIView(APIView):
         msg = Message.objects.create(
             conversation=conv,
             direction='outbound',
-            msg_type=serializer.validated_data.get('msg_type', 'text'),
+            msg_type=msg_type,
             body=body,
-            media_url=serializer.validated_data.get('media_url', ''),
-            storage_path=serializer.validated_data.get('storage_path', ''),
+            media_url=media_url,
+            storage_path=storage_path,
             related_room_uuid=related_room_uuid if related_room_uuid else None,
             replied_to=replied_to_obj,
             sent_by=request.user,
@@ -611,6 +616,13 @@ class WebhookView(APIView):
 
         # Auto-create pipeline deal on first inbound message 
         self._maybe_create_pipeline_deal(contact, conv, instance)
+
+        if getattr(conv, 'ai_active', False):
+            if getattr(settings, 'CELERY_ENABLED', True):
+                from apps.ai.tasks import handle_inbound_message
+                handle_inbound_message.delay(conv.id)
+            else:
+                logger.warning("AI auto-reply skipped because CELERY_ENABLED is false.")
 
     def _handle_status_update(self, status_data: dict):
         """Update message delivery/read status from Meta callbacks."""

@@ -364,3 +364,95 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     response = requests.post(url, headers=headers, json=data, timeout=10)
     response.raise_for_status()
     return response.json()
+
+def process_external_media_url(media_url, msg_type, phone="general"):
+    """
+    1. If it's a presigned R2/S3 URL from our own storage, refresh it without downloading.
+    2. If it's a .webp image (unsupported by WhatsApp), download and convert to .jpeg.
+    3. Otherwise, return the URL unmodified to avoid unnecessary downloads.
+    """
+    if not media_url or not media_url.startswith("http"):
+        return media_url, ""
+        
+    import os
+    from django.conf import settings
+    from apps.messaging.storage_backends import get_whatsapp_storage
+    from urllib.parse import urlparse, unquote
+    
+    # 1. Check if it's our R2/S3 presigned URL
+    if "X-Amz-Signature" in media_url:
+        try:
+            parsed = urlparse(media_url)
+            endpoint = getattr(settings, 'R2_ENDPOINT_URL', '')
+            # If the domain matches our R2 endpoint
+            if endpoint and parsed.netloc in endpoint:
+                bucket_name = getattr(settings, 'R2_BUCKET_NAME', '')
+                path = unquote(parsed.path)
+                # Remove leading slash and bucket name (if path style)
+                if path.startswith('/'):
+                    path = path[1:]
+                if path.startswith(f"{bucket_name}/"):
+                    path = path[len(bucket_name)+1:]
+                    
+                storage = get_whatsapp_storage()
+                # Return fresh presigned URL, and the relative storage path (so we can upload it directly)
+                return storage.url(path), path
+        except Exception as e:
+            import logging
+            logging.getLogger(__name__).error(f"Failed to parse R2 URL: {e}")
+
+    # 2. Check if it's a .webp that needs conversion
+    filename = os.path.basename(media_url.split('?')[0])
+    is_webp = filename.lower().endswith('.webp')
+    
+    # If it's not a webp, let Meta fetch it directly
+    if not (msg_type == 'image' and is_webp):
+        return media_url, ""
+        
+    import requests
+    from django.core.files.base import ContentFile
+    
+    try:
+        res = requests.get(media_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=20)
+        if not res.ok:
+            return media_url, ""
+            
+        content_type = res.headers.get('Content-Type', '')
+        content = res.content
+        
+        # WhatsApp doesn't support webp for images (only stickers)
+        if msg_type == 'image' and (is_webp or 'webp' in content_type):
+            try:
+                from PIL import Image
+                import io
+                img = Image.open(io.BytesIO(content))
+                img = img.convert('RGB')
+                out = io.BytesIO()
+                img.save(out, format='JPEG', quality=85)
+                content = out.getvalue()
+                if filename.lower().endswith('.webp'):
+                    filename = filename.rsplit('.', 1)[0] + '.jpg'
+                else:
+                    filename = filename + '.jpg'
+                content_type = 'image/jpeg'
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).error(f"Failed to convert webp to jpeg: {e}")
+                
+        file_obj = ContentFile(content, name=filename)
+        file_obj.content_type = content_type
+        
+        saved_data = save_whatsapp_media(file_obj, phone)
+        saved_path = saved_data['path']
+        
+        storage = get_whatsapp_storage()
+        try:
+            new_media_url = storage.url(saved_path)
+        except Exception:
+            new_media_url = f"{settings.MEDIA_URL}{saved_path}" if hasattr(settings, 'MEDIA_URL') else f"/media/{saved_path}"
+            
+        return new_media_url, saved_path
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to process external media URL: {e}")
+        return media_url, ""
