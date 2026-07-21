@@ -137,20 +137,15 @@ class ConversationListSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'unread_count', 'last_message_at']
 
     def get_last_message(self, obj):
-        messages = list(obj.messages.all())
-        if not messages:
-            return None
-        msg = sorted(messages, key=lambda m: m.timestamp, reverse=True)[0]
-        media_url = _resolve_media_url(msg.storage_path, msg.media_url)
-        return {'body': msg.body, 'direction': msg.direction, 'msg_type': msg.msg_type, 'media_url': media_url}
+        msg = obj.messages.order_by('-timestamp').first()
+        if msg:
+            media_url = _resolve_media_url(msg.storage_path, msg.media_url)
+            return {'body': msg.body, 'direction': msg.direction, 'msg_type': msg.msg_type, 'media_url': media_url}
+        return None
 
     def get_last_inbound_at(self, obj):
-        messages = list(obj.messages.all())
-        inbound = [m for m in messages if m.direction == 'inbound']
-        if not inbound:
-            return None
-        msg = sorted(inbound, key=lambda m: m.timestamp, reverse=True)[0]
-        return msg.timestamp.isoformat()
+        msg = obj.messages.filter(direction='inbound').order_by('-timestamp').first()
+        return msg.timestamp.isoformat() if msg else None
 
     def get_instance_name(self, obj):
         return obj.instance.display_name if obj.instance else None

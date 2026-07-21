@@ -86,7 +86,7 @@ class ConversationListAPIView(APIView):
     def get(self, request):
         qs = Conversation.objects.select_related(
             'contact', 'contact__crm_contact', 'instance', 'assigned_agent'
-        ).prefetch_related('messages')
+        )
 
         status_filter = request.query_params.get('status')
         instance_id   = request.query_params.get('instance')
