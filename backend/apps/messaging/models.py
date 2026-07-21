@@ -139,6 +139,10 @@ class Message(models.Model):
   
     # WhatsApp timestamp from Meta payload
     timestamp = models.DateTimeField()
+    
+    # Reaction emoji 
+    reaction = models.CharField(max_length=50, blank=True, null=True)
+    raw_data = models.JSONField(blank=True, null=True)
 
     class Meta:
         ordering = ['timestamp']

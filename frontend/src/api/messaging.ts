@@ -57,6 +57,7 @@ export interface Message {
   sent_by_name: string | null;
   status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
   timestamp: string;
+  reaction?: string | null;
 }
 
 export interface ConversationDetail extends Conversation {

@@ -107,6 +107,12 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           isOutbound={isOutbound} 
           timestamp={message.timestamp} 
         />
+
+        {message.reaction && (
+          <div className={`absolute -bottom-2 ${isOutbound ? 'left-2' : 'right-2'} bg-white dark:bg-slate-800 rounded-full shadow border border-slate-100 dark:border-slate-700 px-1.5 py-0.5 text-xs z-10 flex items-center justify-center min-w-[24px]`}>
+            {message.reaction}
+          </div>
+        )}
       </div>
 
       <div className={`flex items-center space-x-2 ml-2 ${!isOutbound ? 'opacity-0 group-hover:opacity-100 transition-opacity' : 'hidden'}`}>

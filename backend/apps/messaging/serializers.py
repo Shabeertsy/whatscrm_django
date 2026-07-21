@@ -68,7 +68,7 @@ class MessageSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'conversation', 'wa_message_id',
             'direction', 'msg_type', 'body', 'media_url', 'storage_path', 'related_room_uuid',
-            'sent_by', 'sent_by_name', 'status', 'timestamp', 'replied_to_message',
+            'sent_by', 'sent_by_name', 'status', 'timestamp', 'replied_to_message', 'reaction',
         ]
         read_only_fields = ['id', 'wa_message_id', 'replied_to_message']
 

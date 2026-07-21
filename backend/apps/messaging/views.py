@@ -563,6 +563,20 @@ class WebhookView(APIView):
         media_url = ''
         storage_path = ''
         
+        if msg_type == 'reaction':
+            reaction_data = msg_data.get('reaction', {})
+            orig_wa_id = reaction_data.get('message_id')
+            emoji = reaction_data.get('emoji', '')
+            
+            if orig_wa_id:
+                orig_msg = Message.objects.filter(wa_message_id=orig_wa_id).first()
+                if orig_msg:
+                    orig_msg.reaction = emoji
+                    orig_msg.save(update_fields=['reaction'])
+                    from .utils import broadcast_message_update
+                    broadcast_message_update(conv, orig_msg)
+            return  # skip creating a new message
+        
         if msg_type == 'text':
             body = msg_data.get('text', {}).get('body', '')
 
@@ -610,6 +624,7 @@ class WebhookView(APIView):
             replied_to=replied_to_obj,
             status='delivered',
             timestamp=ts,
+            raw_data=msg_data,
         )
 
         # Update conversation metadata
