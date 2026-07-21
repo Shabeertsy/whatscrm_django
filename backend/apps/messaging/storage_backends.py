@@ -9,6 +9,9 @@ class R2MediaStorage(S3Storage):
     file_overwrite = False
     querystring_auth = True
 
+import functools
+
+@functools.lru_cache(maxsize=1)
 def get_whatsapp_storage():
     from django.core.files.storage import FileSystemStorage
     use_s3 = os.getenv("USE_S3_FOR_MEDIA", "False").lower() == "true"
