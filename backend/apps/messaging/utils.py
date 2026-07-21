@@ -42,41 +42,47 @@ def save_whatsapp_media(file_obj, phone=None):
         if file_obj.size > 300 * 1024 and mime in ['image/jpeg', 'image/png', 'image/webp']:
             try:
                 img = Image.open(file_obj)
-                # Preserve EXIF orientation
-                img = ImageOps.exif_transpose(img)
                 
-                # Handle transparency safely for JPEG
-                if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
-                    img = img.convert("RGBA")
-                    bg = Image.new("RGB", img.size, (255, 255, 255))
-                    bg.paste(img, mask=img.split()[3])
-                    img = bg
-                elif img.mode != "RGB":
-                    img = img.convert("RGB")
-                    
-                # Resize before compression
-                if hasattr(Image, 'Resampling'):
-                    img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
+                # Skip compression if it's an animated webp (like an animated sticker)
+                if getattr(img, 'is_animated', False):
+                    file_obj.seek(0)
+                    pass
                 else:
-                    img.thumbnail((1920, 1920), Image.LANCZOS)
-                
-                quality = 90
-                output = BytesIO()
-                
-                # Compress to JPEG and ensure size is < 1MB
-                while quality > 10:
+                    # Preserve EXIF orientation
+                    img = ImageOps.exif_transpose(img)
+                    
+                    # Handle transparency safely for JPEG
+                    if img.mode in ("RGBA", "LA") or (img.mode == "P" and "transparency" in img.info):
+                        img = img.convert("RGBA")
+                        bg = Image.new("RGB", img.size, (255, 255, 255))
+                        bg.paste(img, mask=img.split()[3])
+                        img = bg
+                    elif img.mode != "RGB":
+                        img = img.convert("RGB")
+                        
+                    # Resize before compression
+                    if hasattr(Image, 'Resampling'):
+                        img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
+                    else:
+                        img.thumbnail((1920, 1920), Image.LANCZOS)
+                    
+                    quality = 90
+                    output = BytesIO()
+                    
+                    # Compress to JPEG and ensure size is < 1MB
+                    while quality > 10:
+                        output.seek(0)
+                        output.truncate(0)
+                        img.save(output, format='JPEG', quality=quality)
+                        if output.tell() <= 1024 * 1024:
+                            break
+                        quality -= 10
+                    
                     output.seek(0)
-                    output.truncate(0)
-                    img.save(output, format='JPEG', quality=quality)
-                    if output.tell() <= 1024 * 1024:
-                        break
-                    quality -= 10
-                
-                output.seek(0)
-                ext = '.jpg'
-                mime = 'image/jpeg'
-                filename = f"{date_str}_{short_uuid}{ext}"
-                file_obj = ContentFile(output.read(), name=filename)
+                    ext = '.jpg'
+                    mime = 'image/jpeg'
+                    filename = f"{date_str}_{short_uuid}{ext}"
+                    file_obj = ContentFile(output.read(), name=filename)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error(f"Image compression failed: {e}")
