@@ -111,9 +111,8 @@ class Message(models.Model):
         on_delete=models.CASCADE,
         related_name='messages',
     )
-    # Meta's own message ID — used for delivery/read receipt updates
+    
     wa_message_id = models.CharField(max_length=255, blank=True, db_index=True)
-
     direction  = models.CharField(max_length=10, choices=DIRECTION_CHOICES)
     msg_type   = models.CharField(max_length=20, choices=TYPE_CHOICES, default='text')
     body       = models.TextField(blank=True)

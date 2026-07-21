@@ -40,6 +40,8 @@ from .utils import (
 )
 from .tasks import compress_chat_video
 
+from apps.ai.models import AIAgentSettings
+
 logger = logging.getLogger(__name__)
 
 
@@ -563,7 +565,7 @@ class WebhookView(APIView):
         
         if msg_type == 'text':
             body = msg_data.get('text', {}).get('body', '')
-            
+
         elif msg_type in ['image', 'video', 'audio', 'document', 'sticker']:
             media_obj = msg_data.get(msg_type, {})
             media_id = media_obj.get('id')
@@ -623,8 +625,9 @@ class WebhookView(APIView):
 
         # Auto-create pipeline deal on first inbound message 
         self._maybe_create_pipeline_deal(contact, conv, instance)
+        ai_settings = AIAgentSettings.objects.filter(instance=instance).first()
 
-        if getattr(conv, 'ai_active', False):
+        if ai_settings and ai_settings.is_active:
             if getattr(settings, 'CELERY_ENABLED', True):
                 from apps.ai.tasks import handle_inbound_message
                 handle_inbound_message.delay(conv.id)
