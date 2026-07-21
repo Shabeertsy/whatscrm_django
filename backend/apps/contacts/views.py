@@ -382,8 +382,60 @@ class PipelineStageDetailView(APIView):
         stage = self.get_object(pk, request.user)
         if not stage:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        pipeline = stage.pipeline
         stage.delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+
+        # Re-normalize orders of remaining stages: 1, 2, 3, ...
+        remaining = list(
+            PipelineStage.objects.filter(pipeline=pipeline, owner=request.user).order_by('order')
+        )
+        for i, s in enumerate(remaining):
+            new_order = i + 1
+            if s.order != new_order:
+                s.order = new_order
+                s.save(update_fields=['order'])
+
+        serializer = PipelineStageSerializer(remaining, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+#  Stage Swap 
+class PipelineStageSwapView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        stage_a_id = request.data.get('stage_a')
+        stage_b_id = request.data.get('stage_b')
+        if not stage_a_id or not stage_b_id:
+            return Response(
+                {'detail': 'Both stage_a and stage_b are required.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            stage_a = PipelineStage.objects.get(pk=stage_a_id, owner=request.user)
+            stage_b = PipelineStage.objects.get(pk=stage_b_id, owner=request.user)
+        except PipelineStage.DoesNotExist:
+            return Response({'detail': 'One or both stages not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if stage_a.pipeline_id != stage_b.pipeline_id:
+            return Response(
+                {'detail': 'Stages must belong to the same pipeline.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        # Atomic swap using a temp value to avoid unique-constraint conflicts
+        with transaction.atomic():
+            order_a, order_b = stage_a.order, stage_b.order
+            stage_a.order = order_b
+            stage_b.order = order_a
+            stage_a.save(update_fields=['order'])
+            stage_b.save(update_fields=['order'])
+
+        return Response({
+            'stage_a': PipelineStageSerializer(stage_a).data,
+            'stage_b': PipelineStageSerializer(stage_b).data,
+        }, status=status.HTTP_200_OK)
 
 
 # ─── Deal APIs (scoped to pipeline) ──────────────────────────────────────────

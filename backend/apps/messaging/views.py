@@ -85,7 +85,7 @@ class ConversationListAPIView(APIView):
 
     def get(self, request):
         qs = Conversation.objects.select_related(
-            'contact', 'instance', 'assigned_agent'
+            'contact', 'contact__crm_contact', 'instance', 'assigned_agent'
         ).prefetch_related('messages')
 
         status_filter = request.query_params.get('status')
@@ -110,8 +110,14 @@ class ConversationDetailAPIView(APIView):
 
     def get(self, request, pk):
         qs = Conversation.objects.select_related(
-            'contact', 'instance', 'assigned_agent'
-        ).prefetch_related('messages')
+            'contact', 'contact__crm_contact', 'instance', 'assigned_agent'
+        ).prefetch_related(
+            'messages',
+            'messages__sent_by',
+            'messages__replied_to',
+            'messages__replied_to__sent_by',
+            'messages__replied_to__conversation__contact__crm_contact'
+        )
         conv = get_object_or_404(qs, pk=pk)
         serializer = ConversationDetailSerializer(conv)
         return Response(serializer.data)
@@ -617,12 +623,12 @@ class WebhookView(APIView):
         # Auto-create pipeline deal on first inbound message 
         self._maybe_create_pipeline_deal(contact, conv, instance)
 
-        # if getattr(conv, 'ai_active', False):
-        #     if getattr(settings, 'CELERY_ENABLED', True):
-        #         from apps.ai.tasks import handle_inbound_message
-        #         handle_inbound_message.delay(conv.id)
-        #     else:
-        #         logger.warning("AI auto-reply skipped because CELERY_ENABLED is false.")
+        if getattr(conv, 'ai_active', False):
+            if getattr(settings, 'CELERY_ENABLED', True):
+                from apps.ai.tasks import handle_inbound_message
+                handle_inbound_message.delay(conv.id)
+            else:
+                logger.warning("AI auto-reply skipped because CELERY_ENABLED is false.")
 
     def _handle_status_update(self, status_data: dict):
         """Update message delivery/read status from Meta callbacks."""
@@ -671,15 +677,11 @@ class WebhookView(APIView):
 
 
     def _maybe_create_pipeline_deal(self, wa_contact, conv, instance):
-        """
-        Auto-create a deal in the active pipeline when a new inbound contact
-        messages for the first time, if the pipeline has auto_create_deals=True.
-        Scoped to the instance owner for multi-tenancy safety.
-        """
+
         try:
             from apps.contacts.models import Pipeline, PipelineDeal
 
-            # Find the instance owner (user)
+            # Find the instance user
             owner = instance.user if instance and hasattr(instance, 'user') else None
             if not owner:
                 return
@@ -697,8 +699,10 @@ class WebhookView(APIView):
             if PipelineDeal.objects.filter(pipeline=pipeline, wa_contact=wa_contact).exists():
                 return
 
-            # Get or create the first stage
-            stage = pipeline.stages.order_by('order').first()
+            # Guarantee the deal lands in the very first column (order=1)
+            stage = pipeline.stages.filter(order=1).first()
+            if not stage:
+                stage = pipeline.stages.order_by('order').first()
             if not stage:
                 from apps.contacts.models import PipelineStage
                 stage = PipelineStage.objects.create(

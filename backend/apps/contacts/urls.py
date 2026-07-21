@@ -4,7 +4,7 @@ from .views import (
     ContactTagListCreateView, ContactTagDetailView,
     WAContactsListView, WAContactsImportView,
     PipelineListCreateView, PipelineDetailView, PipelineActivateView,
-    PipelineStageListCreateView, PipelineStageDetailView,
+    PipelineStageListCreateView, PipelineStageDetailView, PipelineStageSwapView,
     PipelineDealListCreateView, PipelineDealDetailView,
 )
 
@@ -23,6 +23,7 @@ urlpatterns = [
 
     # Stages
     path('pipeline/stages/', PipelineStageListCreateView.as_view(), name='pipeline_stage_list'),
+    path('pipeline/stages/swap/', PipelineStageSwapView.as_view(), name='pipeline_stage_swap'),
     path('pipeline/stages/<uuid:pk>/', PipelineStageDetailView.as_view(), name='pipeline_stage_detail'),
 
     # Deals
