@@ -19,13 +19,13 @@ class Contact(BaseModel):
     name            = models.CharField(max_length=255, blank=True)
     profile_pic_url = models.URLField(max_length=1024, blank=True)
 
-    is_saved        = models.BooleanField(default=False)
-    source          = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='inbound')
-    tags            = models.JSONField(default=list, blank=True)
-    notes           = models.TextField(blank=True)
+    is_saved = models.BooleanField(default=False)
+    source   = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='inbound')
+    tags     = models.JSONField(default=list, blank=True)
+    notes    = models.TextField(blank=True)
 
-    # Link to CRM contact — set when the WhatsApp contact is imported into CRM
-    crm_contact     = models.OneToOneField(
+    # Link to CRM contact
+    crm_contact = models.OneToOneField(
         'contacts.Contact',
         null=True, blank=True,
         on_delete=models.SET_NULL,
@@ -42,7 +42,6 @@ class Contact(BaseModel):
 
 
 class Conversation(models.Model):
-
     STATUS_CHOICES = [
         ('open',     'Open'),
         ('pending',  'Pending'),
@@ -111,7 +110,7 @@ class Message(models.Model):
         on_delete=models.CASCADE,
         related_name='messages',
     )
-    
+
     wa_message_id = models.CharField(max_length=255, blank=True, db_index=True)
     direction  = models.CharField(max_length=10, choices=DIRECTION_CHOICES)
     msg_type   = models.CharField(max_length=20, choices=TYPE_CHOICES, default='text')
@@ -138,7 +137,7 @@ class Message(models.Model):
 
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='sent')
   
-    # Original WhatsApp timestamp from Meta payload
+    # WhatsApp timestamp from Meta payload
     timestamp = models.DateTimeField()
 
     class Meta:

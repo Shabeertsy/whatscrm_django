@@ -64,6 +64,22 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
     }
   }, [messages]);
 
+  const handleToggleAi = async () => {
+    const newStatus = !conversation.ai_active;
+    
+    // Optimistic UI update
+    messagingStore.updateConversationMeta(conversation.id, { ai_active: newStatus });
+    
+    try {
+      await messagingApi.updateConversation(conversation.id, { ai_active: newStatus });
+    } catch (err) {
+      // Revert if failed
+      messagingStore.updateConversationMeta(conversation.id, { ai_active: !newStatus });
+      console.error(err);
+      alert('Failed to update AI status for this conversation.');
+    }
+  };
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-slate-50/10 dark:bg-slate-900/10 transition duration-200 relative">
       {/* Chat Header */}
@@ -102,10 +118,20 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
              </span>
           )}
           {isAiActive && (
-             <div className="flex items-center space-x-1.5 px-2 py-1 bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 rounded-full" title="Global AI is Active">
+             <button
+               onClick={handleToggleAi}
+               title={conversation.ai_active ? "Click to disable AI for this contact" : "Click to enable AI for this contact"}
+               className={`flex items-center space-x-1.5 px-2 py-1 rounded-full transition-colors ${
+                 conversation.ai_active
+                   ? "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-500/30"
+                   : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+               }`}
+             >
                <Bot className="h-3.5 w-3.5" />
-               <span className="text-[10px] font-bold">AI Active</span>
-             </div>
+               <span className="text-[10px] font-bold">
+                 {conversation.ai_active ? "AI Active" : "AI Disabled"}
+               </span>
+             </button>
           )}
         </div>
       </div>
