@@ -625,9 +625,9 @@ class WebhookView(APIView):
 
         # Auto-create pipeline deal on first inbound message 
         self._maybe_create_pipeline_deal(contact, conv, instance)
-        ai_settings = AIAgentSettings.objects.filter(instance=instance).first()
+        ai_settings = AIAgentSettings.objects.filter(is_active=True).first()
 
-        if ai_settings and ai_settings.is_active:
+        if ai_settings and getattr(conv, 'ai_active', False):
             if getattr(settings, 'CELERY_ENABLED', True):
                 from apps.ai.tasks import handle_inbound_message
                 handle_inbound_message.delay(conv.id)
