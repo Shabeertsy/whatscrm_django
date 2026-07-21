@@ -1,5 +1,29 @@
 from rest_framework import serializers
 from .models import Contact, Conversation, Message
+from .storage_backends import get_whatsapp_storage
+
+def _resolve_media_url(storage_path, fallback_url):
+    if storage_path:
+        try:
+            storage = get_whatsapp_storage()
+            url = storage.url(storage_path)
+            if url.startswith('http://') or url.startswith('https://'):
+                return url
+                
+            from django.conf import settings
+            base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000').rstrip('/')
+            if not url.startswith('/'):
+                url = '/' + url
+            return f"{base}{url}"
+        except Exception:
+            pass
+            
+    if fallback_url and fallback_url.startswith('/media/'):
+        from django.conf import settings
+        base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000').rstrip('/')
+        return f"{base}{fallback_url}"
+        
+    return fallback_url
 
 
 #  Contact ##
@@ -60,18 +84,16 @@ class MessageSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        if ret.get('media_url') and ret['media_url'].startswith('/media/'):
-            from django.conf import settings
-            base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000')
-     
-            base = base.rstrip('/')
-            ret['media_url'] = f"{base}{ret['media_url']}"
+        
+        # Override media_url with actual storage URL if available
+        ret['media_url'] = _resolve_media_url(instance.storage_path, ret.get('media_url'))
             
-        if ret.get('replied_to_message') and ret['replied_to_message'].get('media_url') and ret['replied_to_message']['media_url'].startswith('/media/'):
-            from django.conf import settings
-            base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000')
-            base = base.rstrip('/')
-            ret['replied_to_message']['media_url'] = f"{base}{ret['replied_to_message']['media_url']}"
+        if ret.get('replied_to_message'):
+            replied_to_storage_path = instance.replied_to.storage_path if instance.replied_to else None
+            ret['replied_to_message']['media_url'] = _resolve_media_url(
+                replied_to_storage_path, 
+                ret['replied_to_message'].get('media_url')
+            )
             
         return ret
 
@@ -117,12 +139,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
     def get_last_message(self, obj):
         msg = obj.messages.order_by('-timestamp').first()
         if msg:
-            media_url = msg.media_url
-            if media_url and media_url.startswith('/media/'):
-                from django.conf import settings
-                base = getattr(settings, 'BACKEND_PUBLIC_URL', 'http://127.0.0.1:8000')
-                base = base.rstrip('/')
-                media_url = f"{base}{media_url}"
+            media_url = _resolve_media_url(msg.storage_path, msg.media_url)
             return {'body': msg.body, 'direction': msg.direction, 'msg_type': msg.msg_type, 'media_url': media_url}
         return None
 
