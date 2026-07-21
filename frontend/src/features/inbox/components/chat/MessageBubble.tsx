@@ -82,7 +82,14 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
         )}
         {message.msg_type === 'audio' && message.media_url && <AudioMessage mediaUrl={message.media_url} />}
         {message.msg_type === 'sticker' && message.media_url && <StickerMessage mediaUrl={message.media_url} />}
-        {message.msg_type !== 'text' && message.msg_type !== 'template' && message.msg_type !== 'sticker' && !['image', 'video', 'audio'].includes(message.msg_type) && (
+        
+        {message.msg_type === 'unsupported' && (
+          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-md border border-red-100 dark:border-red-900/30 max-w-[280px]">
+            <span className="text-xs font-medium">This message type (like some 3rd-party stickers) is not supported by the WhatsApp Business API.</span>
+          </div>
+        )}
+
+        {message.msg_type !== 'text' && message.msg_type !== 'template' && message.msg_type !== 'sticker' && message.msg_type !== 'unsupported' && !['image', 'video', 'audio'].includes(message.msg_type) && (
           <DocumentMessage msgType={message.msg_type} mediaUrl={message.media_url} />
         )}
 
