@@ -38,7 +38,7 @@ export function ReplyPreview({ messageId, senderName, msgType, body, mediaUrl }:
       </div>
       {mediaUrl && (
         <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-black/10">
-          {msgType === 'image' ? (
+          {['image', 'sticker'].includes(msgType) ? (
             <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
           ) : msgType === 'video' ? (
             <video src={mediaUrl} className="w-full h-full object-cover" />

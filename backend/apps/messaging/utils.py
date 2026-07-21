@@ -323,7 +323,8 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     
     if msg_type == "text":
         data["text"] = {"preview_url": False, "body": message_text}
-    elif msg_type in ["image", "video", "document", "audio"]:
+        
+    elif msg_type in ["image", "video", "document", "audio", "sticker"]:
         # Try to upload the file directly if we have a local storage path
         media_id = None
         if storage_path:
@@ -345,7 +346,7 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
         else:
             media_payload = {"link": media_url}
             
-        if message_text and msg_type != "audio":
+        if message_text and msg_type not in ["audio", "sticker"]:
             media_payload["caption"] = message_text
         if msg_type == "document" and filename:
             media_payload["filename"] = filename

@@ -1,23 +1,23 @@
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
-interface ImageMessageProps {
+interface StickerMessageProps {
   mediaUrl: string;
 }
 
-export function ImageMessage({ mediaUrl }: ImageMessageProps) {
+export function StickerMessage({ mediaUrl }: StickerMessageProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <>
       <div 
-        className="mb-2 rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer"
+        className="mb-2 bg-transparent cursor-pointer"
         onClick={() => setIsExpanded(true)}
       >
         <img 
           src={mediaUrl} 
-          alt="Attached image" 
-          className="max-w-full h-auto object-cover max-h-64 hover:opacity-90 transition-opacity" 
+          alt="Sticker" 
+          className="max-w-[150px] max-h-[150px] w-auto h-auto object-contain drop-shadow-sm hover:opacity-90 transition-opacity" 
         />
       </div>
 
@@ -37,8 +37,8 @@ export function ImageMessage({ mediaUrl }: ImageMessageProps) {
           </button>
           <img 
             src={mediaUrl} 
-            alt="Expanded image" 
-            className="max-w-full max-h-[90vh] object-contain rounded shadow-2xl"
+            alt="Expanded sticker" 
+            className="max-w-[80vw] max-h-[80vh] object-contain drop-shadow-2xl"
             onClick={(e) => e.stopPropagation()} 
           />
         </div>

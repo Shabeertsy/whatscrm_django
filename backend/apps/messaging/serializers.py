@@ -176,7 +176,7 @@ class SendMessageSerializer(serializers.Serializer):
     related_room_uuid   = serializers.CharField(max_length=255, allow_blank=True, required=False, default='')
     reply_to_message_id = serializers.IntegerField(required=False, allow_null=True)
     msg_type            = serializers.ChoiceField(
-        choices=['text', 'template', 'image', 'document', 'video', 'audio'],
+        choices=['text', 'template', 'image', 'document', 'video', 'audio', 'sticker'],
         default='text',
     )
     template_name       = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')

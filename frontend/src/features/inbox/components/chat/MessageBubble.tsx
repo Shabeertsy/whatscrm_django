@@ -10,6 +10,7 @@ import { VideoMessage } from './video/VideoMessage';
 import { AudioMessage } from './audio/AudioMessage';
 import { DocumentMessage } from './document/DocumentMessage';
 import { TemplateMessage } from './template/TemplateMessage';
+import { StickerMessage } from './sticker/StickerMessage';
 import { MessageStatus } from './MessageStatus';
 
 
@@ -80,7 +81,8 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           </div>
         )}
         {message.msg_type === 'audio' && message.media_url && <AudioMessage mediaUrl={message.media_url} />}
-        {message.msg_type !== 'text' && message.msg_type !== 'template' && !['image', 'video', 'audio'].includes(message.msg_type) && (
+        {message.msg_type === 'sticker' && message.media_url && <StickerMessage mediaUrl={message.media_url} />}
+        {message.msg_type !== 'text' && message.msg_type !== 'template' && message.msg_type !== 'sticker' && !['image', 'video', 'audio'].includes(message.msg_type) && (
           <DocumentMessage msgType={message.msg_type} mediaUrl={message.media_url} />
         )}
 

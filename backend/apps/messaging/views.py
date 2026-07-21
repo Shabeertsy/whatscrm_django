@@ -563,7 +563,8 @@ class WebhookView(APIView):
         
         if msg_type == 'text':
             body = msg_data.get('text', {}).get('body', '')
-        elif msg_type in ['image', 'video', 'audio', 'document']:
+            
+        elif msg_type in ['image', 'video', 'audio', 'document', 'sticker']:
             media_obj = msg_data.get(msg_type, {})
             media_id = media_obj.get('id')
             

@@ -45,3 +45,4 @@ yarn-error.log
 staticfiles/
 static/
 media/
+django.log
