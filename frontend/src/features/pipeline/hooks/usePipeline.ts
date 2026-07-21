@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import {
   getPipelines, createPipeline, updatePipeline, deletePipeline,
   activatePipeline, createStage, getDeals, createDeal, updateDeal, deleteDeal,
-  Pipeline, Deal,
+  updateStage, deleteStage, swapStages,
+  Pipeline, Deal, PipelineStage,
 } from "../api";
 import { apiClient } from "../../../api/client";
 import toast from "react-hot-toast";
@@ -169,6 +170,64 @@ export function usePipeline() {
     }
   };
 
+  const handleUpdateStage = async (stageId: string, data: Partial<PipelineStage>) => {
+    if (!activePipeline) return;
+    try {
+      const updated = await updateStage(stageId, data);
+      setActivePipeline(prev => {
+        if (!prev) return prev;
+        const updatedStages = prev.stages.map(s => s.id === stageId ? updated : s);
+        updatedStages.sort((a, b) => a.order - b.order);
+        return { ...prev, stages: updatedStages };
+      });
+      setPipelines(prev =>
+        prev.map(p => {
+          if (p.id !== activePipeline.id) return p;
+          const updatedStages = p.stages.map(s => s.id === stageId ? updated : s);
+          updatedStages.sort((a, b) => a.order - b.order);
+          return { ...p, stages: updatedStages };
+        })
+      );
+    } catch {
+      toast.error("Failed to update stage");
+    }
+  };
+
+  // Swap orders of two stages 
+  const handleSwapStages = async (stageAId: string, stageBId: string) => {
+    if (!activePipeline) return;
+    try {
+      const { stage_a, stage_b } = await swapStages(stageAId, stageBId);
+      const apply = (stages: PipelineStage[]) =>
+        stages
+          .map(s => s.id === stageAId ? stage_a : s.id === stageBId ? stage_b : s)
+          .sort((a, b) => a.order - b.order);
+      setActivePipeline(prev => prev ? { ...prev, stages: apply(prev.stages) } : prev);
+      setPipelines(prev => prev.map(p =>
+        p.id === activePipeline.id ? { ...p, stages: apply(p.stages) } : p
+      ));
+    } catch {
+      toast.error("Failed to reorder stages");
+    }
+  };
+
+  const handleDeleteStage = async (stageId: string) => {
+    if (!activePipeline) return;
+    if (!confirm("Are you sure you want to delete this stage? Deals in this stage will not be deleted but may become unassigned.")) return;
+
+    try {
+      // Backend deletes the stage, renormalizes remaining orders, and returns them
+      const renormalizedStages = await deleteStage(stageId);
+      setActivePipeline(prev => prev ? { ...prev, stages: renormalizedStages } : prev);
+      setPipelines(prev =>
+        prev.map(p => p.id === activePipeline.id ? { ...p, stages: renormalizedStages } : p)
+      );
+      toast.success("Stage deleted!");
+    } catch {
+      toast.error("Failed to delete stage");
+    }
+  };
+
   const handleMoveDeal = async (id: string, nextStage: string) => {
     const prevDeals = [...deals];
     setDeals(prev => prev.map(d => (d.id === id ? { ...d, stage: nextStage } : d)));
@@ -227,6 +286,9 @@ export function usePipeline() {
     handleCreatePipeline,
     handleUpdatePipeline,
     handleAddStage,
+    handleUpdateStage,
+    handleSwapStages,
+    handleDeleteStage,
     handleMoveDeal,
     handleSaveDeal,
     handleDeleteDeal,

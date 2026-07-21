@@ -24,6 +24,9 @@ export function Pipeline() {
     handleCreatePipeline,
     handleUpdatePipeline,
     handleAddStage,
+    handleUpdateStage,
+    handleSwapStages,
+    handleDeleteStage,
     handleMoveDeal,
     handleSaveDeal,
     handleDeleteDeal,
@@ -35,7 +38,7 @@ export function Pipeline() {
   const [showPipelineSettingsModal, setShowPipelineSettingsModal] = useState(false);
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full gap-4">
       <PageHeader
         title="CRM Deal Pipeline"
         description="Track lead conversions, deals value, and sales pipelines."
@@ -75,12 +78,18 @@ export function Pipeline() {
         />
       )}
 
-      <KanbanBoard
-        stages={activePipeline?.stages || []}
-        deals={deals}
-        onMoveDeal={handleMoveDeal}
-        onEditDeal={(deal) => setEditingDeal(deal)}
-      />
+      {/* Kanban board fills remaining height — horizontal scroll handled inside KanbanBoard */}
+      <div className="flex-1 min-h-0">
+        <KanbanBoard
+          stages={activePipeline?.stages || []}
+          deals={deals}
+          onMoveDeal={handleMoveDeal}
+          onEditDeal={(deal) => setEditingDeal(deal)}
+          onUpdateStage={handleUpdateStage}
+          onSwapStages={handleSwapStages}
+          onDeleteStage={handleDeleteStage}
+        />
+      </div>
 
       {(showAddDealModal || editingDeal) && (
         <AddDealModal

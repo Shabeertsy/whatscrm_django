@@ -66,6 +66,23 @@ export const createStage = async (pipelineId: string, data: { title: string; ord
   return res.data;
 };
 
+export const updateStage = async (id: string, data: Partial<PipelineStage>): Promise<PipelineStage> => {
+  const res = await apiClient.patch(`/contacts/pipeline/stages/${id}/`, data);
+  return res.data;
+};
+
+// Delete stage — backend renormalizes remaining orders and returns them
+export const deleteStage = async (id: string): Promise<PipelineStage[]> => {
+  const res = await apiClient.delete(`/contacts/pipeline/stages/${id}/`);
+  return res.data;
+};
+
+// Atomically swap orders of two stages
+export const swapStages = async (stageAId: string, stageBId: string): Promise<{ stage_a: PipelineStage; stage_b: PipelineStage }> => {
+  const res = await apiClient.post('/contacts/pipeline/stages/swap/', { stage_a: stageAId, stage_b: stageBId });
+  return res.data;
+};
+
 // ─── Deal APIs ───────────────────────────────────────────────────────────────
 
 export const getDeals = async (pipelineId: string): Promise<Deal[]> => {
