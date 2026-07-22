@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from "react";
-import { Send, Paperclip, X, Mic, Image as ImageIcon, FileText, Camera, User, BarChart, Square, LayoutTemplate } from "lucide-react";
+import { Send, Paperclip, X, Mic, Image as ImageIcon, FileText, Camera, User, BarChart, Square, LayoutTemplate, MessageSquareText, Plus } from "lucide-react";
 import { AudioVisualizer } from "./chat/audio/AudioVisualizer";
 
 
@@ -67,6 +67,24 @@ export function MessageComposer(props: MessageComposerProps) {
       console.error(e);
     } finally {
       setLoadingTemplates(false);
+    }
+  };
+
+  // Custom Message states
+  const [showCustomModal, setShowCustomModal] = React.useState(false);
+  const [customMessages, setCustomMessages] = React.useState<any[]>([]);
+  const [loadingCustomMessages, setLoadingCustomMessages] = React.useState(false);
+
+  const fetchCustomMessages = async () => {
+    setLoadingCustomMessages(true);
+    try {
+      const { messagingApi } = await import("../../../api/messaging");
+      const res = await messagingApi.listCustomMessages();
+      setCustomMessages(res.data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCustomMessages(false);
     }
   };
 
@@ -205,6 +223,38 @@ export function MessageComposer(props: MessageComposerProps) {
           </div>
         </div>
       )}
+
+      {/* Custom Message Modal */}
+      {showCustomModal && (
+        <div className="absolute bottom-full left-0 mb-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 flex flex-col max-h-[400px]">
+          <div className="flex justify-between items-center p-3 border-b border-slate-100 dark:border-slate-800">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+              <MessageSquareText className="h-4 w-4 text-blue-600" /> Custom Messages
+            </h3>
+            <button onClick={() => setShowCustomModal(false)} className="text-slate-400 hover:text-slate-600">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto p-2 space-y-2 custom-scrollbar">
+            {loadingCustomMessages ? (
+              <div className="p-4 text-center text-xs text-slate-500">Loading custom messages...</div>
+            ) : customMessages.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-500">No custom messages found. Create them from the settings.</div>
+            ) : (
+              customMessages.map((msg) => (
+                <div key={msg.id} className="p-3 border border-slate-100 dark:border-slate-800 rounded-lg hover:border-blue-500 cursor-pointer transition"
+                     onClick={() => {
+                        setValue(prev => (prev ? prev + "\n\n" + msg.text : msg.text));
+                        setShowCustomModal(false);
+                     }}>
+                  <div className="font-bold text-xs text-slate-800 dark:text-slate-200 mb-1">{msg.title}</div>
+                  <p className="text-[11px] text-slate-500 whitespace-pre-wrap">{msg.text}</p>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
       
       <form onSubmit={handleSubmit} className="p-4 flex items-center space-x-2 relative">
         <input 
@@ -271,11 +321,26 @@ export function MessageComposer(props: MessageComposerProps) {
           onClick={() => {
             if (!showTemplateModal) fetchTemplates();
             setShowTemplateModal(!showTemplateModal);
+            setShowCustomModal(false);
           }}
           className={`p-2 flex items-center justify-center rounded-full transition ${isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
           title="Send Template"
         >
           <LayoutTemplate className="h-5 w-5" />
+        </button>
+
+        <button
+          type="button"
+          disabled={isRecording}
+          onClick={() => {
+            if (!showCustomModal) fetchCustomMessages();
+            setShowCustomModal(!showCustomModal);
+            setShowTemplateModal(false);
+          }}
+          className={`p-2 flex items-center justify-center rounded-full transition ${isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          title="Custom Messages"
+        >
+          <MessageSquareText className="h-5 w-5" />
         </button>
         {isRecording ? (
           <div className="flex-grow flex items-center bg-slate-50 dark:bg-slate-800 border border-red-200 dark:border-red-900/30 rounded-full px-4 py-2.5 h-[44px]">

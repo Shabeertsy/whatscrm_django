@@ -1,5 +1,4 @@
 from django.db import models
-from django.conf import settings
 from apps.core.models import BaseModel
 
 
@@ -34,9 +33,10 @@ class AIAgentSettings(BaseModel):
     def save(self, *args, **kwargs):
         if self._state.adding and AIAgentSettings.objects.exists():
             existing = AIAgentSettings.objects.first()
-            self.pk = existing.pk
-            if hasattr(self, 'created_at'):
-                self.created_at = existing.created_at
+            if existing is not None:
+                self.pk = existing.pk
+                if hasattr(self, 'created_at'):
+                    self.created_at = existing.created_at
         super().save(*args, **kwargs)
 
     def __str__(self):

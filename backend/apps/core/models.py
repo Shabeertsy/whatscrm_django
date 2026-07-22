@@ -103,7 +103,7 @@ class AuditableModel(models.Model):
 
 
 
-class ProxyURL(BaseModel):
+class ProxyURL(BaseModel, SoftDeleteModel):
     name = models.CharField(max_length=255, default="Default Proxy")
     url = models.URLField()
 
@@ -111,7 +111,7 @@ class ProxyURL(BaseModel):
         return f"{self.name} ({self.url})"
 
 
-class UserActiveProxy(BaseModel):
+class UserActiveProxy(BaseModel, SoftDeleteModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='active_proxy')
     proxy = models.ForeignKey(ProxyURL, on_delete=models.CASCADE)
 

@@ -13,6 +13,7 @@ import AiAgent from "./features/ai/AiAgent";
 import Hotels from "./pages/Hotels";
 import HotelRooms from "./pages/HotelRooms";
 import Templates from "./pages/Templates";
+import CustomMessages from "./pages/CustomMessages";
 
 
 
@@ -47,6 +48,7 @@ export function Router() {
       <Route path="/automations" element={<Automation />} />
       <Route path="/campaigns" element={<Campaigns />} />
       <Route path="/templates" element={<Templates />} />
+      <Route path="/custom-messages" element={<CustomMessages />} />
       <Route path="/voice" element={<Voice />} />
       <Route path="/contacts" element={<Contacts />} />
       <Route path="/pipeline" element={<Pipeline />} />

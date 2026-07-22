@@ -463,3 +463,53 @@ def process_external_media_url(media_url, msg_type, phone="general"):
         import logging
         logging.getLogger(__name__).error(f"Failed to process external media URL: {e}")
         return media_url, ""
+
+
+def fetch_whatsapp_contact_profile_pic(wa_id, access_token):
+    """
+    Fetch contact profile picture URL from Meta Cloud Graph API for given wa_id.
+    """
+    if not wa_id or not access_token:
+        return None
+    try:
+        clean_wa_id = str(wa_id).replace("+", "").strip()
+        url = f"https://graph.facebook.com/v17.0/{clean_wa_id}"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        params = {"fields": "profile_picture_url"}
+        res = requests.get(url, headers=headers, params=params, timeout=10)
+        if res.ok:
+            data = res.json()
+            return data.get("profile_picture_url") or data.get("profile_pic_url")
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Failed to fetch profile picture for {wa_id}: {e}")
+    return None
+
+
+def update_contact_whatsapp_profile(contact, profile_data=None, instance=None):
+    """
+    Helper function to update contact name from Meta profile data
+    and fetch/save contact profile_picture_url via Meta Graph API.
+    """
+    if not contact:
+        return
+
+    update_fields = []
+
+    #  Update contact name if provided from Meta profile
+    if profile_data and isinstance(profile_data, dict):
+        profile_name = profile_data.get('name')
+        if profile_name and contact.name != profile_name:
+            contact.name = profile_name
+            update_fields.append('name')
+
+    #  Fetch and save profile picture from Meta Graph API if missing
+    if not contact.profile_pic_url and instance and getattr(instance, 'access_token', None):
+        pic_url = fetch_whatsapp_contact_profile_pic(contact.wa_id, instance.access_token)
+        if pic_url:
+            contact.profile_pic_url = pic_url
+            update_fields.append('profile_pic_url')
+
+    if update_fields:
+        update_fields.append('updated_at')
+        contact.save(update_fields=update_fields)

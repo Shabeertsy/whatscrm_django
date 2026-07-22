@@ -8,6 +8,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone as django_tz
+from django.db.models import Q
 from django.core.files.storage import default_storage
 from .storage_backends import get_whatsapp_storage
 
@@ -21,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.whatsapp.models import WhatsappInstance
-from .models import Contact, Conversation, Message
+from .models import Contact, Conversation, Message, CustomMessage
 from .serializers import (
     ContactSerializer,
     ConversationListSerializer,
@@ -29,6 +30,7 @@ from .serializers import (
     ConversationUpdateSerializer,
     MessageSerializer,
     SendMessageSerializer,
+    CustomMessageSerializer,
 )
 
 from .utils import (
@@ -41,6 +43,9 @@ from .utils import (
 from .tasks import compress_chat_video
 
 from apps.ai.models import AIAgentSettings
+from .utils import update_contact_whatsapp_profile
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -512,20 +517,29 @@ class WebhookView(APIView):
             is_active=True
         ).order_by('-created_at').first()
 
+        # Build map of contacts profile data from Meta payload
+        contacts_map = {}
+        for c_info in value.get('contacts', []):
+            c_wa_id = c_info.get('wa_id')
+            if c_wa_id:
+                contacts_map[c_wa_id] = c_info.get('profile', {})
+
         # Handle incoming messages
         for msg_data in value.get('messages', []):
-            self._handle_inbound_message(msg_data, instance)
+            self._handle_inbound_message(msg_data, instance, contacts_map)
 
         # Handle status updates (delivered / read / failed)
         for status_data in value.get('statuses', []):
             self._handle_status_update(status_data)
 
-    def _handle_inbound_message(self, msg_data: dict, instance):
+
+    def _handle_inbound_message(self, msg_data: dict, instance, contacts_map: dict = None):
         """
         1. Upsert Contact (get_or_create by wa_id)
-        2. Get or create Conversation
-        3. Save Message
-        4. Broadcast via WebSocket
+        2. Update name from Meta profile & fetch profile_pic_url via Graph API if missing
+        3. Get or create Conversation
+        4. Save Message
+        5. Broadcast via WebSocket
         """
         wa_id = msg_data.get('from')  
         wa_msg_id = msg_data.get('id')
@@ -541,11 +555,9 @@ class WebhookView(APIView):
             }
         )
 
-        # Update name from profile if available
-        profile = msg_data.get('profile', {})
-        if profile.get('name') and not contact.name:
-            contact.name = profile['name']
-            contact.save(update_fields=['name', 'updated_at'])
+        # Update contact profile name & fetch picture via helper function
+        profile = (contacts_map.get(wa_id) if contacts_map else {}) or msg_data.get('profile', {})
+        update_contact_whatsapp_profile(contact, profile_data=profile, instance=instance)
 
         #  Get or create conversation
         conv, created = Conversation.objects.get_or_create(
@@ -649,8 +661,8 @@ class WebhookView(APIView):
             else:
                 logger.warning("AI auto-reply skipped because CELERY_ENABLED is false.")
 
+
     def _handle_status_update(self, status_data: dict):
-        """Update message delivery/read status from Meta callbacks."""
         wa_msg_id  = status_data.get('id')
         new_status = status_data.get('status') 
         if wa_msg_id and new_status:
@@ -696,7 +708,6 @@ class WebhookView(APIView):
 
 
     def _maybe_create_pipeline_deal(self, wa_contact, conv, instance):
-
         try:
             from apps.contacts.models import Pipeline, PipelineDeal
 
@@ -744,3 +755,13 @@ class WebhookView(APIView):
             logger.info(f"Auto-created pipeline deal for contact {wa_contact.phone} in pipeline '{pipeline.name}'")
         except Exception as e:
             logger.error(f"Error in _maybe_create_pipeline_deal: {e}")
+
+class CustomMessageViewSet(viewsets.ModelViewSet):
+    serializer_class = CustomMessageSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return CustomMessage.objects.filter(Q(owner=self.request.user) | Q(owner__isnull=True))
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)

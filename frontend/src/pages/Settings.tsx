@@ -16,6 +16,7 @@ import {
   Pencil,
   Globe,
 } from 'lucide-react';
+import { ConfirmDialog } from '../components/shared/ConfirmDialog';
 import { whatsappApi } from '../api/whatsapp';
 import type { WhatsappInstance, WhatsappInstancePayload } from '../types/whatsapp';
 import { coreApi, ProxyURL, ProxyURLPayload } from '../api/core';
@@ -268,7 +269,8 @@ function WhatsappInstancesTab() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<WhatsappInstance | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchInstances = async () => {
@@ -303,17 +305,18 @@ function WhatsappInstancesTab() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this WhatsApp instance? This cannot be undone.')) return;
-    setDeletingId(id);
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
     try {
-      await whatsappApi.deleteInstance(id);
-      setInstances((prev) => prev.filter((i) => i.id !== id));
+      await whatsappApi.deleteInstance(deleteTargetId);
+      setInstances((prev) => prev.filter((i) => i.id !== deleteTargetId));
       toast.success('Instance deleted successfully');
+      setDeleteTargetId(null);
     } catch (error) {
       toast.error('Failed to delete instance');
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -437,16 +440,11 @@ function WhatsappInstancesTab() {
 
                 {/* Delete */}
                 <button
-                  onClick={() => handleDelete(inst.id)}
-                  disabled={deletingId === inst.id}
+                  onClick={() => setDeleteTargetId(inst.id)}
                   title="Delete"
                   className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition"
                 >
-                  {deletingId === inst.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-red-500" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -462,6 +460,16 @@ function WhatsappInstancesTab() {
           onSave={handleSave}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteTargetId}
+        title="Delete WhatsApp Instance"
+        description="Are you sure you want to delete this WhatsApp instance? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTargetId(null)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
@@ -563,7 +571,8 @@ function ProxyURLsTab() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ProxyURL | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
   const fetchProxies = async () => {
@@ -598,17 +607,18 @@ function ProxyURLsTab() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this Proxy URL? This cannot be undone.')) return;
-    setDeletingId(id);
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
     try {
-      await coreApi.deleteProxyURL(id);
-      setProxies((prev) => prev.filter((i) => i.id !== id));
+      await coreApi.deleteProxyURL(deleteTargetId);
+      setProxies((prev) => prev.filter((i) => i.id !== deleteTargetId));
       toast.success('Proxy URL deleted successfully');
+      setDeleteTargetId(null);
     } catch (error) {
       toast.error('Failed to delete proxy URL');
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -687,8 +697,8 @@ function ProxyURLsTab() {
                 <button onClick={() => openEdit(proxy)} title="Edit" className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
                   <Pencil className="h-4 w-4" />
                 </button>
-                <button onClick={() => handleDelete(proxy.id)} disabled={deletingId === proxy.id} title="Delete" className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                  {deletingId === proxy.id ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : <Trash2 className="h-4 w-4" />}
+                <button onClick={() => setDeleteTargetId(proxy.id)} title="Delete" className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -697,6 +707,16 @@ function ProxyURLsTab() {
       )}
 
       {modalOpen && <ProxyURLModal initial={editTarget} onClose={() => setModalOpen(false)} onSave={handleSave} />}
+
+      <ConfirmDialog
+        isOpen={!!deleteTargetId}
+        title="Delete Proxy URL"
+        description="Are you sure you want to delete this Proxy URL? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTargetId(null)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
@@ -830,7 +850,8 @@ function AiProvidersTab() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<AiProviderConfig | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchList = async () => {
     try {
@@ -863,17 +884,18 @@ function AiProvidersTab() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('Delete this AI Provider? This cannot be undone.')) return;
-    setDeletingId(id);
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
     try {
-      await deleteAiProvider(id);
-      setProviders((prev) => prev.filter((i) => i.id !== id));
+      await deleteAiProvider(deleteTargetId);
+      setProviders((prev) => prev.filter((i) => i.id !== deleteTargetId));
       toast.success('AI Provider deleted successfully');
+      setDeleteTargetId(null);
     } catch (error) {
       toast.error('Failed to delete AI Provider');
     } finally {
-      setDeletingId(null);
+      setIsDeleting(false);
     }
   };
 
@@ -936,8 +958,8 @@ function AiProvidersTab() {
                 <button onClick={() => openEdit(p)} title="Edit" className="p-2 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition">
                   <Pencil className="h-4 w-4" />
                 </button>
-                <button onClick={() => handleDelete(p.id)} disabled={deletingId === p.id} title="Delete" className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
-                  {deletingId === p.id ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : <Trash2 className="h-4 w-4" />}
+                <button onClick={() => setDeleteTargetId(p.id)} title="Delete" className="p-2 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition">
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </div>
@@ -946,6 +968,16 @@ function AiProvidersTab() {
       )}
 
       {modalOpen && <AiProviderModal initial={editTarget} onClose={() => setModalOpen(false)} onSave={handleSave} />}
+
+      <ConfirmDialog
+        isOpen={!!deleteTargetId}
+        title="Delete AI Provider"
+        description="Are you sure you want to delete this AI Provider? This cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTargetId(null)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

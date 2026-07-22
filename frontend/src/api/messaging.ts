@@ -64,6 +64,15 @@ export interface ConversationDetail extends Conversation {
   messages: Message[];
 }
 
+export interface CustomMessage {
+  id: string;
+  title: string;
+  text: string;
+  owner: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 //  API Functions 
 export const messagingApi = {
   /** List conversations — optionally filter by status */
@@ -117,5 +126,19 @@ export const messagingApi = {
         'Content-Type': 'multipart/form-data',
       },
     });
+  },
+
+  /** Custom Messages */
+  listCustomMessages() {
+    return apiClient.get<CustomMessage[]>(`${BASE}/custom-messages/`);
+  },
+  createCustomMessage(data: { title: string; text: string }) {
+    return apiClient.post<CustomMessage>(`${BASE}/custom-messages/`, data);
+  },
+  updateCustomMessage(id: string, data: { title: string; text: string }) {
+    return apiClient.patch<CustomMessage>(`${BASE}/custom-messages/${id}/`, data);
+  },
+  deleteCustomMessage(id: string) {
+    return apiClient.delete(`${BASE}/custom-messages/${id}/`);
   },
 };

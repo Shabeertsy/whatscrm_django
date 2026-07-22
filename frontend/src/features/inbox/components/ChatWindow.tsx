@@ -64,6 +64,21 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
     }
   }, [messages]);
 
+  const handleToggleStatus = async () => {
+    const nextStatus: 'open' | 'resolved' = conversation.status === 'resolved' ? 'open' : 'resolved';
+    
+    // Optimistic UI update in store
+    messagingStore.updateStatus(conversation.id, nextStatus);
+    
+    try {
+      await messagingApi.updateConversation(conversation.id, { status: nextStatus });
+    } catch (err) {
+      // Revert if failed
+      messagingStore.updateStatus(conversation.id, conversation.status);
+      console.error('Failed to toggle status:', err);
+    }
+  };
+
   const handleToggleAi = async () => {
     const newStatus = !conversation.ai_active;
     
@@ -102,16 +117,18 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          {conversation.status === 'open' && (
-             <span className="px-2.5 py-1 text-[9px] bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 rounded-full font-bold uppercase tracking-wider">
-               Open
-             </span>
-          )}
-          {conversation.status === 'resolved' && (
-             <span className="px-2.5 py-1 text-[9px] bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 rounded-full font-bold uppercase tracking-wider">
-               Resolved
-             </span>
-          )}
+          <button
+            onClick={handleToggleStatus}
+            title={conversation.status === 'resolved' ? 'Click to mark as Open' : 'Click to mark as Resolved'}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-[9px] rounded-full font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${
+              conversation.status === 'resolved'
+                ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                : 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 border border-emerald-300/50 dark:border-emerald-500/30'
+            }`}
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${conversation.status === 'resolved' ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></span>
+            {conversation.status === 'resolved' ? 'Resolved' : 'Open'}
+          </button>
           {conversation.agent_name && (
              <span className="px-2.5 py-1 text-[9px] bg-[#007e3a]/10 dark:bg-[#007e3a]/20 text-[#007e3a] dark:text-[#007e3a] border border-[#007e3a]/20 rounded-full font-bold">
                Agent: {conversation.agent_name}

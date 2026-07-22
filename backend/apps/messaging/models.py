@@ -151,3 +151,24 @@ class Message(models.Model):
 
     def __str__(self):
         return f"[{self.direction}] {self.body[:60]}"
+
+
+class CustomMessage(BaseModel):
+    title = models.CharField(max_length=255)
+    text = models.TextField()
+    
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='custom_messages'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Custom Message'
+        verbose_name_plural = 'Custom Messages'
+
+    def __str__(self):
+        return self.title

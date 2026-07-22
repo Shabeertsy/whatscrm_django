@@ -5,11 +5,13 @@ from .views import (
     ConversationListAPIView, ConversationDetailAPIView,
     ConversationSendMessageAPIView, ConversationMarkReadAPIView,
     StartConversationAPIView,
-    MessageDeleteAPIView, WebhookView, MediaUploadAPIView
+    MessageDeleteAPIView, WebhookView, MediaUploadAPIView,
+    CustomMessageViewSet
 )
 
 router = DefaultRouter()
 router.register(r'contacts', ContactViewSet, basename='contact')
+router.register(r'custom-messages', CustomMessageViewSet, basename='custom-message')
 
 urlpatterns = [
     # Contacts (ViewSet)

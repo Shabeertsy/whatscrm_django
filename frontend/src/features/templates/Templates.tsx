@@ -4,6 +4,7 @@ import { whatsappApi } from "../../api/whatsapp";
 import { TemplateSync } from "./components/TemplateSync";
 import { TemplateList } from "./components/TemplateList";
 import { TemplateForm } from "./components/TemplateForm";
+import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { Plus } from "lucide-react";
 
 export function Templates() {
@@ -15,6 +16,8 @@ export function Templates() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>("");
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -64,12 +67,17 @@ export function Templates() {
     await fetchData();
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async () => {
+    if (!deleteTargetId) return;
+    setIsDeleting(true);
     try {
-      await whatsappApi.deleteTemplate(id);
+      await whatsappApi.deleteTemplate(deleteTargetId);
       await fetchData();
+      setDeleteTargetId(null);
     } catch (err: any) {
       alert(`Delete failed: ${err.response?.data?.error || err.message}`);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -115,7 +123,7 @@ export function Templates() {
           });
           setIsFormOpen(true);
         }}
-        onDelete={handleDelete}
+        onDelete={setDeleteTargetId}
       />
 
       {isFormOpen && (
@@ -129,6 +137,16 @@ export function Templates() {
           onSubmit={editingTemplate?.id ? handleEditSubmit : handleCreateSubmit}
         />
       )}
+
+      <ConfirmDialog
+        isOpen={!!deleteTargetId}
+        title="Delete Template"
+        description="Are you sure you want to delete this template from Meta? This action cannot be undone."
+        confirmLabel="Delete"
+        onConfirm={handleDelete}
+        onCancel={() => setDeleteTargetId(null)}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }
