@@ -467,22 +467,9 @@ def process_external_media_url(media_url, msg_type, phone="general"):
 
 def fetch_whatsapp_contact_profile_pic(wa_id, access_token):
     """
-    Fetch contact profile picture URL from Meta Cloud Graph API for given wa_id.
+    Fetch contact profile picture URL.
+    Note: Meta WhatsApp Cloud API does not support fetching end-user profile pictures for privacy reasons.
     """
-    if not wa_id or not access_token:
-        return None
-    try:
-        clean_wa_id = str(wa_id).replace("+", "").strip()
-        url = f"https://graph.facebook.com/v17.0/{clean_wa_id}"
-        headers = {"Authorization": f"Bearer {access_token}"}
-        params = {"fields": "profile_picture_url"}
-        res = requests.get(url, headers=headers, params=params, timeout=10)
-        if res.ok:
-            data = res.json()
-            return data.get("profile_picture_url") or data.get("profile_pic_url")
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).error(f"Failed to fetch profile picture for {wa_id}: {e}")
     return None
 
 

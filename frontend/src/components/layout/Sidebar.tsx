@@ -38,7 +38,7 @@ export function Sidebar() {
     { id: "/custom-messages", label: "Custom Messages", icon: MessageSquareText },
 
     { id: "/ai-agent", label: "AI Agent", icon: Bot },
-    // { id: "/automations", label: "Flow Builder", icon: GitFork },
+    { id: "/automations", label: "Automations", icon: GitFork },
     // { id: "/campaigns", label: "Campaigns & Templates", icon: Radio },
     // { id: "/voice", label: "Voice/Calls", icon: PhoneCall },
   ];

@@ -6,20 +6,34 @@ interface ConditionNodeProps {
   data: {
     title: string;
     description: string;
+    conditions?: any[];
   };
+  selected?: boolean;
 }
 
-export function ConditionNode({ data }: ConditionNodeProps) {
+export function ConditionNode({ data, selected }: ConditionNodeProps) {
+  const conditionsCount = Array.isArray(data.conditions) ? data.conditions.length : 0;
+
   return (
-    <div className="w-64 bg-white dark:bg-[#131924] border border-slate-200 dark:border-[#2a364d] rounded-xl overflow-hidden shadow-lg relative pb-2 transition-colors">
+    <div className={`w-60 bg-white dark:bg-[#131924] rounded-xl overflow-hidden relative pb-2 transition-all duration-150 ${
+      selected
+        ? "border-2 border-[#007e3a] dark:border-emerald-500 shadow-lg shadow-[#007e3a]/10"
+        : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
+    }`}>
       <Handle type="target" position={Position.Left} className="!bg-[#f59e0b] !w-3 !h-3 !border-2 !border-white dark:!border-[#131924] -ml-1.5" />
       <div className="bg-slate-50 dark:bg-[#1C2333] px-3 py-2 border-b border-slate-200 dark:border-[#2a364d] flex items-center space-x-2 transition-colors">
         <Sliders className="h-4 w-4 text-[#f59e0b]" />
         <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">Condition Split</span>
       </div>
       <div className="p-3 mb-6">
-        <h4 className="font-bold text-sm text-slate-900 dark:text-white mb-1">{data.title || "Condition"}</h4>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">{data.description}</p>
+        <h4 className="font-semibold text-[13px] text-slate-900 dark:text-white mb-1">{data.title || "Condition"}</h4>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight mb-2">{data.description}</p>
+        
+        {conditionsCount > 0 && (
+          <div className="inline-block px-2 py-1 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 text-[10px] font-bold rounded">
+            {conditionsCount} {conditionsCount === 1 ? "Rule" : "Rules"}
+          </div>
+        )}
       </div>
 
       {/* Two source handles for True / False paths on the right edge */}

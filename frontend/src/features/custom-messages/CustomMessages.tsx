@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import PageHeader from "../../components/shared/PageHeader";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { messagingApi, CustomMessage } from "../../api/messaging";
+import { showToast } from "../../utils/toast";
 import { Plus, Edit2, Trash2, MessageSquareText } from "lucide-react";
 
 export function CustomMessages() {
@@ -23,8 +24,9 @@ export function CustomMessages() {
     try {
       const res = await messagingApi.listCustomMessages();
       setMessages(res.data || []);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      showToast("Error", e?.response?.data?.detail || e?.message || "Failed to load custom messages", "error");
     } finally {
       setLoading(false);
     }
@@ -35,15 +37,17 @@ export function CustomMessages() {
     try {
       if (editingMessage) {
         await messagingApi.updateCustomMessage(editingMessage.id, formData);
+        showToast("Success", "Custom message updated successfully", "success");
       } else {
         await messagingApi.createCustomMessage(formData);
+        showToast("Success", "Custom message created successfully", "success");
       }
       setIsFormOpen(false);
       setEditingMessage(null);
       setFormData({ title: "", text: "" });
       fetchData();
     } catch (err: any) {
-      alert(`Error saving message: ${err.message}`);
+      showToast("Error", err?.response?.data?.detail || err?.message || "Error saving custom message", "error");
     }
   };
 
@@ -52,10 +56,11 @@ export function CustomMessages() {
     setIsDeleting(true);
     try {
       await messagingApi.deleteCustomMessage(deleteMessageId);
+      showToast("Success", "Custom message deleted successfully", "success");
       fetchData();
       setDeleteMessageId(null);
     } catch (err: any) {
-      alert(`Delete failed: ${err.message}`);
+      showToast("Error", err?.response?.data?.detail || err?.message || "Failed to delete custom message", "error");
     } finally {
       setIsDeleting(false);
     }

@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from "react";
 import { Send, Paperclip, X, Mic, Image as ImageIcon, FileText, Camera, User, BarChart, Square, LayoutTemplate, MessageSquareText, Plus } from "lucide-react";
 import { AudioVisualizer } from "./chat/audio/AudioVisualizer";
+import { messagingApi } from "../../../api/messaging";
+import { showToast } from "../../../utils/toast";
 
 
 
@@ -78,11 +80,11 @@ export function MessageComposer(props: MessageComposerProps) {
   const fetchCustomMessages = async () => {
     setLoadingCustomMessages(true);
     try {
-      const { messagingApi } = await import("../../../api/messaging");
       const res = await messagingApi.listCustomMessages();
       setCustomMessages(res.data || []);
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      showToast("Error", e?.response?.data?.detail || e?.message || "Failed to load custom messages", "error");
     } finally {
       setLoadingCustomMessages(false);
     }

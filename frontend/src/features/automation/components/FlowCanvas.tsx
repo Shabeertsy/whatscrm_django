@@ -4,6 +4,7 @@ import '@xyflow/react/dist/style.css';
 import SendMessageNode from "./nodes/SendMessageNode";
 import WaitNode from "./nodes/WaitNode";
 import ConditionNode from "./nodes/ConditionNode";
+import DeletableEdge from "./DeletableEdge";
 
 interface FlowCanvasProps {
   nodes: Node[];
@@ -11,10 +12,12 @@ interface FlowCanvasProps {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   onConnect: (connection: Connection) => void;
+  onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
+  setSelectedNodeId?: (id: string | null) => void;
 }
 
-export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConnect, setNodes }: FlowCanvasProps) {
+export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, setNodes, setSelectedNodeId }: FlowCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
@@ -22,6 +25,11 @@ export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConne
     trigger: WaitNode,
     condition: ConditionNode,
     action: SendMessageNode,
+  }), []);
+
+  const edgeTypes = useMemo(() => ({
+    default: DeletableEdge,
+    deletable: DeletableEdge,
   }), []);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -46,16 +54,19 @@ export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConne
         y: event.clientY,
       });
 
+      const newId = `n_${Date.now()}`;
       const newNode: Node = {
-        id: `n_${Date.now()}`,
+        id: newId,
         type,
         position,
         data: { title, description: desc },
+        selected: true,
       };
 
-      setNodes((nds) => nds.concat(newNode));
+      setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
+      setSelectedNodeId?.(newId);
     },
-    [screenToFlowPosition, setNodes]
+    [screenToFlowPosition, setNodes, setSelectedNodeId]
   );
 
   return (
@@ -66,9 +77,13 @@ export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConne
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onNodeClick={onNodeClick}
         onDrop={onDrop}
         onDragOver={onDragOver}
+        deleteKeyCode={['Backspace', 'Delete']}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        defaultEdgeOptions={{ type: 'default' }}
         fitView
         className="bg-slate-50 dark:bg-[#0B0F19] transition-colors"
       >
