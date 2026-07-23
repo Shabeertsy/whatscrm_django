@@ -1,5 +1,10 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import AutomationFlowViewSet
+
+router = DefaultRouter()
+router.register(r'flows', AutomationFlowViewSet, basename='automation-flow')
 
 urlpatterns = [
-    # path('', views.IndexView.as_view(), name='index'),
+    path('', include(router.urls)),
 ]

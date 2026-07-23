@@ -37,24 +37,34 @@ class ChatbotDispatcher:
         if ctx is None:
             return False
 
-        engine, engine_label = self._resolve_engine()
-        if engine is None:
+        engines_to_try = []
+        
+        # Automation
+        try:
+            from apps.automation.engine import AutomationEngine
+            engines_to_try.append((AutomationEngine(self.conv), "automation"))
+        except Exception as exc:
+            logger.exception(f"[Dispatcher] Automation engine load failed: {exc}")
+
+        #  AI engine
+        ai_engine = self._try_ai_engine()
+        if ai_engine:
+            engines_to_try.append((ai_engine, "ai"))
+
+        if not engines_to_try:
             logger.info(f"[Dispatcher] Conv {self.conv.id}: no engine resolved, skipping.")
             return False
 
-        logger.info(f"[Dispatcher] Conv {self.conv.id}: using engine='{engine_label}'")
+        for engine, engine_label in engines_to_try:
+            logger.info(f"[Dispatcher] Conv {self.conv.id}: trying engine='{engine_label}'")
+            reply: Optional[ChatbotReply] = engine.generate_reply(ctx)
 
-        reply: Optional[ChatbotReply] = engine.generate_reply(ctx)
+            if reply and not reply.is_empty:
+                self._persist_and_broadcast(reply)
+                return True
 
-        if reply is None or reply.is_empty:
-            logger.info(f"[Dispatcher] Conv {self.conv.id}: engine returned no reply.")
-            return False
-
-        self._persist_and_broadcast(reply)
-
-        # Post-dispatch: check if flow engine triggered a handoff
-        self._check_handoff_after_flow()
-        return True
+        logger.info(f"[Dispatcher] Conv {self.conv.id}: all engines returned no reply.")
+        return False
 
 
     # Context assembly
@@ -98,52 +108,8 @@ class ChatbotDispatcher:
         )
 
 
-    # Engine resolution  (priority: Flow > AI)
+    # Engine checks (priority: Flow > AI)
     # ------------------------------------------------------------------
-    def _resolve_engine(self):
-        """Return (engine_instance, label) or (None, None)."""
-        #  Flow engine
-        flow_engine = self._try_flow_engine()
-        if flow_engine:
-            return flow_engine, "flow"
-
-        #  AI engine
-        ai_engine = self._try_ai_engine()
-        if ai_engine:
-            return ai_engine, "ai"
-
-        return None, None
-
-
-    def _try_flow_engine(self):
-        try:
-            from apps.ai.models import FlowBot, ConversationFlowState
-            from apps.ai.chatbot.flow_engine import FlowEngine
-
-        
-            flow = FlowBot.objects.filter(
-                instance=self.conv.instance,
-                is_active=True,
-            ).first()
-
-            if not flow:
-                return None
-
-            # Don't run the flow engine if it already completed for this conversation
-            completed = ConversationFlowState.objects.filter(
-                conversation_id=self.conv.id,
-                flow=flow,
-                is_complete=True,
-            ).exists()
-            if completed:
-                return None
-
-            return FlowEngine(flow)
-
-        except Exception as exc:
-            logger.debug(f"[Dispatcher] Flow engine check skipped: {exc}")
-            return None
-
 
     def _try_ai_engine(self):
         try:
@@ -214,21 +180,4 @@ class ChatbotDispatcher:
         broadcast_conversation_update(self.conv)
 
 
-    def _check_handoff_after_flow(self):
-        """
-        If the flow engine completed with a handoff node,
-        disable AI for this conversation so a human can take over.
-        """
-        try:
-            from apps.ai.models import ConversationFlowState
-            state = ConversationFlowState.objects.filter(
-                conversation_id=self.conv.id,
-                is_complete=True,
-            ).first()
-            if state:
-                self.conv.ai_active = False
-                self.conv.save(update_fields=["ai_active"])
-                broadcast_conversation_update(self.conv)
-                logger.info(f"[Dispatcher] Conv {self.conv.id}: handoff triggered, ai_active=False.")
-        except Exception:
-            pass
+

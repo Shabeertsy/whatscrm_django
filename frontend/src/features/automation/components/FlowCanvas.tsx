@@ -1,10 +1,14 @@
 import React, { useMemo, useCallback, useRef } from "react";
-import { ReactFlow, Controls, Background, BackgroundVariant, MiniMap, NodeChange, EdgeChange, Node, Edge, Connection, useReactFlow } from "@xyflow/react";
-import '@xyflow/react/dist/style.css';
-import SendMessageNode from "./nodes/SendMessageNode";
-import WaitNode from "./nodes/WaitNode";
-import ConditionNode from "./nodes/ConditionNode";
-import DeletableEdge from "./DeletableEdge";
+import {
+  ReactFlow, Controls, Background, BackgroundVariant, MiniMap,
+  NodeChange, EdgeChange, Node, Edge, Connection, useReactFlow,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+
+import { NODE_TYPES, EDGE_TYPES, resolveNodeType, getInitialData, NODE_REGISTRY } from "../config/nodeRegistry";
+import { showToast } from "../../../utils/toast";
+
+
 
 interface FlowCanvasProps {
   nodes: Node[];
@@ -17,60 +21,67 @@ interface FlowCanvasProps {
   setSelectedNodeId?: (id: string | null) => void;
 }
 
-export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConnect, onNodeClick, setNodes, setSelectedNodeId }: FlowCanvasProps) {
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+
+
+// Component
+// ──────────────────────────────────
+
+export function FlowCanvas({
+  nodes, edges,
+  onNodesChange, onEdgesChange, onConnect, onNodeClick,
+  setNodes, setSelectedNodeId,
+}: FlowCanvasProps) {
+  const wrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
 
-  const nodeTypes = useMemo(() => ({
-    trigger: WaitNode,
-    condition: ConditionNode,
-    action: SendMessageNode,
-  }), []);
+  // Memoised type maps — stable references, prevents ReactFlow re-renders
+  const nodeTypes = useMemo(() => NODE_TYPES, []);
+  const edgeTypes = useMemo(() => EDGE_TYPES, []);
 
-  const edgeTypes = useMemo(() => ({
-    default: DeletableEdge,
-    deletable: DeletableEdge,
-  }), []);
-
-  const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = 'move';
+  const onDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
   }, []);
 
   const onDrop = useCallback(
-    (event: React.DragEvent) => {
-      event.preventDefault();
+    (e: React.DragEvent) => {
+      e.preventDefault();
 
-      const type = event.dataTransfer.getData('application/reactflow');
-      const title = event.dataTransfer.getData('application/reactflow-title');
-      const desc = event.dataTransfer.getData('application/reactflow-desc');
+      const type = e.dataTransfer.getData("application/reactflow");
+      const title = e.dataTransfer.getData("application/reactflow-title");
+      const desc = e.dataTransfer.getData("application/reactflow-desc");
 
-      if (typeof type === 'undefined' || !type) {
+      if (!type) return;
+
+      // Guard: only one trigger allowed per flow
+      if (type === "trigger" && nodes.some((n) => n.type === "trigger")) {
+        showToast("Trigger Limit", "Only one trigger node is allowed per flow.", "warning");
         return;
       }
 
-      const position = screenToFlowPosition({
-        x: event.clientX,
-        y: event.clientY,
-      });
-
+      const resolvedType = resolveNodeType(type, title);
+      const position = screenToFlowPosition({ x: e.clientX, y: e.clientY });
       const newId = `n_${Date.now()}`;
+
+      const entry = NODE_REGISTRY[resolvedType];
       const newNode: Node = {
         id: newId,
-        type,
+        type: resolvedType,
         position,
-        data: { title, description: desc },
+        data: getInitialData(type, title, desc),
         selected: true,
+        width:  entry?.defaultWidth  ?? 220,
+        height: entry?.defaultHeight ?? 120,
       };
 
-      setNodes((nds) => [...nds.map((n) => ({ ...n, selected: false })), newNode]);
+      setNodes((prev) => [...prev.map((n) => ({ ...n, selected: false })), newNode]);
       setSelectedNodeId?.(newId);
     },
-    [screenToFlowPosition, setNodes, setSelectedNodeId]
+    [nodes, screenToFlowPosition, setNodes, setSelectedNodeId]
   );
 
   return (
-    <div className="flex-1 h-full w-full relative" ref={reactFlowWrapper}>
+    <div className="flex-1 h-full w-full relative" ref={wrapper}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -80,16 +91,16 @@ export function FlowCanvas({ nodes, edges, onNodesChange, onEdgesChange, onConne
         onNodeClick={onNodeClick}
         onDrop={onDrop}
         onDragOver={onDragOver}
-        deleteKeyCode={['Backspace', 'Delete']}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
-        defaultEdgeOptions={{ type: 'default' }}
+        defaultEdgeOptions={{ type: "default" }}
+        deleteKeyCode={["Backspace", "Delete"]}
         fitView
         className="bg-slate-50 dark:bg-[#0B0F19] transition-colors"
       >
         <Background gap={16} variant={BackgroundVariant.Dots} className="dark:opacity-50" />
         <Controls className="bg-white dark:bg-[#131924] border-slate-200 dark:border-slate-800 fill-slate-700 dark:fill-white" />
-        <MiniMap 
+        <MiniMap
           className="bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-800"
           maskColor="rgba(248, 250, 252, 0.7)"
         />

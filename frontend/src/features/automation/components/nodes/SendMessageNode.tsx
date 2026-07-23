@@ -1,11 +1,12 @@
 import React from "react";
 import { MessageSquare, Film, FileText, Image as ImageIcon } from "lucide-react";
-import { Handle, Position } from "@xyflow/react";
+import { Handle, Position, NodeResizer } from "@xyflow/react";
 
 interface SendMessageNodeProps {
   data: {
     title: string;
-    description: string;
+    description?: string;
+    message?: string;
     mediaUrl?: string;
     mediaName?: string;
     mediaType?: string;
@@ -17,36 +18,64 @@ export function SendMessageNode({ data, selected }: SendMessageNodeProps) {
   const isMediaNode = !!data.mediaUrl || (data.title as string)?.toLowerCase().includes("media");
 
   return (
-    <div className={`w-60 bg-white dark:bg-[#131924] rounded-xl overflow-hidden transition-all duration-150 ${
-      selected
-        ? "border-2 border-[#007e3a] dark:border-emerald-500 shadow-lg shadow-[#007e3a]/10"
-        : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
-    }`}>
-      <Handle type="target" position={Position.Left} className="!bg-[#10b981] !w-3 !h-3 !border-2 !border-white dark:!border-[#131924] -ml-1.5" />
-      <div className="bg-slate-50 dark:bg-[#1C2333] px-3 py-2 border-b border-slate-200 dark:border-[#2a364d] flex items-center space-x-2 transition-colors">
-        {isMediaNode ? <ImageIcon className="h-4 w-4 text-pink-500" /> : <MessageSquare className="h-4 w-4 text-[#10b981]" />}
-        <span className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-          {isMediaNode ? "Send Media" : "Send Message"}
-        </span>
-      </div>
-      <div className="p-3">
-        <h4 className="font-semibold text-[13px] text-slate-900 dark:text-white mb-1">{data.title || "Message"}</h4>
-        <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">{data.description}</p>
+    <div className="w-full h-full relative">
+      <NodeResizer
+        isVisible={selected}
+        minWidth={160}
+        maxWidth={480}
+        minHeight={60}
+        lineStyle={{ border: "1.5px dashed #34d399" }}
+        handleStyle={{
+          width: 8, height: 8, borderRadius: 2,
+          background: "#fff", border: "2px solid #059669",
+        }}
+      />
 
-        {data.mediaUrl && (
-          <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
-            {data.mediaType === "image" ? (
-              <img src={data.mediaUrl} alt="" className="h-24 w-full object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
-            ) : (
-              <div className="flex items-center space-x-2 bg-slate-50 dark:bg-slate-800 p-2 rounded-lg text-xs text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
-                {data.mediaType === "video" ? <Film className="h-4 w-4 text-blue-500 shrink-0" /> : <FileText className="h-4 w-4 text-amber-500 shrink-0" />}
-                <span className="truncate font-medium">{data.mediaName || "Attached File"}</span>
-              </div>
-            )}
-          </div>
-        )}
+      <div
+        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${
+          selected
+            ? "border-2 border-emerald-500 dark:border-emerald-400 shadow-lg shadow-emerald-500/20"
+            : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
+        }`}
+      >
+        <div className="bg-slate-50 dark:bg-[#1C2333] px-3 py-2 border-b border-slate-200 dark:border-[#2a364d] flex items-center gap-2">
+          {isMediaNode
+            ? <ImageIcon className="h-3.5 w-3.5 text-pink-500 shrink-0" />
+            : <MessageSquare className="h-3.5 w-3.5 text-emerald-500 shrink-0" />}
+          <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-200">
+            {isMediaNode ? "Send Media" : "Send Message"}
+          </span>
+        </div>
+        <div className="p-2.5 space-y-1.5">
+          <h4 className="font-semibold text-[12px] text-slate-900 dark:text-white leading-tight">
+            {data.title || "Message"}
+          </h4>
+          {data.message && (
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug bg-slate-50 dark:bg-[#1C2333] p-1.5 rounded-lg border border-slate-100 dark:border-slate-800 line-clamp-3">
+              {data.message}
+            </p>
+          )}
+          {data.mediaUrl && (
+            <div className="pt-1.5 border-t border-slate-100 dark:border-slate-800">
+              {data.mediaType === "image" ? (
+                <img src={data.mediaUrl} alt="" className="h-16 w-full object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
+              ) : (
+                <div className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800 p-1.5 rounded-lg text-[10px] text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                  {data.mediaType === "video"
+                    ? <Film className="h-3.5 w-3.5 text-blue-500 shrink-0" />
+                    : <FileText className="h-3.5 w-3.5 text-amber-500 shrink-0" />}
+                  <span className="truncate font-medium">{data.mediaName || "Attached File"}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-      <Handle type="source" position={Position.Right} className="!bg-[#10b981] !w-3 !h-3 !border-2 !border-white dark:!border-[#131924] -mr-1.5" />
+
+      <Handle type="target" position={Position.Left}
+        className="!bg-emerald-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]" />
+      <Handle type="source" position={Position.Right}
+        className="!bg-emerald-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]" />
     </div>
   );
 }
