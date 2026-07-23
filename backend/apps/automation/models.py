@@ -39,6 +39,7 @@ class FlowStatus(models.TextChoices):
 
 class ExecutionStatus(models.TextChoices):
     RUNNING   = "running",   "Running"
+    WAITING   = "waiting",   "Waiting for Input"
     COMPLETED = "completed", "Completed"
     FAILED    = "failed",    "Failed"
     CANCELLED = "cancelled", "Cancelled"
@@ -53,7 +54,7 @@ class StepStatus(models.TextChoices):
 
 
 
-# AutomationFlow  —  the top-level flow document
+# AutomationFlow 
 class AutomationFlow(BaseModel, SoftDeleteModel):
 
     name        = models.CharField(max_length=255)

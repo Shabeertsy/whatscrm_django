@@ -18,7 +18,9 @@ interface FlowCanvasProps {
   onConnect: (connection: Connection) => void;
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   setNodes: React.Dispatch<React.SetStateAction<Node[]>>;
-  setSelectedNodeId?: (id: string | null) => void;
+  setSelectedNodeId: React.Dispatch<React.SetStateAction<string | null>>;
+  viewport?: { x: number; y: number; zoom: number };
+  onViewportChange?: (viewport: { x: number; y: number; zoom: number }) => void;
 }
 
 
@@ -29,10 +31,15 @@ interface FlowCanvasProps {
 export function FlowCanvas({
   nodes, edges,
   onNodesChange, onEdgesChange, onConnect, onNodeClick,
-  setNodes, setSelectedNodeId,
+  setNodes,
+  setSelectedNodeId,
+  viewport,
+  onViewportChange,
 }: FlowCanvasProps) {
   const wrapper = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+  
+  const hasViewport = viewport && typeof viewport.x === 'number';
 
   // Memoised type maps — stable references, prevents ReactFlow re-renders
   const nodeTypes = useMemo(() => NODE_TYPES, []);
@@ -95,7 +102,9 @@ export function FlowCanvas({
         edgeTypes={edgeTypes}
         defaultEdgeOptions={{ type: "default" }}
         deleteKeyCode={["Backspace", "Delete"]}
-        fitView
+        fitView={!hasViewport}
+        defaultViewport={hasViewport ? viewport : { x: 0, y: 0, zoom: 1 }}
+        onMoveEnd={(_, vw) => onViewportChange?.(vw)}
         className="bg-slate-50 dark:bg-[#0B0F19] transition-colors"
       >
         <Background gap={16} variant={BackgroundVariant.Dots} className="dark:opacity-50" />

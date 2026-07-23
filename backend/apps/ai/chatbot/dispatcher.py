@@ -39,13 +39,6 @@ class ChatbotDispatcher:
 
         engines_to_try = []
         
-        # Automation
-        try:
-            from apps.automation.engine import AutomationEngine
-            engines_to_try.append((AutomationEngine(self.conv), "automation"))
-        except Exception as exc:
-            logger.exception(f"[Dispatcher] Automation engine load failed: {exc}")
-
         #  AI engine
         ai_engine = self._try_ai_engine()
         if ai_engine:

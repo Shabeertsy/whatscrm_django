@@ -127,27 +127,32 @@ class AIEngine(BaseChatbotEngine):
         return (response.content[0].text or "").strip()
 
     def _call_gemini(self, api_key: str, history: list, ctx: ChatbotContext, model_name: str, system_prompt: str) -> str:
-        import google.generativeai as genai
+        from google import genai
+        from google.genai import types
 
-        genai.configure(api_key=api_key)
+        client = genai.Client(api_key=api_key)
 
-        # Gemini uses "user" and "model" roles
         gemini_history = [
             {"role": "user" if h["role"] == "user" else "model",
-             "parts": [h["content"]]}
+             "parts": [{"text": h["content"]}]}
             for h in history
         ]
         
-        model = genai.GenerativeModel(
-            model_name=model_name or "gemini-2.5-flash",
+        chat_history = gemini_history[:-1] if len(gemini_history) > 1 else []
+        last_user_msg = history[-1]["content"] if history else ctx.inbound_message_body
+
+        config = types.GenerateContentConfig(
             system_instruction=system_prompt,
+            temperature=self.settings.temperature,
+            max_output_tokens=self.MAX_TOKENS_REPLY,
         )
 
-        # All but the last message go as history; the last is the prompt
-        chat_history = gemini_history[:-1] if len(gemini_history) > 1 else []
-        last_user_msg = gemini_history[-1]["parts"][0] if gemini_history else ctx.inbound_message_body
-
-        chat = model.start_chat(history=chat_history)
+        chat = client.chats.create(
+            model=model_name or "gemini-2.5-flash",
+            config=config,
+            history=chat_history
+        )
+        
         response = chat.send_message(last_user_msg)
         return (response.text or "").strip()
 

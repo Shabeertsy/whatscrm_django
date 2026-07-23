@@ -5,6 +5,9 @@ import uuid
 import tempfile
 import shutil
 import logging
+import time
+
+
 from celery import shared_task
 from django.core.files.base import ContentFile
 from django.utils import timezone as django_tz
@@ -234,3 +237,71 @@ def _mark_failed(message_id, error=None):
             broadcast_message_status_update(msg.conversation, msg.id, 'failed', error=error)
     except Exception:
         pass
+
+
+
+### this is automation
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=15,
+    name="messaging.process_inbound_message",
+)
+def process_inbound_message(self, conversation_id: int):
+    """
+    1. Checks Automation flows.
+    2. If handled, stops.
+    3. Otherwise, falls back to AI (honoring AI delays).
+    """
+    try:
+        from apps.messaging.models import Conversation
+        from apps.ai.chatbot.dispatcher import ChatbotDispatcher
+        from apps.automation.engine import AutomationEngine
+        from apps.ai.models import AIAgentSettings
+
+        try:
+            conv = Conversation.objects.get(id=conversation_id)
+        except Conversation.DoesNotExist:
+            logger.info(f"[Task] Conversation {conversation_id} no longer exists.")
+            return
+
+        dispatcher = ChatbotDispatcher(conv)
+        ctx = dispatcher._build_context()
+        if not ctx:
+            return
+
+        #  Evaluate Automation Engine
+        auto_engine = AutomationEngine(conv)
+        reply = auto_engine.generate_reply(ctx)
+        if reply and not reply.is_empty:
+            dispatcher._persist_and_broadcast(reply)
+            logger.info(f"[Task] Conv {conversation_id}: Handled by AutomationEngine.")
+            return  
+
+        #  Evaluate AI Engine fallback
+        if not conv.ai_active:
+            logger.info(f"[Task] Conv {conversation_id}: ai_active is False, skipping AI fallback.")
+            return
+
+        ai_settings = AIAgentSettings.objects.filter(is_active=True).first()
+        if not ai_settings:
+            logger.info(f"[Task] Conv {conversation_id}: No active AIAgentSettings, skipping AI fallback.")
+            return
+
+        if ai_settings.auto_reply_delay:
+            time.sleep(ai_settings.auto_reply_delay)
+
+            # Re-check after sleep — human agent might have taken over
+            conv.refresh_from_db()
+            if not conv.ai_active:
+                logger.info(f"[Task] Conv {conversation_id}: ai_active toggled off during delay.")
+                return
+
+        # Dispatch AI
+        sent = dispatcher.dispatch()
+        logger.info(f"[Task] Conv {conversation_id}: AI dispatch sent={sent}")
+
+    except Exception as exc:
+        logger.exception(f"[Task] Unhandled error for conv {conversation_id}: {exc}")
+        raise self.retry(exc=exc)
+

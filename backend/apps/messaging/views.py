@@ -652,15 +652,13 @@ class WebhookView(APIView):
 
         # Auto-create pipeline deal on first inbound message 
         self._maybe_create_pipeline_deal(contact, conv, instance)
-        ai_settings = AIAgentSettings.objects.filter(is_active=True).first()
-
-        if ai_settings and getattr(conv, 'ai_active', False):
-            if getattr(settings, 'CELERY_ENABLED', True):
-                from apps.ai.tasks import handle_inbound_message
-                handle_inbound_message.delay(conv.id)
-            else:
-                logger.warning("AI auto-reply skipped because CELERY_ENABLED is false.")
-
+        
+        # Enqueue the unified message processing task (Automation -> AI fallback)
+        if getattr(settings, 'CELERY_ENABLED', True):
+            from apps.messaging.tasks import process_inbound_message
+            process_inbound_message.delay(conv.id)
+        else:
+            logger.warning("Background message processing skipped because CELERY_ENABLED is false.")
 
     def _handle_status_update(self, status_data: dict):
         wa_msg_id  = status_data.get('id')

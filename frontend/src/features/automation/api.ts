@@ -7,4 +7,5 @@ export interface Flow {
   status?: string;
   nodes: Node[];
   edges: Edge[];
+  viewport?: { x: number; y: number; zoom: number };
 }

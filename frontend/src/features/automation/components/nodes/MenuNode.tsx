@@ -75,15 +75,24 @@ export function MenuNode({ data, selected }: MenuNodeProps) {
               {options.map((opt, index) => (
                 <div
                   key={opt.id || index}
-                  className="flex items-center justify-between bg-slate-50 dark:bg-[#1C2333] border border-slate-200 dark:border-slate-800 px-2 py-1 rounded-lg text-[10px]"
+                  className="flex items-center justify-between bg-slate-50 dark:bg-[#1C2333] border border-slate-200 dark:border-slate-800 px-2 py-1 rounded-lg text-[10px] relative"
                 >
-                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate">
+                  <span className="font-medium text-slate-800 dark:text-slate-200 truncate pr-4">
                     {opt.label || `Option ${index + 1}`}
                   </span>
                   {opt.value && (
                     <span className="text-[9px] bg-slate-200/70 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 px-1 py-0.5 rounded font-mono shrink-0 ml-1">
                       {opt.value}
                     </span>
+                  )}
+                  {opt.id && (
+                    <Handle
+                      type="source"
+                      position={Position.Right}
+                      id={opt.id}
+                      className="!bg-orange-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924] !-right-1"
+                      style={{ top: "50%", transform: "translate(50%, -50%)" }}
+                    />
                   )}
                 </div>
               ))}
@@ -102,8 +111,6 @@ export function MenuNode({ data, selected }: MenuNodeProps) {
       </div>
 
       <Handle type="target" position={Position.Left}
-        className="!bg-orange-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]" />
-      <Handle type="source" position={Position.Right}
         className="!bg-orange-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]" />
     </div>
   );

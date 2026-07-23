@@ -150,6 +150,7 @@ export function Automation() {
         name: flowToSave.name,
         nodes: flowToSave.nodes,
         edges: flowToSave.edges,
+        viewport: flowToSave.viewport,
       });
       showToast("Saved", "Flow saved successfully.", "success");
     } catch (err) {
@@ -177,6 +178,14 @@ export function Automation() {
     if (!activeFlowId || !activeFlow) return;
     handleToggleFlowStatus(activeFlowId, activeFlow.status || 'draft');
   };
+
+  const handleViewportChange = useCallback((viewport: { x: number; y: number; zoom: number }) => {
+    if (activeFlowId) {
+      setFlows((prev) =>
+        prev.map((f) => (f.id === activeFlowId ? { ...f, viewport } : f))
+      );
+    }
+  }, [activeFlowId]);
 
   const handleDeleteNode = (id: string) => {
     setNodes((nds) => nds.filter((n) => n.id !== id));
@@ -412,6 +421,7 @@ export function Automation() {
         <ReactFlowProvider>
           <SidebarElements />
           <FlowCanvas
+            key={activeFlowId || 'empty'}
             nodes={nodes}
             edges={edges}
             onNodesChange={handleNodesChange}
@@ -420,6 +430,8 @@ export function Automation() {
             onNodeClick={handleNodeClick}
             setNodes={setNodes}
             setSelectedNodeId={setSelectedNodeId}
+            viewport={activeFlow?.viewport}
+            onViewportChange={handleViewportChange}
           />
           <PropertiesPanel selectedNode={selectedNode} updateNodeData={updateNodeData} onDeleteNode={handleDeleteNode} />
         </ReactFlowProvider>
