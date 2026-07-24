@@ -1,12 +1,9 @@
 import logging
 from typing import Optional
 
-from django.utils import timezone
-
-from apps.messaging.models import Conversation, Message
+from apps.messaging.models import Conversation
 from apps.messaging.utils import (
-    send_whatsapp_message,
-    broadcast_new_message,
+    send_and_save_message,
     broadcast_conversation_update,
 )
 from .base import ChatbotContext, ChatbotReply
@@ -17,53 +14,39 @@ logger = logging.getLogger(__name__)
 HISTORY_WINDOW = 15
 
 
-
 class ChatbotDispatcher:
+    """
+    Builds context, resolves the AI engine, and persists/broadcasts the reply.
+    Automation is handled upstream (in messaging/tasks.py), not here.
+    """
 
     def __init__(self, conversation: Conversation):
         self.conv = conversation
 
 
-    # Public entry point
-    # ------------------------------------------------------------------
     def dispatch(self) -> bool:
-        """
-        Determine which engine to use, generate a reply, persist it, and
-        broadcast it to the UI via WebSocket.
-
-        Returns True if a reply was sent, False otherwise.
-        """
+        """Run the AI engine and send its reply. Returns True if a reply was sent."""
         ctx = self._build_context()
         if ctx is None:
             return False
 
-        engines_to_try = []
-        
-        #  AI engine
-        ai_engine = self._try_ai_engine()
-        if ai_engine:
-            engines_to_try.append((ai_engine, "ai"))
-
-        if not engines_to_try:
-            logger.info(f"[Dispatcher] Conv {self.conv.id}: no engine resolved, skipping.")
+        ai_engine = self._resolve_ai_engine()
+        if ai_engine is None:
+            logger.info("[Dispatcher] Conv %s: no AI engine resolved, skipping.", self.conv.id)
             return False
 
-        for engine, engine_label in engines_to_try:
-            logger.info(f"[Dispatcher] Conv {self.conv.id}: trying engine='{engine_label}'")
-            reply: Optional[ChatbotReply] = engine.generate_reply(ctx)
+        reply: Optional[ChatbotReply] = ai_engine.generate_reply(ctx)
+        if reply and not reply.is_empty:
+            self._persist_and_broadcast(reply)
+            logger.info("[Dispatcher] Conv %s: AI reply sent.", self.conv.id)
+            return True
 
-            if reply and not reply.is_empty:
-                self._persist_and_broadcast(reply)
-                return True
-
-        logger.info(f"[Dispatcher] Conv {self.conv.id}: all engines returned no reply.")
+        logger.info("[Dispatcher] Conv %s: AI returned no reply.", self.conv.id)
         return False
 
 
-    # Context assembly
-    # -------------------------------------------------------------
     def _build_context(self) -> Optional[ChatbotContext]:
-        """Build an immutable context snapshot from the conversation."""
+        """Build an immutable snapshot of everything an engine needs."""
         last_inbound = (
             self.conv.messages
             .filter(direction="inbound")
@@ -73,16 +56,14 @@ class ChatbotDispatcher:
         if last_inbound is None:
             return None
 
-        history_qs = (
-            self.conv.messages
-            .order_by("-timestamp")
-            [:HISTORY_WINDOW]
-        )
-        history = []
-        for msg in reversed(history_qs):
-            role = "user" if msg.direction == "inbound" else "assistant"
-            body = msg.body if msg.body else f"[{msg.msg_type}]"
-            history.append({"role": role, "content": body})
+        history_qs = self.conv.messages.order_by("-timestamp")[:HISTORY_WINDOW]
+        history = [
+            {
+                "role": "user" if msg.direction == "inbound" else "assistant",
+                "content": msg.body or f"[{msg.msg_type}]",
+            }
+            for msg in reversed(list(history_qs))
+        ]
 
         contact_name = self.conv.contact.name
         try:
@@ -100,77 +81,42 @@ class ChatbotDispatcher:
             history=history,
         )
 
+    # ------------------------------------------------------------------ #
+    #  AI engine resolution                                                #
+    # ------------------------------------------------------------------ #
 
-    # Engine checks (priority: Flow > AI)
-    # ------------------------------------------------------------------
-
-    def _try_ai_engine(self):
+    def _resolve_ai_engine(self):
+        """Return a ready AIEngine instance, or None if not configured."""
         try:
             from apps.ai.models import AIAgentSettings
             from apps.ai.chatbot.ai_engine import AIEngine
 
-            settings = AIAgentSettings.objects.filter(is_active=True).first()
+            ai_settings = AIAgentSettings.objects.filter(is_active=True).first()
 
-            if not settings:
+            if not ai_settings:
                 logger.debug("[Dispatcher] No active AIAgentSettings found.")
                 return None
-
-            if not settings.provider:
+            if not ai_settings.provider:
                 logger.debug("[Dispatcher] AIAgentSettings has no provider.")
                 return None
-
-            if not settings.provider.ai_provider_api_key:
+            if not ai_settings.provider.ai_provider_api_key:
                 logger.warning("[Dispatcher] Provider API key is missing.")
                 return None
 
-            return AIEngine(settings)
+            return AIEngine(ai_settings)
 
         except Exception as exc:
-            logger.exception(f"[Dispatcher] AI engine check failed: {exc}")
+            logger.exception("[Dispatcher] Failed to resolve AI engine: %s", exc)
             return None
 
-
-    # Persistence & broadcast
-    # ------------------------------------------------------------------
     def _persist_and_broadcast(self, reply: ChatbotReply):
-        """Send each part of the reply to WhatsApp and save to the DB."""
+        """Send each reply part via the shared utility and broadcast the conversation update."""
         for part in reply.messages:
-            wa_message_id = ""
-            msg_status = "failed"
-
-            if self.conv.instance and self.conv.instance.is_active:
-                try:
-                    wa_resp = send_whatsapp_message(
-                        phone_number_id=self.conv.instance.phone_number_id,
-                        access_token=self.conv.instance.access_token,
-                        to_phone=self.conv.contact.wa_id,
-                        message_text=part["body"],
-                        msg_type=part["msg_type"],
-                        media_url=part.get("media_url", ""),
-                    )
-                    if wa_resp.get("messages"):
-                        wa_message_id = wa_resp["messages"][0]["id"]
-                        msg_status = "sent"
-                except Exception as exc:
-                    logger.error(f"[Dispatcher] WhatsApp send failed: {exc}")
-
-            msg = Message.objects.create(
-                conversation=self.conv,
-                direction="outbound",
+            send_and_save_message(
+                self.conv,
                 msg_type=part["msg_type"],
                 body=part["body"],
                 media_url=part.get("media_url", ""),
-                sent_by=None,    
-                status=msg_status,
-                wa_message_id=wa_message_id,
-                timestamp=timezone.now(),
+                sent_by=None,
             )
-
-            self.conv.last_message_at = msg.timestamp
-            self.conv.save(update_fields=["last_message_at"])
-
-            broadcast_new_message(self.conv, msg)
         broadcast_conversation_update(self.conv)
-
-
-

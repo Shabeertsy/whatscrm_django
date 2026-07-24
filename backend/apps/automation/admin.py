@@ -26,8 +26,8 @@ class FlowEdgeInline(admin.TabularInline):
 class FlowStepLogInline(admin.TabularInline):
     model  = FlowStepLog
     extra  = 0
-    fields = ("node", "status", "branch_taken", "user_input", "started_at", "completed_at")
-    readonly_fields = ("node", "status", "branch_taken", "user_input", "started_at", "completed_at")
+    fields = ("node", "status", "branch_taken", "output_variables", "created_at", "updated_at")
+    readonly_fields = ("node", "status", "branch_taken", "output_variables", "created_at", "updated_at")
     can_delete = False
 
 
@@ -113,7 +113,7 @@ class FlowExecutionAdmin(admin.ModelAdmin):
 
 @admin.register(FlowStepLog)
 class FlowStepLogAdmin(admin.ModelAdmin):
-    list_display  = ("id", "execution", "node", "status", "branch_taken", "started_at")
+    list_display  = ("id", "execution", "node", "status", "branch_taken", "created_at")
     list_filter   = ("status",)
     search_fields = ("execution__id", "node__title")
-    readonly_fields = ("id", "started_at", "completed_at", "created_at", "updated_at")
+    readonly_fields = ("id", "created_at", "updated_at")

@@ -13,10 +13,10 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .serializers import MessageSerializer, ConversationListSerializer
 
+import logging
 
 import requests
 import mimetypes
-
 
 
 def save_whatsapp_media(file_obj, phone=None):
@@ -372,6 +372,82 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     response.raise_for_status()
     return response.json()
 
+
+### Common message send function
+def send_and_save_message(
+    conversation,
+    *,
+    msg_type: str = "text",
+    body: str = "",
+    media_url: str = "",
+    storage_path: str = "",
+    reply_to_wa_id: str = "",
+    replied_to=None,
+    filename: str = "",
+    template_name: str = "",
+    template_language: str = "en",
+    sent_by=None,
+    related_room_uuid=None,
+):
+    """
+    1. Calls the Meta WhatsApp Cloud API.
+    2. Creates a Message record in the DB.
+    3. Updates conversation.last_message_at.
+    4. Broadcasts via WebSocket (broadcast_new_message).
+    Returns the saved Message instance.
+    """
+    from django.utils import timezone as tz
+    from apps.messaging.models import Message
+
+    log = logging.getLogger(__name__)
+
+    wa_message_id = ""
+    msg_status = "failed"
+
+    inst = conversation.instance
+    if inst and inst.is_active:
+        try:
+            wa_resp = send_whatsapp_message(
+                phone_number_id=inst.phone_number_id,
+                access_token=inst.access_token,
+                to_phone=conversation.contact.wa_id,
+                message_text=body,
+                msg_type=msg_type,
+                media_url=media_url,
+                reply_to_wa_id=reply_to_wa_id,
+                filename=filename,
+                storage_path=storage_path,
+                template_name=template_name,
+                template_language=template_language,
+            )
+            if wa_resp.get("messages"):
+                wa_message_id = wa_resp["messages"][0]["id"]
+                msg_status = "sent"
+        except Exception as exc:
+            log.error("[send_and_save_message] WhatsApp API error: %s", exc)
+
+    msg = Message.objects.create(
+        conversation=conversation,
+        direction="outbound",
+        msg_type=msg_type,
+        body=body,
+        media_url=media_url,
+        storage_path=storage_path,
+        replied_to=replied_to,
+        related_room_uuid=related_room_uuid or None,
+        sent_by=sent_by,
+        status=msg_status,
+        wa_message_id=wa_message_id,
+        timestamp=tz.now(),
+    )
+
+    conversation.last_message_at = msg.timestamp
+    conversation.save(update_fields=["last_message_at"])
+    broadcast_new_message(conversation, msg)
+    return msg
+
+
+## Media processing 
 def process_external_media_url(media_url, msg_type, phone="general"):
     """
     1. If it's a presigned R2/S3 URL from our own storage, refresh it without downloading.
@@ -380,13 +456,11 @@ def process_external_media_url(media_url, msg_type, phone="general"):
     """
     if not media_url or not media_url.startswith("http"):
         return media_url, ""
-        
-    import os
-    from django.conf import settings
+
     from apps.messaging.storage_backends import get_whatsapp_storage
     from urllib.parse import urlparse, unquote
     
-    # 1. Check if it's our R2/S3 presigned URL
+    # Check if it's our R2/S3 presigned URL
     if "X-Amz-Signature" in media_url:
         try:
             parsed = urlparse(media_url)
@@ -404,11 +478,12 @@ def process_external_media_url(media_url, msg_type, phone="general"):
                 storage = get_whatsapp_storage()
                 # Return fresh presigned URL, and the relative storage path (so we can upload it directly)
                 return storage.url(path), path
+                
         except Exception as e:
             import logging
             logging.getLogger(__name__).error(f"Failed to parse R2 URL: {e}")
 
-    # 2. Check if it's a .webp that needs conversion
+    #  Check if it's a .webp that needs conversion
     filename = os.path.basename(media_url.split('?')[0])
     is_webp = filename.lower().endswith('.webp')
     

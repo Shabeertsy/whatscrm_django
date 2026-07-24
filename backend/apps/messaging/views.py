@@ -37,6 +37,7 @@ from .utils import (
     broadcast_new_message, 
     broadcast_delete_message, 
     send_whatsapp_message, 
+    send_and_save_message,
     broadcast_conversation_update, 
     save_whatsapp_media
 )
@@ -171,59 +172,41 @@ class ConversationSendMessageAPIView(APIView):
         if storage_path:
             filename = os.path.basename(storage_path)
             
-        # Meta Graph API Call
-        wa_message_id = ""
-        msg_status = "failed"
-        
-        if conv.instance and conv.instance.is_active:
-            if msg_type == 'video' and storage_path and getattr(settings, 'CELERY_ENABLED', True):
-                # Only queue Celery compression for directly uploaded video files
-                msg_status = "pending"
-            else:
-                try:
-                    wa_response = send_whatsapp_message(
-                        phone_number_id=conv.instance.phone_number_id,
-                        access_token=conv.instance.access_token,
-                        to_phone=conv.contact.wa_id,
-                        message_text=body,
-                        msg_type=msg_type,
-                        media_url=media_url,
-                        reply_to_wa_id=reply_to_wa_id,
-                        filename=filename,
-                        storage_path=storage_path,
-                        template_name=template_name,
-                        template_language=template_language
-                    )
-                    if 'messages' in wa_response and len(wa_response['messages']) > 0:
-                        wa_message_id = wa_response['messages'][0]['id']
-                        msg_status = "sent"
-                except Exception as e:
-                    logger.error(f"Failed to send WhatsApp message: {e}")
-
-        msg = Message.objects.create(
-            conversation=conv,
-            direction='outbound',
-            msg_type=msg_type,
-            body=body,
-            media_url=media_url,
-            storage_path=storage_path,
-            related_room_uuid=related_room_uuid if related_room_uuid else None,
-            replied_to=replied_to_obj,
-            sent_by=request.user,
-            status=msg_status,
-            wa_message_id=wa_message_id,
-            timestamp=django_tz.now(),
-        )
-
-        if msg_type == 'video' and msg_status == 'pending' and getattr(settings, 'CELERY_ENABLED', True):
+        # Meta Graph API Call — video upload goes to Celery for compression first
+        if msg_type == 'video' and storage_path and getattr(settings, 'CELERY_ENABLED', True):
+            msg = Message.objects.create(
+                conversation=conv,
+                direction='outbound',
+                msg_type=msg_type,
+                body=body,
+                media_url=media_url,
+                storage_path=storage_path,
+                related_room_uuid=related_room_uuid if related_room_uuid else None,
+                replied_to=replied_to_obj,
+                sent_by=request.user,
+                status='pending',
+                timestamp=django_tz.now(),
+            )
             compress_chat_video.delay(msg.id)
+            conv.last_message_at = msg.timestamp
+            conv.save(update_fields=['last_message_at'])
+            broadcast_new_message(conv, msg)
+        else:
+            msg = send_and_save_message(
+                conv,
+                msg_type=msg_type,
+                body=body,
+                media_url=media_url,
+                storage_path=storage_path,
+                reply_to_wa_id=reply_to_wa_id,
+                replied_to=replied_to_obj,
+                filename=filename,
+                template_name=template_name,
+                template_language=template_language,
+                sent_by=request.user,
+                related_room_uuid=related_room_uuid,
+            )
 
-        # Update conversation's last_message_at
-        conv.last_message_at = msg.timestamp
-        conv.save(update_fields=['last_message_at'])
-
-        # Broadcast to the agent's WebSocket in real-time
-        broadcast_new_message(conv, msg)
         return Response(MessageSerializer(msg).data, status=status.HTTP_201_CREATED)
 
 
@@ -294,43 +277,18 @@ class StartConversationAPIView(APIView):
             conv.save(update_fields=['status'])
 
         #  Send the template via Meta Cloud API
-        msg_status = "failed"
-        wa_message_id = ""
-        try:
-            wa_response = send_whatsapp_message(
-                phone_number_id=instance.phone_number_id,
-                access_token=instance.access_token,
-                to_phone=wa_id,
-                message_text=body,
-                msg_type='template',
-                template_name=template_name,
-                template_language=template_language
-            )
-            if 'messages' in wa_response and len(wa_response['messages']) > 0:
-                wa_message_id = wa_response['messages'][0]['id']
-                msg_status = "sent"
-        except Exception as e:
-            logger.error(f"Failed to send template to new number {wa_id}: {e}")
-
-        # Save Message
-        msg = Message.objects.create(
-            conversation=conv,
-            direction='outbound',
+        msg = send_and_save_message(
+            conv,
             msg_type='template',
             body=body,
+            template_name=template_name,
+            template_language=template_language,
             sent_by=request.user,
-            status=msg_status,
-            wa_message_id=wa_message_id,
-            timestamp=django_tz.now(),
         )
-
-        conv.last_message_at = msg.timestamp
-        conv.save(update_fields=['last_message_at'])
 
         # Broadcast to UI
         if created:
             broadcast_conversation_update(conv)
-        broadcast_new_message(conv, msg)
 
         return Response({
             "conversation": ConversationListSerializer(conv).data,

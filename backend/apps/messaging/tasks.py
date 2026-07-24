@@ -18,6 +18,13 @@ from .storage_backends import get_whatsapp_storage
 from .utils import send_whatsapp_message, broadcast_message_status_update
 
 
+from apps.messaging.models import Conversation
+from apps.ai.chatbot.dispatcher import ChatbotDispatcher
+from apps.automation.engine import AutomationEngine
+from apps.ai.models import AIAgentSettings
+from apps.automation.models import FlowExecution, ExecutionStatus
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -254,10 +261,6 @@ def process_inbound_message(self, conversation_id: int):
     3. Otherwise, falls back to AI (honoring AI delays).
     """
     try:
-        from apps.messaging.models import Conversation
-        from apps.ai.chatbot.dispatcher import ChatbotDispatcher
-        from apps.automation.engine import AutomationEngine
-        from apps.ai.models import AIAgentSettings
 
         try:
             conv = Conversation.objects.get(id=conversation_id)
@@ -277,6 +280,10 @@ def process_inbound_message(self, conversation_id: int):
             dispatcher._persist_and_broadcast(reply)
             logger.info(f"[Task] Conv {conversation_id}: Handled by AutomationEngine.")
             return  
+
+        if FlowExecution.objects.filter(contact=conv.contact, status__in=[ExecutionStatus.RUNNING, ExecutionStatus.WAITING]).exists():
+             logger.info(f"[Task] Conv {conversation_id}: Automation flow is active. Skipping AI fallback.")
+             return
 
         #  Evaluate AI Engine fallback
         if not conv.ai_active:
