@@ -153,8 +153,10 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
         </div>
       </div>
 
-      {/* Messages Body */}
-      <div ref={scrollRef} onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2] dark:bg-slate-950/50 relative">
+      {/* Messages Area */}
+      <div 
+        ref={scrollRef}
+        onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2] dark:bg-slate-950/50 relative">
         
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/r_QPEkMbpXb.png")' }}></div>
 

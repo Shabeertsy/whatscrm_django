@@ -5,6 +5,7 @@ from .views import (
     ConversationListAPIView, ConversationDetailAPIView,
     ConversationSendMessageAPIView, ConversationMarkReadAPIView,
     StartConversationAPIView,
+    GlobalActiveFlowsAPIView, GlobalCancelFlowAPIView,
     MessageDeleteAPIView, WebhookView, MediaUploadAPIView,
     CustomMessageViewSet
 )
@@ -24,10 +25,14 @@ urlpatterns = [
     path('conversations/<int:pk>/send/', ConversationSendMessageAPIView.as_view(), name='conversation-send-message'),
     path('conversations/<int:pk>/mark-read/', ConversationMarkReadAPIView.as_view(), name='conversation-mark-read'),
 
+    # Active Flows
+    path('active-flows/', GlobalActiveFlowsAPIView.as_view(), name='global-active-flows'),
+    path('active-flows/<uuid:exec_id>/cancel/', GlobalCancelFlowAPIView.as_view(), name='global-cancel-flow'),
+
     # Messages
     path('upload/', MediaUploadAPIView.as_view(), name='media-upload'),
     path('messages/<int:pk>/', MessageDeleteAPIView.as_view(), name='message-delete'),
 
-    # Meta Cloud API webhook — must be publicly accessible
+    # Meta Cloud API webhook 
     path('webhook/', WebhookView.as_view(), name='messaging-webhook'),
 ]

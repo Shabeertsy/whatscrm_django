@@ -46,6 +46,9 @@ from .tasks import compress_chat_video
 from apps.ai.models import AIAgentSettings
 from .utils import update_contact_whatsapp_profile
 
+from apps.automation.models import FlowExecution, ExecutionStatus
+from apps.automation.serializers import FlowExecutionSerializer
+
 
 
 logger = logging.getLogger(__name__)
@@ -136,6 +139,31 @@ class ConversationDetailAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(ConversationListSerializer(conv).data)
+
+
+## Active flows
+class GlobalActiveFlowsAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        executions = FlowExecution.objects.filter(
+            flow__owner=request.user,
+            status__in=[ExecutionStatus.RUNNING, ExecutionStatus.WAITING]
+        ).select_related('flow', 'current_node', 'contact')
+        
+        serializer = FlowExecutionSerializer(executions, many=True)
+        return Response(serializer.data)
+
+
+class GlobalCancelFlowAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, exec_id):
+        execution = get_object_or_404(FlowExecution, id=exec_id, flow__owner=request.user)
+        if execution.status in [ExecutionStatus.RUNNING, ExecutionStatus.WAITING]:
+            execution.fail("Cancelled by user")
+        return Response({"status": "cancelled"})
+
 
 
 class ConversationSendMessageAPIView(APIView):

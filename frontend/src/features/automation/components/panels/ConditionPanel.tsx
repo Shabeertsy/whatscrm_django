@@ -1,5 +1,6 @@
-import React from "react";
-import { Plus, X } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Plus, X, Loader2 } from "lucide-react";
+import { contactsApi } from "../../../../api/contacts";
 
 interface Condition {
   field: string;
@@ -17,6 +18,24 @@ const ROW_CLS = "bg-white dark:bg-slate-800 border border-slate-200 dark:border-
 
 export function ConditionPanel({ nodeId, data, update }: Props) {
   const conditions: Condition[] = Array.isArray(data.conditions) ? (data.conditions as Condition[]) : [];
+  
+  const [availableTags, setAvailableTags] = useState<{id: string, name: string}[]>([]);
+  const [loadingTags, setLoadingTags] = useState(false);
+
+  useEffect(() => {
+    const fetchTags = async () => {
+      setLoadingTags(true);
+      try {
+        const res = await contactsApi.getTags();
+        setAvailableTags(res.data);
+      } catch (e) {
+        console.error("Failed to load tags:", e);
+      } finally {
+        setLoadingTags(false);
+      }
+    };
+    fetchTags();
+  }, []);
 
   const patch = (next: Condition[]) => update(nodeId, { conditions: next });
 
@@ -72,22 +91,43 @@ export function ConditionPanel({ nodeId, data, update }: Props) {
               <select value={cond.field || "message"} onChange={(e) => set(i, "field", e.target.value)} className={`w-1/2 ${ROW_CLS}`}>
                 <option value="message">Message text</option>
                 <option value="user_tag">User Tag</option>
-                <option value="phone">Phone number</option>
               </select>
-              <select value={cond.operator || "equals"} onChange={(e) => set(i, "operator", e.target.value)} className={`w-1/2 ${ROW_CLS}`}>
-                <option value="equals">Equals</option>
+              <select value={cond.operator || "exact"} onChange={(e) => set(i, "operator", e.target.value)} className={`w-1/2 ${ROW_CLS}`}>
+                <option value="exact">Exact</option>
                 <option value="contains">Contains</option>
-                <option value="starts_with">Starts with</option>
+                <option value="not_contain">Not contain</option>
+                {cond.field !== 'user_tag' && <option value="starts_with">Starts with</option>}
               </select>
             </div>
 
-            <input
-              type="text"
-              value={cond.value || ""}
-              onChange={(e) => set(i, "value", e.target.value)}
-              placeholder="Value..."
-              className={`w-full ${ROW_CLS}`}
-            />
+            {cond.field === "user_tag" ? (
+              loadingTags ? (
+                <div className={`w-full flex items-center justify-center ${ROW_CLS}`}>
+                   <Loader2 className="w-3 h-3 animate-spin text-slate-400" />
+                </div>
+              ) : (
+                <select 
+                  value={(cond.value || "").toLowerCase()} 
+                  onChange={(e) => set(i, "value", e.target.value)} 
+                  className={`w-full ${ROW_CLS}`}
+                >
+                  <option value="" disabled>
+                    {availableTags.length === 0 ? "No tags found in CRM" : "Select a tag..."}
+                  </option>
+                  {availableTags.map(tag => (
+                    <option key={tag.id} value={tag.name.toLowerCase()}>{tag.name}</option>
+                  ))}
+                </select>
+              )
+            ) : (
+              <input
+                type="text"
+                value={cond.value || ""}
+                onChange={(e) => set(i, "value", e.target.value)}
+                placeholder="Value..."
+                className={`w-full ${ROW_CLS}`}
+              />
+            )}
           </div>
         ))}
       </div>

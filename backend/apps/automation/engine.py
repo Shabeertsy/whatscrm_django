@@ -641,22 +641,49 @@ class AutomationEngine(BaseChatbotEngine):
         # Resolve the field value from context 
         if field == "message":
             actual_val = (ctx.inbound_message_body or "").strip().lower()
+            
         elif field == "phone":
             actual_val = str(self.conv.contact.phone).strip().lower()
+
         elif field == "user_tag":
-            tags       = self.conv.contact.tags or []
-            actual_val = " ".join(str(t).strip().lower() for t in tags)
+            msg_tags = []
+            if isinstance(self.conv.contact.tags, list):
+                msg_tags = [str(t).strip().lower() for t in self.conv.contact.tags]
+                
+            crm_tags = []
+            if getattr(self.conv.contact, 'crm_contact', None):
+                crm_tags = [str(t.name).strip().lower() for t in self.conv.contact.crm_contact.tags.all()]
+                
+            # Combine and deduplicate
+            tags = list(set(msg_tags + crm_tags))
+
+            if operator in ("equals", "exact"):
+                return expected_val in tags
+            elif operator == "contains":
+                return any(expected_val in t for t in tags)
+            elif operator == "not_contain":
+                return not any(expected_val in t for t in tags)
+            
+            # fallback for other operators
+            actual_val = " ".join(tags)
         else:
             actual_val = ""
 
-        if operator == "equals":
+        if operator in ("equals", "exact") and field != "user_tag":
             return actual_val == expected_val
-        elif operator == "contains":
+        elif operator == "contains" and field != "user_tag":
             norm_exp = re.sub(r"\s+", " ", expected_val)
             norm_act = re.sub(r"\s+", " ", actual_val)
             return bool(re.search(rf"\b{re.escape(norm_exp)}\b", norm_act))
+        elif operator == "not_contain" and field != "user_tag":
+            norm_exp = re.sub(r"\s+", " ", expected_val)
+            norm_act = re.sub(r"\s+", " ", actual_val)
+            return not bool(re.search(rf"\b{re.escape(norm_exp)}\b", norm_act))
         elif operator == "starts_with":
             return actual_val.startswith(expected_val)
+
+        if field == "user_tag":
+            return False
 
         logger.warning("[AutomationEngine] Unknown operator '%s'.", operator)
         return False

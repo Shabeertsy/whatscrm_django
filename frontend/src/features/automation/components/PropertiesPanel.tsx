@@ -50,14 +50,13 @@ function resolvePanel(type: string, title: string): React.FC<PanelProps> | null 
 
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Media upload section 
 // ─────────────────────────────────────────────────────────────────────────────
 interface MediaSectionProps {
   nodeId: string;
   data: Record<string, unknown>;
   update: (id: string, patch: Record<string, unknown>) => void;
-  fileRef: React.RefObject<HTMLInputElement>;
+  fileRef: React.RefObject<HTMLInputElement | null>;
 }
 
 function MediaSection({ nodeId, data, update, fileRef }: MediaSectionProps) {
@@ -140,7 +139,6 @@ function MediaSection({ nodeId, data, update, fileRef }: MediaSectionProps) {
 
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // PropertiesPanel — thin shell: header + title + routed panel + delete footer
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -166,7 +164,6 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
   return (
     <aside className="w-80 bg-white dark:bg-[#0B0F19] border-l border-slate-200 dark:border-slate-800 flex flex-col h-full justify-between overflow-y-auto transition-colors">
       <div className="p-4 space-y-5">
-        {/* Header */}
         <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
           <h3 className="text-slate-900 dark:text-white font-semibold text-sm">Node Properties</h3>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -174,7 +171,7 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
           </p>
         </div>
 
-        {/* Shared: Title */}
+        {/* Title */}
         <div>
           <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
             Title
@@ -196,7 +193,7 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
           />
         )}
 
-        {/* Media upload (for media nodes) */}
+        {/* Media upload  */}
         {isMediaNode && (
           <MediaSection
             nodeId={selectedNode.id}

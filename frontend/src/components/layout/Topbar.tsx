@@ -3,6 +3,9 @@ import { Bell, Search, Settings, LogOut, User } from "lucide-react";
 import { useTeamStore } from "../../store/teamStore";
 import { useNavigate } from "react-router-dom";
 import { tokenService } from "../../api/token";
+import { ActiveFlowsDropdown } from "./ActiveFlowsDropdown";
+
+
 
 export function Topbar() {
   const [teamState] = useTeamStore();
@@ -40,6 +43,8 @@ export function Topbar() {
 
       {/* Right controls */}
       <div className="flex items-center gap-3">
+        <ActiveFlowsDropdown />
+
         {/* Notifications */}
         <button className="relative p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition">
           <Bell className="h-5 w-5" />

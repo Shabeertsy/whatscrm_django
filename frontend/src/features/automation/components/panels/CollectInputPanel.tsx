@@ -25,7 +25,7 @@ export function CollectInputPanel({ nodeId, data, update }: Props) {
       <FieldGroup label="Save to Variable Name">
         <FieldInput
           type="text"
-          value={(data.variableName as string) || "user_input"}
+          value={(data.variableName as string) || ""}
           onChange={(e) => update(nodeId, { variableName: e.target.value })}
           placeholder="e.g. user_email, full_name"
           focus="focusPurple"

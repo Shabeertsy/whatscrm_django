@@ -34,7 +34,7 @@ export function SendMessagePanel({ nodeId, data, update }: Props) {
         </FieldSelect>
       </FieldGroup>
 
-      {data.mediaType && (
+      {Boolean(data.mediaType) && (
         <>
           <FieldGroup label="Media URL">
             <FieldInput

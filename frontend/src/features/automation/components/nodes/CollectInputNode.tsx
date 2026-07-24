@@ -17,7 +17,7 @@ interface CollectInputNodeProps {
 
 export function CollectInputNode({ data, selected }: CollectInputNodeProps) {
   const promptText = data.prompt || data.message || "Ask for user input...";
-  const variable = data.variableName || "user_input";
+  const variable = data.variableName;
   const inputType = data.validationType || "text";
 
   return (
@@ -64,7 +64,7 @@ export function CollectInputNode({ data, selected }: CollectInputNodeProps) {
               <Variable className="h-3 w-3 text-purple-500" /> Save to:
             </span>
             <span className="font-mono font-semibold text-purple-600 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 px-1 py-0.5 rounded">
-              {`{{${variable}}}`}
+              {variable ? `{{${variable}}}` : "Not saved"}
             </span>
           </div>
         </div>

@@ -205,7 +205,7 @@ export const NODE_REGISTRY: Record<CanonicalType, NodeRegistryEntry> = {
       title,
       description: desc,
       prompt: "Please enter your details:",
-      variableName: "user_input",
+      variableName: "",
       validationType: "text",
       maxRetries: 3,
     }),

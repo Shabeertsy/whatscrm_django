@@ -73,6 +73,18 @@ export interface CustomMessage {
   updated_at: string;
 }
 
+export interface FlowExecution {
+  id: string;
+  flow_name: string;
+  status: string;
+  current_node_title: string;
+  started_at: string;
+  resume_at: string | null;
+  contact_name: string;
+  contact_phone: string;
+  conversation_id: string | null;
+}
+
 //  API Functions 
 export const messagingApi = {
   /** List conversations — optionally filter by status */
@@ -93,6 +105,16 @@ export const messagingApi = {
   /** Mark conversation as read (reset unread_count) */
   markRead(conversationId: string) {
     return apiClient.post(`${BASE}/conversations/${conversationId}/mark-read/`);
+  },
+
+  /** Get all active automation flows for the user */
+  getActiveFlows() {
+    return apiClient.get<FlowExecution[]>(`${BASE}/active-flows/`);
+  },
+
+  /** Cancel a global active automation flow */
+  cancelFlow(executionId: string) {
+    return apiClient.post(`${BASE}/active-flows/${executionId}/cancel/`);
   },
 
   /** Start a conversation with a new number via template */

@@ -114,3 +114,20 @@ class AutomationFlowSerializer(serializers.ModelSerializer):
             validated_data['owner'] = request.user
             
         return super().create(validated_data)
+
+
+class FlowExecutionSerializer(serializers.ModelSerializer):
+    flow_name = serializers.CharField(source='flow.name', read_only=True)
+    current_node_title = serializers.CharField(source='current_node.title', read_only=True, default='')
+    contact_name = serializers.CharField(source='contact.name', read_only=True, default='')
+    contact_phone = serializers.CharField(source='contact.phone', read_only=True, default='')
+    conversation_id = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import FlowExecution
+        model = FlowExecution
+        fields = ['id', 'flow_name', 'status', 'current_node_title', 'started_at', 'resume_at', 'contact_name', 'contact_phone', 'conversation_id']
+
+    def get_conversation_id(self, obj):
+        conv = obj.contact.conversations.first()
+        return conv.id if conv else None
