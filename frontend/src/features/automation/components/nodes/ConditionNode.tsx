@@ -25,11 +25,10 @@ export function ConditionNode({ data, selected }: ConditionNodeProps) {
       />
 
       <div
-        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${
-          selected
+        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${selected
             ? "border-2 border-amber-500 dark:border-amber-400 shadow-lg shadow-amber-500/20"
             : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
-        }`}
+          }`}
       >
         <div className="bg-slate-50 dark:bg-[#1C2333] px-3 py-2 border-b border-slate-200 dark:border-[#2a364d] flex items-center gap-2">
           <Sliders className="h-3.5 w-3.5 text-amber-500 shrink-0" />

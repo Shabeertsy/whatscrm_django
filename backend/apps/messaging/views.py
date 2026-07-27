@@ -22,7 +22,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.whatsapp.models import WhatsappInstance
-from .models import Contact, Conversation, Message, CustomMessage
+from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem
 from .serializers import (
     ContactSerializer,
     ConversationListSerializer,
@@ -31,6 +31,7 @@ from .serializers import (
     MessageSerializer,
     SendMessageSerializer,
     CustomMessageSerializer,
+    MediaLibraryItemSerializer,
 )
 
 from .utils import (
@@ -749,3 +750,60 @@ class CustomMessageViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
+
+
+class MediaLibraryViewSet(viewsets.ModelViewSet):
+    serializer_class = MediaLibraryItemSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = MediaLibraryItem.objects.filter(Q(owner=self.request.user) | Q(owner__isnull=True))
+        media_type = self.request.query_params.get('media_type')
+        if media_type and media_type != 'all':
+            queryset = queryset.filter(media_type=media_type)
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(name__icontains=search)
+        return queryset
+
+    def create(self, request, *args, **kwargs):
+        file_obj = request.FILES.get('file')
+        if file_obj:
+            media_data = save_whatsapp_media(file_obj, None)
+            saved_path = media_data["path"]
+            mime = media_data["mime"]
+            final_size = media_data["size"]
+            storage = get_whatsapp_storage()
+            url = storage.url(saved_path)
+            if url.startswith('http://') or url.startswith('https://'):
+                file_url = url
+            else:
+                if getattr(settings, 'BACKEND_PUBLIC_URL', None):
+                    base_url = settings.BACKEND_PUBLIC_URL.rstrip('/')
+                    file_url = f"{base_url}{url}"
+                else:
+                    file_url = request.build_absolute_uri(url)
+
+            req_type = 'document'
+            if mime.startswith('image/'): req_type = 'image'
+            elif mime.startswith('audio/'): req_type = 'audio'
+            elif mime.startswith('video/'): req_type = 'video'
+
+            name = request.data.get('name') or file_obj.name
+            item = MediaLibraryItem.objects.create(
+                name=name,
+                file_url=file_url,
+                storage_path=saved_path,
+                media_type=request.data.get('media_type') or req_type,
+                mime_type=mime,
+                file_size=final_size,
+                owner=request.user
+            )
+            serializer = self.get_serializer(item)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+

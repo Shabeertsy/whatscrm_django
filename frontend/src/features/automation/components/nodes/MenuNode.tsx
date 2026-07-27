@@ -39,11 +39,10 @@ export function MenuNode({ data, selected }: MenuNodeProps) {
       />
 
       <div
-        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${
-          selected
+        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${selected
             ? "border-2 border-orange-500 dark:border-orange-400 shadow-lg shadow-orange-500/20"
             : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
-        }`}
+          }`}
       >
         <div className="bg-orange-50 dark:bg-orange-950/40 px-3 py-2 border-b border-orange-100 dark:border-orange-900/40 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Contact, Conversation, Message, CustomMessage
+from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem
 from .storage_backends import get_whatsapp_storage
 
 def _resolve_media_url(storage_path, fallback_url):
@@ -187,4 +187,11 @@ class CustomMessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomMessage
         fields = ['id', 'title', 'text', 'owner', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'owner']
+
+
+class MediaLibraryItemSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MediaLibraryItem
+        fields = ['id', 'name', 'file_url', 'storage_path', 'media_type', 'mime_type', 'file_size', 'owner', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at', 'owner']

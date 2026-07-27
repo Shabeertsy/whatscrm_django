@@ -172,3 +172,34 @@ class CustomMessage(BaseModel):
 
     def __str__(self):
         return self.title
+
+
+class MediaLibraryItem(BaseModel):
+    MEDIA_TYPES = [
+        ('image', 'Image'),
+        ('video', 'Video'),
+        ('audio', 'Audio'),
+        ('document', 'Document'),
+    ]
+    name = models.CharField(max_length=255)
+    file_url = models.CharField(max_length=1024)
+    storage_path = models.CharField(max_length=512, blank=True, null=True)
+    media_type = models.CharField(max_length=50, choices=MEDIA_TYPES, default='image')
+    mime_type = models.CharField(max_length=100, blank=True, null=True)
+    file_size = models.PositiveIntegerField(default=0)
+    
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='media_library_items'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Media Library Item'
+        verbose_name_plural = 'Media Library Items'
+
+    def __str__(self):
+        return self.name

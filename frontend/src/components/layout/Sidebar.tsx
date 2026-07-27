@@ -18,7 +18,8 @@ import {
   Bot,
   Building2,
   FileText,
-  MessageSquareText
+  MessageSquareText,
+  FolderOpen
 } from "lucide-react";
 import { useRouter } from "../../router";
 
@@ -36,6 +37,7 @@ export function Sidebar() {
     { id: "/hotels", label: "Hotels and Resorts", icon: Building2 },
     { id: "/templates", label: "Templates", icon: FileText },
     { id: "/custom-messages", label: "Custom Messages", icon: MessageSquareText },
+    { id: "/media", label: "Media Library", icon: FolderOpen },
 
     { id: "/ai-agent", label: "AI Agent", icon: Bot },
     { id: "/automations", label: "Automations", icon: GitFork },

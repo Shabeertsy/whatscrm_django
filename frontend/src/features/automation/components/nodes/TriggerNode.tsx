@@ -29,11 +29,10 @@ export function TriggerNode({ data, selected }: TriggerNodeProps) {
 
       {/* Inner visual card — overflow-hidden clips content to node bounds */}
       <div
-        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${
-          selected
+        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${selected
             ? "border-2 border-purple-500 dark:border-purple-400 shadow-lg shadow-purple-500/20"
             : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
-        }`}
+          }`}
       >
         <div className="bg-purple-50 dark:bg-purple-950/40 px-3 py-2 border-b border-purple-100 dark:border-purple-900/40 flex items-center justify-between">
           <div className="flex items-center gap-2">

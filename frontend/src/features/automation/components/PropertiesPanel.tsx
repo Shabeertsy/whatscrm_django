@@ -1,6 +1,7 @@
-import React, { useRef } from "react";
+import React from "react";
 import { Node } from "@xyflow/react";
-import { Trash2, Upload, Image as ImageIcon, Film, FileText, X } from "lucide-react";
+import { Trash2, Zap, GitBranch, Clock, MessageSquare, Sliders, Settings, Sparkles } from "lucide-react";
+
 
 import { TriggerPanel } from "./panels/TriggerPanel";
 import { DelayPanel } from "./panels/DelayPanel";
@@ -48,107 +49,42 @@ function resolvePanel(type: string, title: string): React.FC<PanelProps> | null 
   return null;
 }
 
+function getNodeStyle(type: string) {
+  switch (type) {
+    case "trigger":
+      return { bg: "bg-amber-500", shadow: "shadow-amber-500/20", label: "Trigger Event", icon: Zap };
+    case "condition":
+      return { bg: "bg-purple-600", shadow: "shadow-purple-500/20", label: "Condition Split", icon: GitBranch };
+    case "wait":
+    case "delay":
+      return { bg: "bg-blue-600", shadow: "shadow-blue-500/20", label: "Time Delay", icon: Clock };
+    case "action":
+      return { bg: "bg-emerald-600", shadow: "shadow-emerald-500/20", label: "Send Message", icon: MessageSquare };
+    default:
+      return { bg: "bg-slate-800 dark:bg-slate-700", shadow: "shadow-slate-500/20", label: "Action Node", icon: Sliders };
+  }
+}
+
 
 
 // Media upload section 
 // ─────────────────────────────────────────────────────────────────────────────
-interface MediaSectionProps {
-  nodeId: string;
-  data: Record<string, unknown>;
-  update: (id: string, patch: Record<string, unknown>) => void;
-  fileRef: React.RefObject<HTMLInputElement | null>;
-}
-
-function MediaSection({ nodeId, data, update, fileRef }: MediaSectionProps) {
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      update(nodeId, {
-        mediaUrl: ev.target?.result as string,
-        mediaName: file.name,
-        mediaType: file.type.startsWith("image/") ? "image"
-          : file.type.startsWith("video/") ? "video"
-            : "document",
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleRemove = () => {
-    update(nodeId, { mediaUrl: null, mediaName: null, mediaType: null });
-    if (fileRef.current) fileRef.current.value = "";
-  };
-
-  return (
-    <div>
-      <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">
-        Media Attachment
-      </p>
-      <input
-        type="file"
-        ref={fileRef}
-        onChange={handleUpload}
-        accept="image/*,video/*,application/pdf,audio/*"
-        className="hidden"
-      />
-
-      {data.mediaUrl ? (
-        <div className="bg-slate-50 dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded-xl p-3 flex flex-col space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 truncate">
-              {data.mediaType === "image" && <ImageIcon className="h-4 w-4 text-emerald-500 shrink-0" />}
-              {data.mediaType === "video" && <Film className="h-4 w-4 text-blue-500 shrink-0" />}
-              {data.mediaType === "document" && <FileText className="h-4 w-4 text-amber-500 shrink-0" />}
-              <span className="text-xs font-medium text-slate-700 dark:text-slate-200 truncate max-w-[170px]">
-                {(data.mediaName as string) || "Uploaded Media"}
-              </span>
-            </div>
-            <button
-              onClick={handleRemove}
-              className="p-1 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-slate-400 hover:text-rose-600 rounded-lg transition"
-              title="Remove Media"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-
-          {data.mediaType === "image" && (
-            <img src={data.mediaUrl as string} alt="Preview" className="h-32 w-full object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
-          )}
-          {data.mediaType === "video" && (
-            <video src={data.mediaUrl as string} controls className="h-32 w-full object-cover rounded-lg border border-slate-200 dark:border-slate-700" />
-          )}
-        </div>
-      ) : (
-        <div
-          onClick={() => fileRef.current?.click()}
-          className="border-2 border-dashed border-slate-200 dark:border-slate-700 hover:border-[#007e3a] dark:hover:border-[#007e3a] rounded-xl p-4 text-center cursor-pointer transition-all bg-slate-50 dark:bg-[#131924] group"
-        >
-          <div className="w-10 h-10 rounded-full bg-[#007e3a]/10 text-[#007e3a] flex items-center justify-center mx-auto mb-2 group-hover:scale-110 transition-transform">
-            <Upload className="h-5 w-5" />
-          </div>
-          <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Upload Media</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Image, Video, Audio or Document</p>
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-
 // PropertiesPanel — thin shell: header + title + routed panel + delete footer
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: Props) {
-  const fileRef = useRef<HTMLInputElement>(null);
+
 
   if (!selectedNode) {
     return (
-      <aside className="w-80 bg-white dark:bg-[#0B0F19] border-l border-slate-200 dark:border-slate-800 flex flex-col h-full justify-center items-center p-6 text-center transition-colors">
-        <p className="text-sm text-slate-500 dark:text-slate-400">Select a node to edit.</p>
+      <aside className="w-96 md:w-[400px] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl border-l border-slate-200/80 dark:border-slate-800/80 flex flex-col h-full justify-center items-center p-8 text-center transition-all shadow-2xl z-20">
+        <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4 shadow-inner border border-slate-200/60 dark:border-slate-700/60">
+          <Settings className="w-8 h-8 animate-spin-slow" />
+        </div>
+        <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-200 mb-1">No Node Selected</h4>
+        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[240px] leading-relaxed font-medium">
+          Click on any block in your workflow canvas to customize its properties and routing rules.
+        </p>
       </aside>
     );
   }
@@ -159,59 +95,63 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
   const nodeTitle = (data.title as string) ?? "";
   const isMediaNode = nodeTitle.toLowerCase().includes("media") || !!data.mediaUrl;
 
+  const style = getNodeStyle(nodeType);
+  const NodeIcon = style.icon;
   const Panel = resolvePanel(nodeType, nodeTitle);
 
   return (
-    <aside className="w-80 bg-white dark:bg-[#0B0F19] border-l border-slate-200 dark:border-slate-800 flex flex-col h-full justify-between overflow-y-auto transition-colors">
-      <div className="p-4 space-y-5">
-        <div className="border-b border-slate-200 dark:border-slate-800 pb-3">
-          <h3 className="text-slate-900 dark:text-white font-semibold text-sm">Node Properties</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Configure {nodeTitle || "this node"}
-          </p>
+    <aside className="w-96 md:w-[400px] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl border-l border-slate-200/80 dark:border-slate-800/80 flex flex-col h-full justify-between overflow-y-auto transition-all shadow-2xl z-20">
+      <div>
+        {/* Node Header */}
+        <div className="relative overflow-hidden bg-slate-50/80 dark:bg-slate-900/50 p-5 border-b border-slate-200/80 dark:border-slate-800/80">
+          <div className="flex items-center space-x-3.5">
+            <div className={`w-11 h-11 rounded-2xl ${style.bg} flex items-center justify-center text-white shadow-lg ${style.shadow} shrink-0 transform transition-transform hover:scale-105`}>
+              <NodeIcon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h3 className="text-slate-900 dark:text-white font-extrabold text-base tracking-tight truncate">
+                {nodeTitle || style.label}
+              </h3>
+            </div>
+          </div>
         </div>
 
-        {/* Title */}
-        <div>
-          <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider block mb-2">
-            Title
-          </label>
-          <input
-            type="text"
-            value={nodeTitle}
-            onChange={(e) => updateNodeData(selectedNode.id, { title: e.target.value })}
-            className="w-full bg-slate-50 dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#007e3a] transition-colors"
-          />
+        <div className="p-5 space-y-6">
+          {/* Title Input */}
+          <div className="bg-slate-50/50 dark:bg-slate-900/30 p-3.5 rounded-2xl border border-slate-200/60 dark:border-slate-800/60 space-y-1.5 shadow-2xs">
+            <label className="text-[11px] font-extrabold text-slate-500 dark:text-slate-400 uppercase tracking-wider block">
+              Block Name
+            </label>
+            <input
+              type="text"
+              value={nodeTitle}
+              onChange={(e) => updateNodeData(selectedNode.id, { title: e.target.value })}
+              placeholder="Enter block title..."
+              className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] transition-all shadow-2xs"
+            />
+          </div>
+
+          {/* Node-specific panel */}
+          {Panel && (
+            <div className="pt-1">
+              <Panel
+                nodeId={selectedNode.id}
+                data={data as Record<string, unknown>}
+                update={updateNodeData}
+              />
+            </div>
+          )}
         </div>
-
-        {/* Node-specific panel */}
-        {Panel && (
-          <Panel
-            nodeId={selectedNode.id}
-            data={data as Record<string, unknown>}
-            update={updateNodeData}
-          />
-        )}
-
-        {/* Media upload  */}
-        {isMediaNode && (
-          <MediaSection
-            nodeId={selectedNode.id}
-            data={data as Record<string, unknown>}
-            update={updateNodeData}
-            fileRef={fileRef}
-          />
-        )}
       </div>
 
       {/* Footer: Delete */}
-      <div className="p-4 border-t border-slate-200 dark:border-slate-800">
+      <div className="p-4 border-t border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-900/30 mt-auto">
         <button
           onClick={() => onDeleteNode?.(selectedNode.id)}
-          className="w-full flex items-center justify-center space-x-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 py-2.5 px-4 rounded-xl text-sm font-semibold transition-all shadow-sm"
+          className="w-full flex items-center justify-center space-x-2 bg-rose-50/80 hover:bg-rose-500 hover:text-white text-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-600 dark:hover:text-white dark:text-rose-400 border border-rose-200/80 dark:border-rose-800/50 py-3 px-4 rounded-xl text-xs font-bold transition-all duration-200 shadow-xs group"
         >
-          <Trash2 className="h-4 w-4" />
-          <span>Delete Node</span>
+          <Trash2 className="h-4 w-4 group-hover:scale-110 transition-transform" />
+          <span>Delete This Block</span>
         </button>
       </div>
     </aside>

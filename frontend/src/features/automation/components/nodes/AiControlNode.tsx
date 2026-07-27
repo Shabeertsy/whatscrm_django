@@ -31,11 +31,10 @@ export function AiControlNode({ data, selected }: AiControlNodeProps) {
       />
 
       <div
-        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${
-          selected
+        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${selected
             ? "border-2 border-indigo-500 dark:border-indigo-400 shadow-lg shadow-indigo-500/20"
             : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
-        }`}
+          }`}
       >
         <div className="bg-indigo-50 dark:bg-indigo-950/40 px-3 py-2 border-b border-indigo-100 dark:border-indigo-900/40 flex items-center justify-between">
           <div className="flex items-center gap-2">

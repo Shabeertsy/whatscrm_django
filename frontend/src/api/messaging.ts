@@ -73,6 +73,19 @@ export interface CustomMessage {
   updated_at: string;
 }
 
+export interface MediaLibraryItem {
+  id: string;
+  name: string;
+  file_url: string;
+  storage_path?: string;
+  media_type: 'image' | 'video' | 'audio' | 'document';
+  mime_type?: string;
+  file_size: number;
+  created_at: string;
+  updated_at: string;
+}
+
+
 export interface FlowExecution {
   id: string;
   flow_name: string;
@@ -163,4 +176,27 @@ export const messagingApi = {
   deleteCustomMessage(id: string) {
     return apiClient.delete(`${BASE}/custom-messages/${id}/`);
   },
+
+  /** Media Library */
+  listMediaLibrary(params?: { media_type?: string; search?: string }) {
+    return apiClient.get<MediaLibraryItem[]>(`${BASE}/media-library/`, { params });
+  },
+  createMediaItem(data: { name: string; file_url: string; media_type?: string; storage_path?: string; mime_type?: string; file_size?: number }) {
+    return apiClient.post<MediaLibraryItem>(`${BASE}/media-library/`, data);
+  },
+  uploadToMediaLibrary(file: File, name?: string, mediaType?: string) {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (name) formData.append('name', name);
+    if (mediaType) formData.append('media_type', mediaType);
+    return apiClient.post<MediaLibraryItem>(`${BASE}/media-library/`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+  },
+  deleteMediaItem(id: string) {
+    return apiClient.delete(`${BASE}/media-library/${id}/`);
+  },
 };
+

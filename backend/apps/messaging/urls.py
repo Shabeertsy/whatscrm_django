@@ -7,15 +7,16 @@ from .views import (
     StartConversationAPIView,
     GlobalActiveFlowsAPIView, GlobalCancelFlowAPIView,
     MessageDeleteAPIView, WebhookView, MediaUploadAPIView,
-    CustomMessageViewSet
+    CustomMessageViewSet, MediaLibraryViewSet,
 )
 
 router = DefaultRouter()
 router.register(r'contacts', ContactViewSet, basename='contact')
 router.register(r'custom-messages', CustomMessageViewSet, basename='custom-message')
+router.register(r'media-library', MediaLibraryViewSet, basename='media-library')
 
 urlpatterns = [
-    # Contacts (ViewSet)
+    # Contacts & ViewSets
     path('', include(router.urls)),
 
     # Conversations
@@ -33,6 +34,6 @@ urlpatterns = [
     path('upload/', MediaUploadAPIView.as_view(), name='media-upload'),
     path('messages/<int:pk>/', MessageDeleteAPIView.as_view(), name='message-delete'),
 
-    # Meta Cloud API webhook 
+    # Meta Cloud API webhook
     path('webhook/', WebhookView.as_view(), name='messaging-webhook'),
 ]
