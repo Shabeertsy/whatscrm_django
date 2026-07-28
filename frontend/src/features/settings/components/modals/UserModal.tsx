@@ -110,14 +110,14 @@ export function UserModal({
             <FormField
               label="First Name"
               icon={UserIcon}
-              value={form.first_name}
+              value={form.first_name || ''}
               onChange={set('first_name')}
               placeholder="e.g. Sarah"
             />
             <FormField
               label="Last Name"
               icon={UserIcon}
-              value={form.last_name}
+              value={form.last_name || ''}
               onChange={set('last_name')}
               placeholder="e.g. Connor"
             />
