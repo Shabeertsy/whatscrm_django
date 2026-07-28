@@ -112,14 +112,12 @@ export function UserModal({
               icon={UserIcon}
               value={form.first_name || ''}
               onChange={set('first_name')}
-              placeholder="e.g. Sarah"
             />
             <FormField
               label="Last Name"
               icon={UserIcon}
               value={form.last_name || ''}
               onChange={set('last_name')}
-              placeholder="e.g. Connor"
             />
           </div>
 
@@ -133,7 +131,6 @@ export function UserModal({
                 setForm((prev) => ({ ...prev, email: val, username: val }));
                 setError('');
               }}
-              placeholder="sarah@company.com"
               required
               hint="Used to sign in to the CRM workspace."
             />
@@ -142,7 +139,6 @@ export function UserModal({
               icon={Phone}
               value={form.phone_number || ''}
               onChange={set('phone_number')}
-              placeholder="+1 (555) 000-0000"
               hint="Optional contact number for notifications."
             />
           </div>
@@ -173,7 +169,6 @@ export function UserModal({
               type="password"
               value={form.password || ''}
               onChange={set('password')}
-              placeholder={isEdit ? 'Leave blank to keep unchanged' : 'At least 6 characters'}
               required={!isEdit}
               hint={isEdit ? '' : 'Initial login password.'}
             />
