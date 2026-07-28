@@ -22,28 +22,32 @@ import {
   FolderOpen
 } from "lucide-react";
 import { useRouter } from "../../router";
+import { useAuthStore } from "../../store/authStore";
+import { getUserPermissions } from "../../utils/permissions";
 
 
 export function Sidebar() {
   const { path, navigate } = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [authState] = useAuthStore();
+  const permissions = getUserPermissions(authState?.user);
 
 
-  const navItems = [
-    { id: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { id: "/messaging", label: "Chats", icon: MessageSquare },
-    { id: "/pipeline", label: "Pipeline", icon: Sliders },
-    { id: "/contacts", label: "Contacts", icon: Contact2 },
-    { id: "/hotels", label: "Hotels and Resorts", icon: Building2 },
-    { id: "/templates", label: "Templates", icon: FileText },
-    { id: "/custom-messages", label: "Custom Messages", icon: MessageSquareText },
-    { id: "/media", label: "Media Library", icon: FolderOpen },
+  const allNavItems = [
+    { id: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permitted: permissions.canAccessDashboard },
+    { id: "/messaging", label: "Chats", icon: MessageSquare, permitted: permissions.canAccessChats },
+    { id: "/pipeline", label: "Pipeline", icon: Sliders, permitted: permissions.canAccessPipeline },
+    { id: "/contacts", label: "Contacts", icon: Contact2, permitted: permissions.canAccessContacts },
+    { id: "/hotels", label: "Hotels and Resorts", icon: Building2, permitted: permissions.canAccessHotels },
+    { id: "/templates", label: "Templates", icon: FileText, permitted: permissions.canAccessTemplates },
+    { id: "/custom-messages", label: "Custom Messages", icon: MessageSquareText, permitted: permissions.canAccessCustomMessages },
+    { id: "/media", label: "Media Library", icon: FolderOpen, permitted: permissions.canAccessMedia },
 
-    { id: "/ai-agent", label: "AI Agent", icon: Bot },
-    { id: "/automations", label: "Automations", icon: GitFork },
-    // { id: "/campaigns", label: "Campaigns & Templates", icon: Radio },
-    // { id: "/voice", label: "Voice/Calls", icon: PhoneCall },
+    { id: "/ai-agent", label: "AI Agent", icon: Bot, permitted: permissions.canAccessAiAgent },
+    { id: "/automations", label: "Automations", icon: GitFork, permitted: permissions.canAccessAutomations },
   ];
+
+  const navItems = allNavItems.filter((item) => item.permitted);
 
   return (
     <aside className={`${isCollapsed ? "w-20" : "w-64"} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between z-10 h-screen transition-all duration-300 relative`}>

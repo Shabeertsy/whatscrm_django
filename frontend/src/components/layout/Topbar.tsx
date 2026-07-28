@@ -3,15 +3,23 @@ import { Bell, Search, Settings, LogOut, User } from "lucide-react";
 import { useTeamStore } from "../../store/teamStore";
 import { useNavigate } from "react-router-dom";
 import { tokenService } from "../../api/token";
+import { useAuthStore } from "../../store/authStore";
+import { getUserPermissions } from "../../utils/permissions";
 import { ActiveFlowsDropdown } from "./ActiveFlowsDropdown";
 
 
 
 export function Topbar() {
   const [teamState] = useTeamStore();
+  const [authState] = useAuthStore();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const user = authState?.user || { first_name: 'Admin', email: 'admin@whatsacrm.com' };
+  const permissions = getUserPermissions(user);
+  const displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || user.email?.split('@')[0] || 'User';
+  const initial = displayName.charAt(0).toUpperCase() || 'U';
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -57,26 +65,33 @@ export function Topbar() {
             onClick={() => setProfileOpen((o) => !o)}
             className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#007e3a] to-emerald-400 flex items-center justify-center font-extrabold text-white shadow-md text-sm focus:outline-none focus:ring-2 focus:ring-[#007e3a]/40 focus:ring-offset-2 transition"
           >
-            S
+            {initial}
           </button>
 
           {profileOpen && (
-            <div className="absolute right-0 top-[calc(100%+8px)] w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute right-0 top-[calc(100%+8px)] w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
               {/* Account info */}
-              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-900 dark:text-white">Admin</p>
-                <p className="text-[11px] text-slate-400 truncate mt-0.5">admin@whatsacrm.com</p>
+              <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{displayName}</p>
+                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${permissions.roleBadgeColor}`}>
+                    {permissions.roleLabel}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400 truncate">{user.email}</p>
               </div>
 
               {/* Menu items */}
               <div className="py-1">
-                <button
-                  onClick={() => { navigate("/settings"); setProfileOpen(false); }}
-                  className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-left"
-                >
-                  <Settings className="h-4 w-4 text-slate-400" />
-                  Settings
-                </button>
+                {permissions.canAccessSettings && (
+                  <button
+                    onClick={() => { navigate("/settings"); setProfileOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-left"
+                  >
+                    <Settings className="h-4 w-4 text-slate-400" />
+                    Settings
+                  </button>
+                )}
                 <button
                   onClick={() => { setProfileOpen(false); }}
                   className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-left"

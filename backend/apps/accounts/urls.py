@@ -1,12 +1,20 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import CurrentUserAPIView, CustomTokenObtainPairView, UserViewSet
+from .views import (
+    CurrentUserAPIView,
+    CustomTokenObtainPairView,
+    UserViewSet,
+    DepartmentViewSet,
+    DepartmentRolePermissionViewSet,
+)
 
 app_name = 'accounts'
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
+router.register(r'departments', DepartmentViewSet, basename='department')
+router.register(r'department-role-permissions', DepartmentRolePermissionViewSet, basename='department-role-permission')
 
 urlpatterns = [
     # Authentication (JWT)
@@ -16,6 +24,6 @@ urlpatterns = [
     # Profile
     path('me/', CurrentUserAPIView.as_view(), name='current_user'),
     
-    # CRM Users
+    # CRM Users, Departments, Permissions
     path('', include(router.urls)),
 ]
