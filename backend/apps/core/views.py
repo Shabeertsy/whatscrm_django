@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.core.permissions import RequirePermission, Permission
 from django.core.cache import cache
 from django.conf import settings
 import urllib.request
@@ -22,7 +23,8 @@ def get_proxy_url(user):
 
 class ProxyURLViewSet(viewsets.ModelViewSet):
     serializer_class = ProxyURLSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_SETTINGS_PROXIES
     queryset = ProxyURL.objects.all()
 
     def update(self, request, *args, **kwargs):
@@ -39,7 +41,8 @@ class ProxyURLViewSet(viewsets.ModelViewSet):
 
 
 class HotelsProxyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_HOTELS
 
     def get(self, request):
         query_params = request.GET.urlencode()
@@ -68,7 +71,8 @@ class HotelsProxyView(APIView):
 
 
 class RoomsProxyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_HOTELS
 
     def get(self, request):
         uuid = request.query_params.get('uuid')
@@ -104,7 +108,8 @@ class RoomsProxyView(APIView):
 
 
 class RoomConfigProxyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_HOTELS
 
     def get(self, request):
         base = get_proxy_url(request.user)
@@ -127,7 +132,8 @@ class RoomConfigProxyView(APIView):
 
 
 class PropertyConfigProxyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_HOTELS
 
     def get(self, request):
         base = get_proxy_url(request.user)
@@ -150,7 +156,8 @@ class PropertyConfigProxyView(APIView):
 
 
 class CRMRoomsProxyView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_HOTELS
 
     def get(self, request, uuid=None):
         query_params = request.GET.urlencode()

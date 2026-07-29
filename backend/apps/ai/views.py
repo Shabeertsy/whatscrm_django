@@ -1,5 +1,6 @@
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from apps.core.permissions import RequirePermission, Permission
 from rest_framework.response import Response
 
 from .models import AIAgentSettings, AIProviderSettings
@@ -13,13 +14,15 @@ from rest_framework.views import APIView
 
 class AIProviderSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = AIProviderSettingsSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_SETTINGS_AI
     queryset = AIProviderSettings.objects.all()
 
 
 class AIAgentSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = AIAgentSettingsSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_SETTINGS_AI
     queryset = AIAgentSettings.objects.all()
 
     def create(self, request, *args, **kwargs):
@@ -33,7 +36,8 @@ class AIAgentSettingsViewSet(viewsets.ModelViewSet):
 
 
 class TestAIAgentAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_AI_AGENT
 
     def post(self, request):
         messages = request.data.get('messages', [])

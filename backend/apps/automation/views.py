@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.core.permissions import RequirePermission, Permission
 from .models import AutomationFlow, FlowStatus
 from .serializers import AutomationFlowSerializer
 
@@ -9,7 +10,8 @@ from .serializers import AutomationFlowSerializer
 
 class AutomationFlowViewSet(viewsets.ModelViewSet):
     serializer_class = AutomationFlowSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_AUTOMATIONS
 
     def get_queryset(self):
         return AutomationFlow.objects.filter(owner=self.request.user)

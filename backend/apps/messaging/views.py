@@ -18,6 +18,7 @@ from channels.layers import get_channel_layer
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from apps.core.permissions import RequirePermission, Permission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -57,7 +58,8 @@ logger = logging.getLogger(__name__)
 
 #  Contact ViewSet 
 class ContactViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
     serializer_class   = ContactSerializer
 
     def get_queryset(self):
@@ -93,7 +95,8 @@ class ContactViewSet(viewsets.ModelViewSet):
 
 #  Conversation APIViews
 class ConversationListAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
 
     def get(self, request):
         qs = Conversation.objects.select_related(
@@ -118,7 +121,8 @@ class ConversationListAPIView(APIView):
 
 
 class ConversationDetailAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
 
     def get(self, request, pk):
         qs = Conversation.objects.select_related(
@@ -144,7 +148,8 @@ class ConversationDetailAPIView(APIView):
 
 ## Active flows
 class GlobalActiveFlowsAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_AUTOMATIONS
 
     def get(self, request):
         executions = FlowExecution.objects.filter(
@@ -157,7 +162,8 @@ class GlobalActiveFlowsAPIView(APIView):
 
 
 class GlobalCancelFlowAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_AUTOMATIONS
 
     def post(self, request, exec_id):
         execution = get_object_or_404(FlowExecution, id=exec_id, flow__owner=request.user)
@@ -168,7 +174,8 @@ class GlobalCancelFlowAPIView(APIView):
 
 
 class ConversationSendMessageAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
 
     def post(self, request, pk):
         conv = get_object_or_404(Conversation, pk=pk)
@@ -240,7 +247,8 @@ class ConversationSendMessageAPIView(APIView):
 
 
 class StartConversationAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
 
     def post(self, request):
         phone = request.data.get('phone')
@@ -326,7 +334,8 @@ class StartConversationAPIView(APIView):
 
 
 class ConversationMarkReadAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
 
     def post(self, request, pk):
         """Reset unread_count to 0 when agent opens the conversation."""
@@ -337,7 +346,8 @@ class ConversationMarkReadAPIView(APIView):
 
 
 class MediaUploadAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_MEDIA
 
     def post(self, request):
         file_obj = request.FILES.get('file')
@@ -417,7 +427,8 @@ class MediaUploadAPIView(APIView):
 
 
 class MessageDeleteAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
 
     def delete(self, request, pk):
         msg = get_object_or_404(Message, pk=pk)
@@ -743,7 +754,8 @@ class WebhookView(APIView):
 
 class CustomMessageViewSet(viewsets.ModelViewSet):
     serializer_class = CustomMessageSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CUSTOM_MESSAGES
 
     def get_queryset(self):
         return CustomMessage.objects.filter(Q(owner=self.request.user) | Q(owner__isnull=True))
@@ -754,7 +766,8 @@ class CustomMessageViewSet(viewsets.ModelViewSet):
 
 class MediaLibraryViewSet(viewsets.ModelViewSet):
     serializer_class = MediaLibraryItemSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_MEDIA
 
     def get_queryset(self):
         queryset = MediaLibraryItem.objects.filter(Q(owner=self.request.user) | Q(owner__isnull=True))

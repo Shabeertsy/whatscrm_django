@@ -1,6 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from apps.core.permissions import RequirePermission, Permission
 from rest_framework.response import Response
 
 from .models import WhatsappInstance, WhatsappTemplate
@@ -14,7 +15,8 @@ from .utils import get_meta_template_url
 
 
 class WhatsappInstanceViewSet(viewsets.ModelViewSet):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_SETTINGS_WHATSAPP
 
     def get_queryset(self):
         return WhatsappInstance.objects.filter(user=self.request.user)
@@ -39,7 +41,8 @@ class WhatsappInstanceViewSet(viewsets.ModelViewSet):
 
 
 class WhatsappTemplateSyncAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_TEMPLATES
 
     def post(self, request, instance_id):
         try:
@@ -88,7 +91,8 @@ class WhatsappTemplateSyncAPIView(APIView):
 
 
 class WhatsappTemplateListCreateAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_TEMPLATES
 
     def get(self, request):
         templates = WhatsappTemplate.objects.filter(instance__user=request.user)
@@ -134,7 +138,8 @@ class WhatsappTemplateListCreateAPIView(APIView):
 
 
 class WhatsappTemplateDetailAPIView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_TEMPLATES
 
     def get_object(self, pk, user):
         try:

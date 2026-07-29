@@ -2,6 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from apps.core.permissions import RequirePermission, Permission
 from django.db.models import Q
 from django.db import transaction
 
@@ -23,7 +24,8 @@ class ContactPagination(PageNumberPagination):
 
 #  Tag APIs 
 class ContactTagListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
 
     def get(self, request):
         tags = ContactTag.objects.filter(owner=request.user)
@@ -38,7 +40,8 @@ class ContactTagListCreateView(APIView):
 
 
 class ContactTagDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
 
     def get_object(self, pk, user):
         try:
@@ -67,7 +70,8 @@ class ContactTagDetailView(APIView):
 # ─── Contact APIs ─────────────────────────────────────────────────────────────
 
 class ContactListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
 
     def get(self, request):
         qs = Contact.objects.filter(owner=request.user)
@@ -100,7 +104,8 @@ class ContactListCreateView(APIView):
 
 
 class ContactDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
 
     def get_object(self, pk, user):
         try:
@@ -135,7 +140,8 @@ class ContactDetailView(APIView):
 # ─── WhatsApp Import APIs ─────────────────────────────────────────────────────
 
 class WAContactsListView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
 
     def get(self, request):
         from apps.messaging.models import Contact as WAContact
@@ -162,7 +168,8 @@ class WAContactsListView(APIView):
 
 
 class WAContactsImportView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
 
     def post(self, request):
         from apps.messaging.models import Contact as WAContact
@@ -211,7 +218,8 @@ class WAContactsImportView(APIView):
 # ─── Pipeline CRUD ────────────────────────────────────────────────────────────
 
 class PipelineListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def get(self, request):
         pipelines = Pipeline.objects.filter(owner=request.user)
@@ -253,7 +261,8 @@ class PipelineListCreateView(APIView):
 
 
 class PipelineDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def get_object(self, pk, user):
         try:
@@ -298,7 +307,8 @@ class PipelineDetailView(APIView):
 
 
 class PipelineActivateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def post(self, request, pk):
         try:
@@ -320,7 +330,8 @@ class PipelineActivateView(APIView):
 # ─── Stage APIs (scoped to pipeline) ─────────────────────────────────────────
 
 class PipelineStageListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def _get_pipeline(self, pipeline_id, user):
         try:
@@ -360,7 +371,8 @@ class PipelineStageListCreateView(APIView):
 
 
 class PipelineStageDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def get_object(self, pk, user):
         try:
@@ -402,7 +414,8 @@ class PipelineStageDetailView(APIView):
 
 #  Stage Swap 
 class PipelineStageSwapView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def post(self, request):
         stage_a_id = request.data.get('stage_a')
@@ -441,7 +454,8 @@ class PipelineStageSwapView(APIView):
 # ─── Deal APIs (scoped to pipeline) ──────────────────────────────────────────
 
 class PipelineDealListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def _get_pipeline(self, pipeline_id, user):
         try:
@@ -496,7 +510,8 @@ class PipelineDealListCreateView(APIView):
 
 
 class PipelineDealDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
 
     def get_object(self, pk, user):
         try:

@@ -11,27 +11,25 @@ from .serializers import (
     DepartmentSerializer,
     DepartmentRolePermissionSerializer,
 )
-from .permission import IsAdminUser
+from apps.core.permissions import RequirePermission, Permission
 
 
 User = get_user_model()
 
 
+## Department ViewSet
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all().order_by('-created_at')
     serializer_class = DepartmentSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated, RequirePermission]
+    required_permission = Permission.MANAGE_DEPARTMENTS
 
 
 class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
-    """
-    List, create, update, and delete per-department role permissions.
-    Supports filtering by ?department=<uuid> and ?role=<role>.
-    Also provides a custom 'upsert' action for setting permissions.
-    """
     queryset = DepartmentRolePermission.objects.select_related('department').all()
     serializer_class = DepartmentRolePermissionSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, RequirePermission]
+    required_permission = Permission.MANAGE_ROLE_PERMISSIONS
 
     def get_queryset(self):
         qs = DepartmentRolePermission.objects.select_related('department').all()
@@ -47,8 +45,6 @@ class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
     def upsert(self, request):
         """
         Create or update a DepartmentRolePermission record for a
-        (department, role) pair. Payload:
-          { "department": "<uuid>", "role": "<role>", "permissions": {...} }
         """
         department_id = request.data.get('department')
         role = request.data.get('role')
@@ -70,6 +66,7 @@ class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=code)
 
 
+## Login Views
 class CustomTokenObtainPairView(TokenObtainPairView):
     serializer_class = CustomTokenObtainPairSerializer
 
@@ -88,10 +85,12 @@ class CurrentUserAPIView(generics.RetrieveAPIView):
         return Response(data)
 
 
+## User ViewSet
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.filter(is_superuser=False).order_by('-created_at')
     serializer_class = UserSerializer
-    permission_classes = [permissions.IsAuthenticated, IsAdminUser]
+    permission_classes = [permissions.IsAuthenticated, RequirePermission]
+    required_permission = Permission.MANAGE_USERS
 
     def get_queryset(self):
         queryset = User.objects.filter(is_superuser=False).order_by('-created_at')
