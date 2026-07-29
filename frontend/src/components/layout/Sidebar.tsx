@@ -19,7 +19,8 @@ import {
   Building2,
   FileText,
   MessageSquareText,
-  FolderOpen
+  FolderOpen,
+  Megaphone
 } from "lucide-react";
 import { useRouter } from "../../router";
 import { useAuthStore } from "../../store/authStore";
@@ -39,6 +40,7 @@ export function Sidebar() {
     { id: "/pipeline", label: "Pipeline", icon: Sliders, permitted: permissions.canAccessPipeline },
     { id: "/contacts", label: "Contacts", icon: Contact2, permitted: permissions.canAccessContacts },
     { id: "/hotels", label: "Hotels and Resorts", icon: Building2, permitted: permissions.canAccessHotels },
+    { id: "/campaigns", label: "Campaigns", icon: Megaphone, permitted: permissions.canAccessTemplates },
     { id: "/templates", label: "Templates", icon: FileText, permitted: permissions.canAccessTemplates },
     { id: "/custom-messages", label: "Custom Messages", icon: MessageSquareText, permitted: permissions.canAccessCustomMessages },
     { id: "/media", label: "Media Library", icon: FolderOpen, permitted: permissions.canAccessMedia },

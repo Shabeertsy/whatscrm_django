@@ -56,6 +56,10 @@ class WhatsappTemplate(BaseModel):
         UTILITY = "UTILITY", "Utility"
         AUTHENTICATION = "AUTHENTICATION", "Authentication"
 
+    class TemplateType(models.TextChoices):
+        REGULAR = "REGULAR", "Regular"
+        CAMPAIGN = "CAMPAIGN", "Campaign"
+
     instance = models.ForeignKey(WhatsappInstance,on_delete=models.CASCADE,related_name="templates")
     meta_id = models.CharField(max_length=100,unique=True,db_index=True,blank=True,null=True,)
     name = models.CharField(max_length=255)
@@ -68,6 +72,11 @@ class WhatsappTemplate(BaseModel):
     category = models.CharField(
         max_length=30,
         choices=Category.choices,
+    )
+    template_type = models.CharField(
+        max_length=20,
+        choices=TemplateType.choices,
+        default=TemplateType.REGULAR,
     )
     status = models.CharField(
         max_length=20,

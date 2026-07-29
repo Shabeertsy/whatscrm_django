@@ -1,16 +1,47 @@
+import { apiClient } from '../../api/client';
+
 export interface Campaign {
   id: string;
   name: string;
   status: "Running" | "Paused" | "Completed" | "Draft";
+  template_name?: string;
+  start_date?: string | null;
+  end_date?: string | null;
+  target_type?: "all" | "specific";
+  contacts?: string[];
   sent: number;
   delivered: number;
   read: number;
   replied: number;
+  tags?: string[];
+  created_at?: string;
 }
 
-export const initialCampaigns: Campaign[] = [
-  { id: "c1", name: "June Product Launch", status: "Running", sent: 1200, delivered: 1180, read: 950, replied: 340 },
-  { id: "c2", name: "Easter Discount Blast", status: "Completed", sent: 3500, delivered: 3420, read: 2900, replied: 810 },
-  { id: "c3", name: "Inactive Lead Reactivation", status: "Paused", sent: 800, delivered: 750, read: 500, replied: 42 },
-  { id: "c4", name: "Beta Tester Invitation", status: "Draft", sent: 0, delivered: 0, read: 0, replied: 0 }
-];
+export const fetchCampaigns = async (): Promise<Campaign[]> => {
+  const response = await apiClient.get(`/campaigns/`);
+  return response.data;
+};
+
+export const createCampaign = async (data: Partial<Campaign>): Promise<Campaign> => {
+  const response = await apiClient.post(`/campaigns/`, data);
+  return response.data;
+};
+
+export const launchCampaign = async (id: string): Promise<Campaign> => {
+  const response = await apiClient.post(`/campaigns/${id}/launch/`, {});
+  return response.data;
+};
+
+export const stopCampaign = async (id: string): Promise<Campaign> => {
+  const response = await apiClient.post(`/campaigns/${id}/stop/`, {});
+  return response.data;
+};
+
+export const updateCampaign = async (id: string, data: Partial<Campaign>): Promise<Campaign> => {
+  const response = await apiClient.patch(`/campaigns/${id}/`, data);
+  return response.data;
+};
+
+export const deleteCampaign = async (id: string): Promise<void> => {
+  await apiClient.delete(`/campaigns/${id}/`);
+};

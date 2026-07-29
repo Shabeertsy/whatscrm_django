@@ -18,6 +18,7 @@ export function Templates() {
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>("");
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [activeTab, setActiveTab] = useState<'regular' | 'campaign'>('regular');
 
   useEffect(() => {
     fetchData();
@@ -81,12 +82,21 @@ export function Templates() {
     }
   };
 
+  const regularTemplates = templates.filter(t => t.template_type === 'REGULAR' || (!t.template_type && t.category !== 'MARKETING'));
+  const campaignTemplates = templates.filter(t => t.template_type === 'CAMPAIGN' || (!t.template_type && t.category === 'MARKETING'));
+  const displayedTemplates = activeTab === 'regular' ? regularTemplates : campaignTemplates;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <PageHeader
-          title="Message Templates"
-          description="Create, sync, and manage your WhatsApp Business templates."
+      <PageHeader
+        title="Message Templates"
+        description="Create, sync, and manage your WhatsApp Business templates."
+      >
+        <TemplateSync 
+          instances={instances} 
+          loading={loading} 
+          syncingId={syncingId} 
+          onSync={handleSync} 
         />
         <button
           onClick={() => {
@@ -94,22 +104,39 @@ export function Templates() {
             setIsFormOpen(true);
           }}
           disabled={instances.length === 0}
-          className="flex items-center gap-2 bg-[#007e3a] hover:bg-[#00602d] text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+          className="flex items-center gap-2 bg-[#007e3a] hover:bg-[#00602d] text-white px-4 py-2 rounded-lg text-sm font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-sm shrink-0"
         >
           <Plus className="h-4 w-4" />
           Create Template
         </button>
+      </PageHeader>
+
+      {/* Tabs */}
+      <div className="flex border-b border-slate-200 dark:border-slate-700">
+        <button
+          onClick={() => setActiveTab('regular')}
+          className={`py-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'regular'
+              ? 'border-[#007e3a] text-[#007e3a]'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          Regular Templates
+        </button>
+        <button
+          onClick={() => setActiveTab('campaign')}
+          className={`py-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
+            activeTab === 'campaign'
+              ? 'border-[#007e3a] text-[#007e3a]'
+              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+          }`}
+        >
+          Campaign Templates
+        </button>
       </div>
 
-      <TemplateSync 
-        instances={instances} 
-        loading={loading} 
-        syncingId={syncingId} 
-        onSync={handleSync} 
-      />
-
       <TemplateList 
-        templates={templates} 
+        templates={displayedTemplates} 
         loading={loading} 
         onEdit={(tmpl) => {
           setEditingTemplate(tmpl);

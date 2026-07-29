@@ -13,6 +13,7 @@ export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: Tem
   const [name, setName] = useState(initialData?.name || "");
   const [language, setLanguage] = useState(initialData?.language || "en_US");
   const [category, setCategory] = useState(initialData?.category || "MARKETING");
+  const [templateType, setTemplateType] = useState(initialData?.template_type || "REGULAR");
   
   // Extract existing components if editing/duplicating
   const initialHeader = initialData?.components?.find((c: any) => c.type === "HEADER")?.text || "";
@@ -69,6 +70,7 @@ export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: Tem
     const payload: any = {
       language,
       category,
+      template_type: templateType,
       components,
     };
     if (!isEditing) {
@@ -125,6 +127,18 @@ export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: Tem
               placeholder="e.g. seasonal_promo"
               className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] disabled:opacity-60"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Template Usage / Type</label>
+            <select
+              value={templateType}
+              onChange={(e) => setTemplateType(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a]"
+            >
+              <option value="REGULAR">Regular Template</option>
+              <option value="CAMPAIGN">Campaign Template</option>
+            </select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

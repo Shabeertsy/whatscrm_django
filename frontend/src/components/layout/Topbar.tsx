@@ -2,8 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Bell, Search, Settings, LogOut, User } from "lucide-react";
 import { useTeamStore } from "../../store/teamStore";
 import { useNavigate } from "react-router-dom";
-import { tokenService } from "../../api/token";
-import { useAuthStore } from "../../store/authStore";
+import { useAuthStore, logoutUser } from "../../store/authStore";
 import { getUserPermissions } from "../../utils/permissions";
 import { ActiveFlowsDropdown } from "./ActiveFlowsDropdown";
 
@@ -33,7 +32,7 @@ export function Topbar() {
   }, []);
 
   const handleLogout = () => {
-    tokenService.clear();
+    logoutUser();
     navigate("/login");
   };
 

@@ -3,7 +3,7 @@ import PageHeader from "../../components/shared/PageHeader";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { messagingApi, CustomMessage } from "../../api/messaging";
 import { showToast } from "../../utils/toast";
-import { Plus, Edit2, Trash2, MessageSquareText } from "lucide-react";
+import { Plus, Edit2, Trash2, MessageSquareText, Copy } from "lucide-react";
 
 export function CustomMessages() {
   const [messages, setMessages] = useState<CustomMessage[]>([]);
@@ -30,6 +30,11 @@ export function CustomMessages() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCopyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    showToast("Copied", "Message content copied to clipboard", "success");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -109,32 +114,68 @@ export function CustomMessages() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
           {messages.map((msg) => (
-            <div key={msg.id} className="relative bg-white dark:bg-slate-900 border border-slate-200/70 dark:border-slate-700/70 rounded-2xl p-6 shadow-sm flex flex-col h-full">
-              
-              <div className="flex justify-between items-start mb-5">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#007e3a]/10 to-[#00a84e]/10 border border-[#007e3a]/20 flex items-center justify-center text-[#007e3a]">
-                    <MessageSquareText className="w-6 h-6" />
+            <div
+              key={msg.id}
+              className="group bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800/90 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-slate-300 dark:hover:border-slate-700 transition-all duration-200 flex flex-col justify-between"
+            >
+              <div>
+                {/* Header Info */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <MessageSquareText className="h-4 w-4 text-[#007e3a] shrink-0" />
+                      <h4 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate" title={msg.title}>
+                        {msg.title}
+                      </h4>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 mt-2">
+                      <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40">
+                        Quick Reply
+                      </span>
+                    </div>
                   </div>
-                  <h3 className="font-bold text-lg text-slate-900 dark:text-white truncate max-w-[180px]">{msg.title}</h3>
                 </div>
-                
-                <div className="flex gap-1.5 shrink-0">
-                  <button onClick={() => openForm(msg)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-xl transition-all" title="Edit message">
-                    <Edit2 className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => setDeleteMessageId(msg.id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-xl transition-all" title="Delete message">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+
+                {/* WhatsApp Chat Bubble Preview */}
+                <div className="bg-[#f0f4f1] dark:bg-slate-800/80 rounded-xl p-3.5 text-xs text-slate-800 dark:text-slate-200 my-3 border border-emerald-900/5 dark:border-slate-700/60 shadow-inner relative font-sans">
+                  <p className="whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 font-normal line-clamp-6">
+                    {msg.text}
+                  </p>
                 </div>
               </div>
-              
-              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-100 dark:border-slate-700/50 flex-grow">
-                <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 whitespace-pre-wrap line-clamp-5">
-                  {msg.text}
-                </p>
+
+              {/* Footer / Actions Bar */}
+              <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">
+                  Predefined Message
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleCopyText(msg.text)}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1 text-xs"
+                    title="Copy Message Text"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => openForm(msg)}
+                    className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-1 text-xs"
+                    title="Edit Message"
+                  >
+                    <Edit2 className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    onClick={() => setDeleteMessageId(msg.id)}
+                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg transition-colors flex items-center gap-1 text-xs"
+                    title="Delete Message"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
             </div>
           ))}

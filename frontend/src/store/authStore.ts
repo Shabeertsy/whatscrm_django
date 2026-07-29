@@ -38,6 +38,16 @@ export const authStore = new Store({
   refreshToken: tokenService.getRefresh(),
 });
 
+export function logoutUser() {
+  tokenService.clear();
+  authStore.setState({
+    isAuthenticated: false,
+    user: null,
+    accessToken: null,
+    refreshToken: null,
+  });
+}
+
 export function useAuthStore() {
   const [state, setState] = useState(authStore.getState());
 

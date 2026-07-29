@@ -55,7 +55,7 @@ export function Router() {
       <Route path="/contacts" element={<Contacts />} />
       <Route path="/pipeline" element={<Pipeline />} />
       <Route path="/ai-agent" element={<AiAgent />} />
-      <Route path="/login" element={<Login />} />
+      <Route path="/login" element={<Analytics />} />
       <Route path="*" element={<Analytics />} />
     </Routes>
   );
