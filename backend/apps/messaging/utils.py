@@ -18,6 +18,8 @@ import logging
 import requests
 import mimetypes
 
+logger = logging.getLogger(__name__)
+
 
 def save_whatsapp_media(file_obj, phone=None):
     mime = file_obj.content_type
@@ -368,11 +370,11 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     if reply_to_wa_id:
         data["context"] = {"message_id": reply_to_wa_id}
 
-    log.info(f"[send_whatsapp_message] URL: {url} | Token: {access_token[:5]}...{access_token[-5:]} | Payload: {json.dumps(data)}")
+    logger.info(f"[send_whatsapp_message] URL: {url} | Token: {access_token[:5]}...{access_token[-5:]} | Payload: {json.dumps(data)}")
     
     response = requests.post(url, headers=headers, json=data, timeout=10)
     if response.status_code >= 400:
-        log.error(f"[send_whatsapp_message] Meta API Error {response.status_code}: {response.text}")
+        logger.error(f"[send_whatsapp_message] Meta API Error {response.status_code}: {response.text}")
     response.raise_for_status()
     return response.json()
 
