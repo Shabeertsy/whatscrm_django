@@ -54,14 +54,22 @@ class MessagingStore {
 
 
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+  // ── Actions ─────────────────────────────
 
   setConversations = (conversations: Conversation[]) =>
     this.setState({ conversations, isLoadingConversations: false, error: null });
 
-  setActiveConversation = (id: string) => {
+  setActiveConversation = (id: string | null) => {
     this.setState({ activeConversationId: id });
   };
+
+  removeConversation = (id: string) => {
+    this.setState((s) => ({
+      conversations: s.conversations.filter(c => c.id !== id),
+      activeConversationId: s.activeConversationId === id ? null : s.activeConversationId
+    }));
+  };
+
 
   setMessages = (conversationId: string, messages: Message[]) => {
     this.setState((s) => ({
@@ -79,11 +87,11 @@ class MessagingStore {
       if (!s.messagesByConvId[conversationId]) {
         return {};
       }
-      
+
       const existing = s.messagesByConvId[conversationId];
       // Avoid duplicates (WS + REST could both fire)
       if (existing.find((m) => m.id === message.id)) return {};
-      
+
       return {
         messagesByConvId: {
           ...s.messagesByConvId,

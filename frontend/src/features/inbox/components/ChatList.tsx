@@ -1,10 +1,11 @@
 import React, { memo, useState, useMemo } from "react";
-import { Search, Plus, User2, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2 } from "lucide-react";
+import { Search, Plus, User2, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2, Trash } from "lucide-react";
 import type { Conversation, CustomMessage } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { messagingStore } from "../../../store/messagingStore";
 import { formatChatListTime } from "../utils";
 import { showToast } from "../../../utils/toast";
+import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 
 
 interface ChatListProps {
@@ -112,6 +113,9 @@ export const ChatList = memo(function ChatList({
   const [selectedCustomMsg, setSelectedCustomMsg] = useState<CustomMessage | null>(null);
   const [isSendingCustomMsg, setIsSendingCustomMsg] = useState(false);
 
+  // Delete Confirm Modal State
+  const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+
 
   const filteredChats = useMemo(() => {
     return chats.filter((c) => {
@@ -157,6 +161,30 @@ export const ChatList = memo(function ChatList({
       setIsBulkUpdating(false);
     }
   };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0 || isBulkUpdating) return;
+
+    setIsBulkUpdating(true);
+    try {
+      await Promise.all(
+        selectedIds.map(async (id) => {
+          await messagingApi.deleteConversation(id);
+          messagingStore.removeConversation(id);
+        })
+      );
+      setSelectedIds([]);
+      setIsSelectMode(false);
+      setShowDeleteConfirmModal(false);
+      showToast("Success", "Chats deleted successfully", "success");
+    } catch (err) {
+      console.error("Failed bulk delete:", err);
+      showToast("Error", "Failed to delete chats", "error");
+    } finally {
+      setIsBulkUpdating(false);
+    }
+  };
+
 
   const fetchCustomMessages = async () => {
     setLoadingCustomMessages(true);
@@ -216,7 +244,7 @@ export const ChatList = memo(function ChatList({
           <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
             Conversations
             {filteredChats.length > 0 && (
-              <span className="text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 px-1.5 py-0.5 rounded-full">
+              <span className="flex items-center justify-center text-[9px] font-bold bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 px-1.5 rounded-full h-[18px] min-w-[18px] border border-slate-200/60 dark:border-slate-700/60">
                 {filteredChats.length}
               </span>
             )}
@@ -227,21 +255,21 @@ export const ChatList = memo(function ChatList({
                 setIsSelectMode(!isSelectMode);
                 setSelectedIds([]);
               }}
-              title="Toggle Multi-Select Mode"
-              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg transition-all text-xs font-bold ${isSelectMode
-                ? "bg-[#007e3a] text-white shadow-sm"
-                : "text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700"
-                }`}
+              title={isSelectMode ? "Cancel Selection" : "Select Conversations"}
+              className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
+                isSelectMode
+                  ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-sm"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+              }`}
             >
-              {isSelectMode ? <X className="h-3.5 w-3.5" /> : <ListChecks className="h-3.5 w-3.5" />}
-              {isSelectMode ? "Cancel" : "Select"}
+              {isSelectMode ? <X className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
             </button>
             <button
               onClick={onStartNewChat}
-              className="flex items-center gap-1 text-[#007e3a] hover:text-[#00662f] bg-[#007e3a]/10 hover:bg-[#007e3a]/20 px-2.5 py-1 rounded-lg transition-colors text-xs font-bold"
+              title="New Conversation"
+              className="p-1.5 rounded-lg transition-colors flex items-center justify-center bg-[#007e3a]/10 hover:bg-[#007e3a]/20 text-[#007e3a]"
             >
-              <Plus className="h-3.5 w-3.5 stroke-[3]" />
-              New
+              <Plus className="h-4 w-4 stroke-[2.5]" />
             </button>
           </div>
         </div>
@@ -287,16 +315,16 @@ export const ChatList = memo(function ChatList({
                 className="flex items-center space-x-2 font-semibold hover:text-[#007e3a] transition-colors"
               >
                 <div
-                  className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${filteredChats.length > 0 && selectedIds.length === filteredChats.length
-                    ? "bg-[#007e3a] border-[#007e3a] text-white"
-                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                  className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all duration-200 ${filteredChats.length > 0 && selectedIds.length === filteredChats.length
+                    ? "bg-[#007e3a] border-[#007e3a] text-white shadow-sm"
+                    : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-[#007e3a]/50"
                     }`}
                 >
-                  {filteredChats.length > 0 && selectedIds.length === filteredChats.length && (
-                    <Check className="h-3 w-3 stroke-[3]" />
-                  )}
+                  <Check className={`h-3 w-3 stroke-[3] transition-all duration-200 ${
+                    filteredChats.length > 0 && selectedIds.length === filteredChats.length ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                  }`} />
                 </div>
-                <span>Select All</span>
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-medium group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">Select All</span>
               </button>
               <span className="font-bold text-[11px] text-[#007e3a]">
                 {selectedIds.length} of {filteredChats.length} selected
@@ -304,33 +332,44 @@ export const ChatList = memo(function ChatList({
             </div>
 
             {selectedIds.length > 0 && (
-              <div className="flex items-center gap-1.5 pt-1 border-t border-slate-200/60 dark:border-slate-700/60 overflow-x-auto">
+              <div className="flex items-center gap-1.5 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
                 <button
                   onClick={() => {
                     setShowCustomMsgModal(true);
                     fetchCustomMessages();
                   }}
                   disabled={isBulkUpdating}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-[10px] font-bold rounded-md shadow-xs transition-colors whitespace-nowrap"
+                  title="Send Custom Message"
+                  className="flex-[1.2] flex items-center justify-center gap-1 px-1.5 py-1.5 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
                 >
-                  <MessageSquare className="h-3 w-3" />
-                  Custom Msg
+                  <MessageSquare className="h-3 w-3 shrink-0" />
+                  <span>Message</span>
                 </button>
                 <button
                   onClick={() => handleBulkChangeStatus("resolved")}
                   disabled={isBulkUpdating}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-emerald-700 dark:text-emerald-400 border border-slate-200 dark:border-slate-600 text-[10px] font-bold rounded-md shadow-xs transition-colors whitespace-nowrap"
+                  title="Mark as Resolved"
+                  className="flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
                 >
-                  <CheckCircle2 className="h-3 w-3" />
-                  Resolve
+                  <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  <span>Resolve</span>
                 </button>
                 <button
                   onClick={() => handleBulkChangeStatus("open")}
                   disabled={isBulkUpdating}
-                  className="flex-1 flex items-center justify-center gap-1 px-2 py-1 bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-blue-700 dark:text-blue-400 border border-slate-200 dark:border-slate-600 text-[10px] font-bold rounded-md shadow-xs transition-colors whitespace-nowrap"
+                  title="Mark as Open"
+                  className="flex-[0.8] flex items-center justify-center gap-1 px-1.5 py-1.5 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
                 >
-                  <Inbox className="h-3 w-3" />
-                  Open
+                  <Inbox className="h-3 w-3 shrink-0" />
+                  <span>Open</span>
+                </button>
+                <button
+                  onClick={() => setShowDeleteConfirmModal(true)}
+                  disabled={isBulkUpdating}
+                  title="Delete Selected"
+                  className="w-8 shrink-0 flex items-center justify-center gap-1 px-0 py-1.5 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
+                >
+                  <Trash className="h-3.5 w-3.5 shrink-0" />
                 </button>
               </div>
             )}
@@ -366,22 +405,22 @@ export const ChatList = memo(function ChatList({
                     onSelectChat(c.id);
                   }
                 }}
-                className={`w-full text-left p-3 flex items-center space-x-3 transition hover:bg-slate-100/60 dark:hover:bg-slate-800/40 relative ${selectedChatId === c.id && !isSelectMode
-                  ? "bg-[#007e3a]/10 dark:bg-[#007e3a]/20 border-l-4 border-[#007e3a]"
+                className={`w-full text-left p-3 flex items-center space-x-3 transition-colors relative border-l-2 ${selectedChatId === c.id && !isSelectMode
+                  ? "bg-[#007e3a]/5 dark:bg-[#007e3a]/15 border-[#007e3a]"
                   : isSelected
-                    ? "bg-[#007e3a]/5 dark:bg-[#007e3a]/15 border-l-4 border-[#007e3a]"
-                    : "border-l-4 border-transparent"
+                    ? "bg-[#007e3a]/10 dark:bg-[#007e3a]/20 border-transparent"
+                    : "border-transparent hover:bg-slate-50/50 dark:hover:bg-slate-800/20"
                   }`}
               >
                 {/* Select Checkbox (Standard UI) */}
                 {isSelectMode && (
                   <div
-                    className={`w-4 h-4 rounded border flex items-center justify-center transition-all flex-shrink-0 ${isSelected
-                      ? "bg-[#007e3a] border-[#007e3a] text-white shadow-xs scale-105"
-                      : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
+                    className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all duration-200 flex-shrink-0 ${isSelected
+                      ? "bg-[#007e3a] border-[#007e3a] text-white shadow-sm"
+                      : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-[#007e3a]/50"
                       }`}
                   >
-                    {isSelected && <Check className="h-3 w-3 stroke-[3]" />}
+                    <Check className={`h-3 w-3 stroke-[3] transition-all duration-200 ${isSelected ? "scale-100 opacity-100" : "scale-50 opacity-0"}`} />
                   </div>
                 )}
 
@@ -554,6 +593,27 @@ export const ChatList = memo(function ChatList({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirmModal}
+        title="Delete Conversations"
+        description={
+          <div className="space-y-2">
+            <p className="text-sm text-slate-700 dark:text-slate-300 font-medium">
+              Are you sure you want to delete {selectedIds.length} conversation{selectedIds.length > 1 ? 's' : ''}?
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              This action cannot be undone. All messages and media associated with these conversations will be permanently removed.
+            </p>
+          </div>
+        }
+        confirmLabel="Delete"
+        onConfirm={handleBulkDelete}
+        onCancel={() => setShowDeleteConfirmModal(false)}
+        isLoading={isBulkUpdating}
+        isDestructive={true}
+      />
     </div>
   );
 });

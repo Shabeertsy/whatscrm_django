@@ -145,6 +145,12 @@ export const messagingApi = {
     return apiClient.patch(`${BASE}/conversations/${conversationId}/`, data);
   },
 
+  /** Delete a conversation */
+  deleteConversation(conversationId: string) {
+    return apiClient.delete(`${BASE}/conversations/${conversationId}/`);
+  },
+
+
   /** Save a ghost contact as a real contact */
   saveContact(contactId: string, name: string, tags: string[] = []) {
     return apiClient.post(`${BASE}/contacts/${contactId}/save/`, { name, tags, source: 'manual' });

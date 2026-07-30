@@ -3,7 +3,7 @@ import PageHeader from "../../components/shared/PageHeader";
 import CampaignList from "./components/CampaignList";
 import CampaignWizard, { CampaignDataPayload } from "./components/CampaignWizard";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
-import { Campaign, fetchCampaigns, createCampaign, updateCampaign, deleteCampaign, launchCampaign, stopCampaign } from "./api";
+import { Campaign, fetchCampaigns, createCampaign, updateCampaign, deleteCampaign, launchCampaign, stopCampaign, fetchCampaignStats, CampaignStats } from "./api";
 import { Plus, Megaphone, Send, CheckCircle2, TrendingUp } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -11,6 +11,7 @@ import toast from "react-hot-toast";
 
 export function Campaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [stats, setStats] = useState<CampaignStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingCampaign, setEditingCampaign] = useState<Campaign | null>(null);
@@ -24,12 +25,24 @@ export function Campaigns() {
   const loadCampaigns = async () => {
     try {
       setIsLoading(true);
-      const data = await fetchCampaigns();
+      const [data, statsData] = await Promise.all([
+        fetchCampaigns(),
+        fetchCampaignStats()
+      ]);
       setCampaigns(data);
+      setStats(statsData);
     } catch (error) {
       toast.error("Failed to load campaigns.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const reloadStats = async () => {
+    try {
+      setStats(await fetchCampaignStats());
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -49,6 +62,7 @@ export function Campaigns() {
       }
       setIsWizardOpen(false);
       setEditingCampaign(null);
+      reloadStats();
     } catch (error) {
       toast.error(campaignId ? "Failed to update campaign." : "Failed to create campaign.");
     }
@@ -59,6 +73,7 @@ export function Campaigns() {
       const updated = await launchCampaign(id);
       setCampaigns(campaigns.map(c => c.id === id ? updated : c));
       toast.success("Campaign launched successfully!");
+      reloadStats();
     } catch (error) {
       toast.error("Failed to launch campaign.");
     }
@@ -69,6 +84,7 @@ export function Campaigns() {
       const updated = await stopCampaign(id);
       setCampaigns(campaigns.map(c => c.id === id ? updated : c));
       toast.success("Campaign stopped successfully.");
+      reloadStats();
     } catch (error) {
       toast.error("Failed to stop campaign.");
     }
@@ -82,6 +98,7 @@ export function Campaigns() {
       setCampaigns(campaigns.filter(c => c.id !== deleteTargetId));
       toast.success("Campaign deleted successfully.");
       setDeleteTargetId(null);
+      reloadStats();
     } catch (error) {
       toast.error("Failed to delete campaign.");
     } finally {
@@ -100,12 +117,10 @@ export function Campaigns() {
   };
 
   // Metrics calculation
-  const totalCampaigns = campaigns.length;
-  const activeCampaigns = campaigns.filter(c => c.status === "Running").length;
-  const totalDelivered = campaigns.reduce((acc, c) => acc + (c.delivered || 0), 0);
-  const avgReadRate = totalDelivered > 0
-    ? Math.round((campaigns.reduce((acc, c) => acc + (c.read || 0), 0) / totalDelivered) * 100)
-    : 0;
+  const totalCampaigns = stats?.total_campaigns || 0;
+  const activeCampaigns = stats?.active_campaigns || 0;
+  const totalDelivered = stats?.total_delivered || 0;
+  const avgReadRate = stats?.avg_read_rate || 0;
 
   return (
     <div className="space-y-6">

@@ -1,15 +1,36 @@
 from rest_framework import serializers
-from .models import Campaign
+from .models import Campaign, CampaignDelivery
+from apps.contacts.models import Contact
+
+
+class BasicContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Contact
+        fields = ['id', 'name', 'phone', 'wa_id']
+
+
+class CampaignDeliverySerializer(serializers.ModelSerializer):
+    contact_details = BasicContactSerializer(source='contact', read_only=True)
+
+    class Meta:
+        model = CampaignDelivery
+        fields = [
+            'id', 'campaign', 'contact', 'contact_details',
+            'run_id', 'status', 'error', 'sent_at'
+        ]
+        read_only_fields = fields
 
 class CampaignSerializer(serializers.ModelSerializer):
     class Meta:
         model = Campaign
         fields = [
             'id', 'name', 'status', 'template_name', 'start_date', 'end_date',
+            'frequency', 'custom_days_gap',
             'sent', 'delivered', 'read', 'replied', 'target_type', 'contacts',
-            'tags', 'owner', 'created_at', 'updated_at'
+            'tags', 'owner', 'created_at', 'updated_at',
+            'last_run_at', 'next_run_at',
         ]
-        read_only_fields = ['id', 'sent', 'delivered', 'read', 'replied', 'owner', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'sent', 'delivered', 'read', 'replied', 'owner', 'created_at', 'updated_at', 'last_run_at', 'next_run_at']
 
     def create(self, validated_data):
         request = self.context.get('request')

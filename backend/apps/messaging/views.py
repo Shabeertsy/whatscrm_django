@@ -145,6 +145,22 @@ class ConversationDetailAPIView(APIView):
         serializer.save()
         return Response(ConversationListSerializer(conv).data)
 
+    def delete(self, request, pk):
+        conv = get_object_or_404(Conversation, pk=pk)
+        
+        # Cleanup local media files if they exist
+        storage = get_whatsapp_storage()
+        for msg in conv.messages.exclude(storage_path__exact='').exclude(storage_path__isnull=True):
+            try:
+                if storage.exists(msg.storage_path):
+                    storage.delete(msg.storage_path)
+            except Exception as e:
+                logging.getLogger(__name__).error(f"Failed to delete media file {msg.storage_path}: {str(e)}")
+                
+        conv.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
 
 ## Active flows
 class GlobalActiveFlowsAPIView(APIView):

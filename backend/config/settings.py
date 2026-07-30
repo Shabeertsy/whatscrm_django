@@ -292,3 +292,15 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
 CELERY_ENABLED = os.getenv("CELERY_ENABLED", "True").lower() in ("true", "1", "t")
+
+
+# Celery Beat — Periodic Tasks
+from celery.schedules import crontab  # noqa: E402
+CELERY_BEAT_SCHEDULE = {
+    # Scan for due campaigns every 5 minutes and dispatch Celery runs.
+    "dispatch-due-campaigns": {
+        "task": "campaigns.dispatch_due_campaigns",
+        "schedule": crontab(minute="*/5"),
+    },
+}
+

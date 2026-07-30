@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import DataTable from "../../../components/shared/DataTable";
 import { Campaign } from "../api";
 import { Megaphone, Play, Pause, Square, CheckCircle2, Clock, Eye, MessageCircle, Send, Edit2, Trash2, Calendar, Users } from "lucide-react";
@@ -56,17 +57,34 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
       accessor: (c: Campaign) => {
         const start = formatDate(c.start_date);
         const end = formatDate(c.end_date);
+        const frequency = c.frequency || "once";
+
+        const formatFreq = (freq: string) => {
+          if (freq === "once") return "One-time";
+          if (freq === "custom") return `Every ${c.custom_days_gap || 1} day(s)`;
+          return freq.charAt(0).toUpperCase() + freq.slice(1);
+        };
 
         if (!start && !end) {
           return (
-            <span className="text-xs text-slate-400 font-medium italic">Immediate</span>
+            <div className="flex flex-col gap-1 mt-0.5">
+              <span className="text-xs text-slate-400 font-medium italic">Immediate</span>
+              <span className="text-[10px] text-[#007e3a] font-semibold bg-[#007e3a]/10 px-1.5 py-0.5 rounded w-fit">
+                {formatFreq(frequency)}
+              </span>
+            </div>
           );
         }
 
         return (
-          <div className="flex flex-col text-xs text-slate-700 dark:text-slate-300 font-medium">
-            {start && <span className="flex items-center gap-1"><span className="text-slate-400 text-[10px]">Start:</span> {start}</span>}
-            {end && <span className="flex items-center gap-1"><span className="text-slate-400 text-[10px]">End:</span> {end}</span>}
+          <div className="flex flex-col text-xs text-slate-700 dark:text-slate-300 font-medium gap-1 mt-0.5">
+            <div>
+              {start && <span className="flex items-center gap-1"><span className="text-slate-400 text-[10px]">Start:</span> {start}</span>}
+              {end && <span className="flex items-center gap-1"><span className="text-slate-400 text-[10px]">End:</span> {end}</span>}
+            </div>
+            <span className="text-[10px] text-[#007e3a] font-semibold bg-[#007e3a]/10 px-1.5 py-0.5 rounded w-fit">
+              {formatFreq(frequency)}
+            </span>
           </div>
         );
       }
@@ -172,6 +190,13 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
                 <Play className="h-3.5 w-3.5 fill-current" />
               </button>
             )}
+            <Link
+              to={`/campaigns/${c.id}`}
+              className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 rounded-lg transition-colors"
+              title="View Details"
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Link>
             <button
               onClick={() => onEdit(c)}
               className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"

@@ -11,6 +11,8 @@ export interface CampaignDataPayload {
   end_date?: string | null;
   target_type: "all" | "specific";
   contacts?: string[];
+  frequency?: "once" | "daily" | "weekly" | "monthly" | "custom";
+  custom_days_gap?: number | null;
 }
 
 interface CampaignWizardProps {
@@ -28,6 +30,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
   const [endDate, setEndDate] = useState("");
   const [targetType, setTargetType] = useState<"all" | "specific">("all");
   const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
+  const [frequency, setFrequency] = useState<"once" | "daily" | "weekly" | "monthly" | "custom">("once");
+  const [customDaysGap, setCustomDaysGap] = useState<number | "">("");
 
   const [templatesList, setTemplatesList] = useState<any[]>([]);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -57,6 +61,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
         setEndDate(formatForInput(initialData.end_date));
         setTargetType(initialData.target_type || "all");
         setSelectedContacts(initialData.contacts || []);
+        setFrequency(initialData.frequency || "once");
+        setCustomDaysGap(initialData.custom_days_gap ?? "");
       } else {
         setName("");
         setTemplate("");
@@ -64,6 +70,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
         setEndDate("");
         setTargetType("all");
         setSelectedContacts([]);
+        setFrequency("once");
+        setCustomDaysGap("");
       }
       loadTemplates();
       loadContacts();
@@ -141,6 +149,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
           end_date: endDate ? new Date(endDate).toISOString() : null,
           target_type: targetType,
           contacts: targetType === "specific" ? selectedContacts : [],
+          frequency: frequency,
+          custom_days_gap: frequency === "custom" && customDaysGap !== "" ? Number(customDaysGap) : null,
         },
         initialData?.id
       );
@@ -152,7 +162,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-md flex items-center justify-center z-50 p-4 sm:p-6 transition duration-200 animate-in fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-3xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden shadow-2xl animate-in zoom-in-95">
         {/* Modal Header */}
         <div className="px-7 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
           <div className="flex items-center gap-3">
@@ -174,57 +184,63 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0 overflow-hidden">
-          {/* Scrollable Form Body */}
           <div className="p-7 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
             {/* Top Section: 2-Column Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Column 1: Campaign Details */}
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    Campaign Name <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] focus:ring-2 focus:ring-[#007e3a]/20 transition"
-                    required
-                    disabled={isSubmitting}
-                  />
+              <div className="bg-slate-50/80 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <Megaphone className="h-4 w-4 text-[#007e3a]" />
+                  <span>Campaign Settings</span>
                 </div>
 
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
-                    WhatsApp Message Template
-                  </label>
-                  {loadingTemplates ? (
-                    <div className="flex items-center gap-2 p-3 text-xs text-slate-500 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700">
-                      <Loader2 className="h-4 w-4 animate-spin text-[#007e3a]" /> Loading campaign templates...
-                    </div>
-                  ) : (
-                    <select
-                      value={template}
-                      onChange={(e) => setTemplate(e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 rounded-2xl px-4 py-3 text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] focus:ring-2 focus:ring-[#007e3a]/20 transition disabled:opacity-60 cursor-pointer"
-                      disabled={isSubmitting || templatesList.length === 0}
-                    >
-                      {templatesList.length > 0 ? (
-                        templatesList.map((t) => (
-                          <option key={t.id || t.name} value={t.name}>
-                            {t.name} ({t.category || "MARKETING"})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="">No Campaign Templates found</option>
-                      )}
-                    </select>
-                  )}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      Campaign Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] transition"
+                      required
+                      disabled={isSubmitting}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      WhatsApp Message Template
+                    </label>
+                    {loadingTemplates ? (
+                      <div className="flex items-center gap-2 p-3 text-xs text-slate-500 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                        <Loader2 className="h-4 w-4 animate-spin text-[#007e3a]" /> Loading campaign templates...
+                      </div>
+                    ) : (
+                      <select
+                        value={template}
+                        onChange={(e) => setTemplate(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] transition disabled:opacity-60 cursor-pointer"
+                        disabled={isSubmitting || templatesList.length === 0}
+                      >
+                        {templatesList.length > 0 ? (
+                          templatesList.map((t) => (
+                            <option key={t.id || t.name} value={t.name}>
+                              {t.name} ({t.category || "MARKETING"})
+                            </option>
+                          ))
+                        ) : (
+                          <option value="">No Campaign Templates found</option>
+                        )}
+                      </select>
+                    )}
+                  </div>
                 </div>
               </div>
 
               {/* Column 2: Schedule Date Range */}
-              <div className="bg-slate-50/80 dark:bg-slate-800/30 p-5 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3.5">
+              <div className="bg-slate-50/80 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
                   <Calendar className="h-4 w-4 text-[#007e3a]" />
                   <span>Schedule Date Range (Optional)</span>
@@ -255,6 +271,42 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                     />
                   </div>
                 </div>
+
+                <div className="pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                    Repetition Frequency
+                  </label>
+                  <select
+                    value={frequency}
+                    onChange={(e) => setFrequency(e.target.value as any)}
+                    className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a]"
+                    disabled={isSubmitting}
+                  >
+                    <option value="once">One-time (Do not repeat)</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="custom">Custom Day Gap</option>
+                  </select>
+                </div>
+
+                {frequency === "custom" && (
+                  <div className="pt-1 animate-in slide-in-from-top-1">
+                    <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                      Repeat every (Days)
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={customDaysGap}
+                      onChange={(e) => setCustomDaysGap(e.target.value ? parseInt(e.target.value) : "")}
+                      className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a]"
+                      disabled={isSubmitting}
+                      required={frequency === "custom"}
+                      placeholder="e.g. 14"
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
@@ -272,8 +324,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                     type="button"
                     onClick={() => setTargetType("all")}
                     className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${targetType === "all"
-                        ? "bg-white dark:bg-slate-900 text-[#007e3a] shadow-sm"
-                        : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      ? "bg-white dark:bg-slate-900 text-[#007e3a] shadow-sm"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                       }`}
                   >
                     All Contacts
@@ -282,8 +334,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                     type="button"
                     onClick={() => setTargetType("specific")}
                     className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${targetType === "specific"
-                        ? "bg-white dark:bg-slate-900 text-[#007e3a] shadow-sm"
-                        : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      ? "bg-white dark:bg-slate-900 text-[#007e3a] shadow-sm"
+                      : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
                       }`}
                   >
                     Specific Contacts
@@ -293,7 +345,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
 
               {/* If Specific Contacts is selected */}
               {targetType === "specific" && (
-                <div className="bg-slate-50/80 dark:bg-slate-800/30 p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 space-y-3.5 animate-in fade-in duration-150">
+                <div className="bg-slate-50/80 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5 animate-in fade-in duration-150">
                   {/* Search & Actions Bar */}
                   <div className="flex items-center justify-between gap-3">
                     <div className="relative flex-1">
@@ -335,8 +387,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                             key={c.id}
                             onClick={() => toggleSelectContact(c.id)}
                             className={`flex items-center justify-between p-3 rounded-2xl border text-xs cursor-pointer transition select-none ${isSelected
-                                ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 shadow-sm"
-                                : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
+                              ? "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-700 text-emerald-900 dark:text-emerald-100 shadow-sm"
+                              : "bg-white dark:bg-slate-900 border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-700"
                               }`}
                           >
                             <div className="flex items-center gap-2.5 min-w-0 pr-2">

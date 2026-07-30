@@ -15,6 +15,7 @@ import HotelRooms from "./pages/HotelRooms";
 import Templates from "./pages/Templates";
 import CustomMessages from "./pages/CustomMessages";
 import MediaLibrary from "./pages/MediaLibrary";
+import CampaignDetail from "./features/campaigns/CampaignDetail";
 
 
 
@@ -48,6 +49,7 @@ export function Router() {
       <Route path="/messaging" element={<Inbox />} />
       <Route path="/automations" element={<Automation />} />
       <Route path="/campaigns" element={<Campaigns />} />
+      <Route path="/campaigns/:id" element={<CampaignDetail />} />
       <Route path="/templates" element={<Templates />} />
       <Route path="/custom-messages" element={<CustomMessages />} />
       <Route path="/media" element={<MediaLibrary />} />
