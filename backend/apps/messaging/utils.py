@@ -247,7 +247,7 @@ def download_whatsapp_media(media_id, access_token, phone):
     """
     Downloads media from WhatsApp Cloud API and saves it using save_whatsapp_media.
     """
-    url = f"https://graph.facebook.com/v17.0/{media_id}"
+    url = f"{settings.META_GRAPH_API_BASE_URL}/{media_id}"
     headers = {"Authorization": f"Bearer {access_token}"}
     
     # Get media URL
@@ -287,7 +287,7 @@ def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type
     Uploads a local file to WhatsApp Cloud API to get a media ID.
     This bypasses the need for a publicly accessible localhost URL.
     """
-    url = f"https://graph.facebook.com/v17.0/{phone_number_id}/media"
+    url = f"{settings.META_GRAPH_API_BASE_URL}/{phone_number_id}/media"
     headers = {"Authorization": f"Bearer {access_token}"}
     storage = get_whatsapp_storage()
     
@@ -314,7 +314,7 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     Sends an outbound message using the Meta WhatsApp Cloud API.
     Supports text, image, video, document, and audio.
     """
-    url = f"https://graph.facebook.com/v17.0/{phone_number_id}/messages"
+    url = f"{settings.META_GRAPH_API_BASE_URL}/{phone_number_id}/messages"
     headers = {
         "Authorization": f"Bearer {access_token}",
         "Content-Type": "application/json",

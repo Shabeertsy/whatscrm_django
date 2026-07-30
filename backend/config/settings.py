@@ -284,6 +284,10 @@ AWS_DEFAULT_ACL = None
 
 AWS_QUERYSTRING_AUTH = True
 
+# Meta Graph API
+META_GRAPH_API_VERSION = os.getenv("META_GRAPH_API_VERSION", "v20.0")
+META_GRAPH_API_BASE_URL = f"https://graph.facebook.com/{META_GRAPH_API_VERSION}"
+
 # Celery Configuration
 CELERY_BROKER_URL = os.getenv("REDIS_URL", "")
 CELERY_RESULT_BACKEND = os.getenv("REDIS_URL", "")
