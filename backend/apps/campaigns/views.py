@@ -52,6 +52,20 @@ class CampaignViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=True, methods=['post'])
+    def clear_deliveries(self, request, pk=None):
+        campaign = self.get_object()
+        campaign.deliveries.all().delete()
+        
+        # Reset campaign metrics
+        campaign.sent = 0
+        campaign.delivered = 0
+        campaign.read = 0
+        campaign.replied = 0
+        campaign.save(update_fields=['sent', 'delivered', 'read', 'replied'])
+        
+        return Response({"message": "Delivery logs cleared successfully."})
+
+    @action(detail=True, methods=['post'])
     def launch(self, request, pk=None):
         from django.conf import settings
         from .tasks import execute_campaign_run

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, RefreshCw, AlertCircle, CheckCircle2, Clock, XCircle, SkipForward } from "lucide-react";
-import { Campaign, CampaignDelivery, fetchCampaign, fetchCampaignDeliveries } from "./api";
+import { ArrowLeft, RefreshCw, AlertCircle, CheckCircle2, Clock, XCircle, SkipForward, Trash2 } from "lucide-react";
+import { Campaign, CampaignDelivery, fetchCampaign, fetchCampaignDeliveries, clearCampaignDeliveries } from "./api";
 import PageHeader from "../../components/shared/PageHeader";
+import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import toast from "react-hot-toast";
 
 export function CampaignDetail() {
@@ -12,6 +13,8 @@ export function CampaignDetail() {
   const [pagination, setPagination] = useState({ count: 0, next: null as string | null, previous: null as string | null, page: 1 });
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
+  const [isConfirmClearOpen, setIsConfirmClearOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -58,6 +61,26 @@ export function CampaignDetail() {
   const handleRefresh = () => {
     if (id) {
       loadData(id, pagination.page, true);
+    }
+  };
+
+  const handleClearLogsClick = () => {
+    setIsConfirmClearOpen(true);
+  };
+
+  const performClearLogs = async () => {
+    if (!id) return;
+    
+    setIsClearing(true);
+    try {
+      await clearCampaignDeliveries(id);
+      toast.success("Delivery logs cleared successfully.");
+      loadData(id, 1, false);
+      setIsConfirmClearOpen(false);
+    } catch (error) {
+      toast.error("Failed to clear delivery logs.");
+    } finally {
+      setIsClearing(false);
     }
   };
 
@@ -136,11 +159,21 @@ export function CampaignDetail() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200/80 dark:border-slate-800 overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Delivery Log</h3>
-          <p className="text-sm text-slate-500 font-medium">Total deliveries recorded: {pagination.count.toLocaleString()}</p>
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">Delivery Log</h3>
+            <p className="text-sm text-slate-500 font-medium">Total deliveries recorded: {pagination.count.toLocaleString()}</p>
+          </div>
+          <button
+            onClick={handleClearLogsClick}
+            disabled={isClearing || pagination.count === 0}
+            className="flex items-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 px-3 py-1.5 rounded-lg text-xs font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed border border-rose-100"
+          >
+            <Trash2 className={`h-3.5 w-3.5 ${isClearing ? "animate-pulse" : ""}`} />
+            <span>Clear Logs</span>
+          </button>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto always-show-scrollbar pb-1">
           <table className="w-full text-left text-sm whitespace-nowrap">
             <thead className="bg-slate-50/50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-bold text-xs">
               <tr>
@@ -175,7 +208,7 @@ export function CampaignDetail() {
                     </td>
                     <td className="px-6 py-4">
                       {d.error ? (
-                        <span className="text-rose-500 text-xs font-bold truncate max-w-xs block" title={d.error}>
+                        <span className="text-rose-500 text-xs font-bold" title={d.error}>
                           {d.error}
                         </span>
                       ) : (
@@ -214,6 +247,18 @@ export function CampaignDetail() {
           </div>
         </div>
       </div>
+      
+      <ConfirmDialog
+        isOpen={isConfirmClearOpen}
+        title="Clear Delivery Logs"
+        description="Are you sure you want to clear all delivery logs? This will reset all campaign metrics to zero and delete all log records. This cannot be undone."
+        confirmLabel="Clear Logs"
+        cancelLabel="Cancel"
+        onConfirm={performClearLogs}
+        onCancel={() => setIsConfirmClearOpen(false)}
+        isLoading={isClearing}
+        isDestructive={true}
+      />
     </div>
   );
 }

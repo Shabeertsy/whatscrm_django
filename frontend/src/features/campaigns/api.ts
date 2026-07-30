@@ -56,6 +56,11 @@ export const stopCampaign = async (id: string): Promise<Campaign> => {
   return response.data;
 };
 
+export const clearCampaignDeliveries = async (id: string): Promise<{message: string}> => {
+  const response = await apiClient.post(`/campaigns/${id}/clear_deliveries/`, {});
+  return response.data;
+};
+
 export const updateCampaign = async (id: string, data: Partial<Campaign>): Promise<Campaign> => {
   const response = await apiClient.patch(`/campaigns/${id}/`, data);
   return response.data;
