@@ -196,14 +196,32 @@ class CampaignRunner:
 
     def _send_template(self, instance, to_phone: str) -> None:
         from apps.messaging.utils import send_whatsapp_message
+        from apps.whatsapp.models import WhatsappTemplate
+
+        template_name = self.campaign.template_name
+        template_language = "en"  # Default
+
+        template_obj = WhatsappTemplate.objects.filter(
+            name=template_name,
+            instance=instance
+        ).first()
+        
+        if not template_obj:
+            template_obj = WhatsappTemplate.objects.filter(
+                name=template_name,
+                instance__user=self.campaign.owner
+            ).first()
+
+        if template_obj and template_obj.language:
+            template_language = template_obj.language
 
         send_whatsapp_message(
             phone_number_id=instance.phone_number_id,
             access_token=instance.access_token,
             to_phone=to_phone,
             msg_type="template",
-            template_name=self.campaign.template_name,
-            template_language="en",
+            template_name=template_name,
+            template_language=template_language,
         )
 
     def _finalize(self, sent: int) -> None:
