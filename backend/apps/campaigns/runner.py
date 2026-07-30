@@ -153,9 +153,38 @@ class CampaignRunner:
         return Contact.objects.filter(owner=self.campaign.owner).filter(reachable)
 
     def _resolve_whatsapp_instance(self):
-        """Return the first active WhatsApp instance for the campaign owner."""
-        from apps.whatsapp.models import WhatsappInstance
+        """
+        Resolve the WhatsApp instance to use, mirroring the template section:
+        The template section uses whichever instance the user explicitly picks
+        (the active one they're currently using). We replicate this by selecting
+        the instance that has the most recent conversation activity — i.e. the
+        one the user has been actively working with.
 
+        Priority:
+        1. Instance with most recent conversation/message activity for this owner.
+        2. Fall back to most recently created active instance.
+        """
+        from apps.whatsapp.models import WhatsappInstance
+        from apps.messaging.models import Conversation
+
+        # Find the instance most recently used in a conversation for this user
+        recent_conv = (
+            Conversation.objects
+            .filter(instance__user=self.campaign.owner, instance__is_active=True)
+            .order_by('-updated_at')
+            .select_related('instance')
+            .first()
+        )
+        if recent_conv and recent_conv.instance:
+            instance = recent_conv.instance
+            logger.info(
+                "[CampaignRunner] Using most-recently-active instance %s "
+                "(phone_number_id=%s) for campaign %s",
+                instance.id, instance.phone_number_id, self.campaign.id,
+            )
+            return instance
+
+        # Fallback: most recently created active instance
         instance = WhatsappInstance.objects.filter(
             user=self.campaign.owner, is_active=True
         ).order_by('-created_at').first()
@@ -165,7 +194,7 @@ class CampaignRunner:
                 f"No active WhatsApp instance for user {self.campaign.owner_id}."
             )
         logger.info(
-            "[CampaignRunner] Using instance %s (phone_number_id=%s) for campaign %s",
+            "[CampaignRunner] Using fallback instance %s (phone_number_id=%s) for campaign %s",
             instance.id, instance.phone_number_id, self.campaign.id,
         )
         return instance
