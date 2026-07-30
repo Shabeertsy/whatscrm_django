@@ -158,12 +158,16 @@ class CampaignRunner:
 
         instance = WhatsappInstance.objects.filter(
             user=self.campaign.owner, is_active=True
-        ).first()
+        ).order_by('-created_at').first()
 
         if not instance:
             raise CampaignRunError(
                 f"No active WhatsApp instance for user {self.campaign.owner_id}."
             )
+        logger.info(
+            "[CampaignRunner] Using instance %s (phone_number_id=%s) for campaign %s",
+            instance.id, instance.phone_number_id, self.campaign.id,
+        )
         return instance
 
     def _get_or_create_run_id(self) -> str:
