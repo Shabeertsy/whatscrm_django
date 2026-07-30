@@ -104,47 +104,6 @@ class AutomationFlow(BaseModel, SoftDeleteModel):
 
 # FlowNode  —  one canvas node
 class FlowNode(BaseModel):
-    """
-    One node on the ReactFlow canvas.
-
-    `node_id`   mirrors the frontend id (e.g. "n_1721730000000") so the
-                backend can round-trip the exact same id without remapping.
-    `config`    is a JSONField whose schema depends on `node_type`.
-
-    Config schemas (matching frontend INITIAL_DATA):
-    ─────────────────────────────────────────────────
-    trigger:
-        { triggerType, keywords[], description }
-
-    action (send message):
-        { message, mediaUrl, mediaName, mediaType }
-
-    wait:
-        { delayValue: int, delayUnit: "seconds"|"minutes"|"hours"|"days" }
-
-    condition:
-        { conditions: [{ field, operator, value, logic }] }
-
-    menu:
-        { message, invalidOptionMessage, noMatchMessage,
-          options: [{ id, label, value }] }
-
-    end_chat:
-        { closingMessage }
-
-    collect_input:
-        { prompt, variableName, validationType, errorMessage, maxRetries }
-
-    save_contact:
-        { fieldToUpdate, fieldValue, tagToAdd }
-
-    ai_control:
-        { aiAction: "enable_ai"|"disable_ai", systemInstructions, agentPersona }
-
-    http_request:
-        { httpMethod, url, headers: {}, requestBody, responseVariable }
-    """
-
     flow = models.ForeignKey(
         AutomationFlow,
         on_delete=models.CASCADE,

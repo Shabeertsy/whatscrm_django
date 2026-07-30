@@ -83,9 +83,10 @@ class CampaignRunner:
 
         sent = failed = skipped = 0
 
-        # Iterate contacts in chunks  
         for contact in contacts_qs.iterator(chunk_size=self.CHUNK_SIZE):
             wa_id = contact.wa_id or contact.phone
+            if wa_id:
+                wa_id = wa_id.replace('+', '').replace(' ', '')
             if not wa_id:
                 skipped += 1
                 continue
@@ -153,12 +154,7 @@ class CampaignRunner:
         return Contact.objects.filter(owner=self.campaign.owner).filter(reachable)
 
     def _resolve_whatsapp_instance(self):
-        """
-        Resolve WhatsApp instance the same way the template section does:
-        The template section does get_object_or_404(WhatsappInstance, id=instance_id)
-        with NO user ownership filter. We mirror that by picking the most recently
-        active instance globally (no user= filter).
-        """
+        """Return the first active WhatsApp instance for the campaign owner."""
         from apps.whatsapp.models import WhatsappInstance
 
         instance = WhatsappInstance.objects.filter(
