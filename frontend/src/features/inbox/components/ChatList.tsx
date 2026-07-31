@@ -1,5 +1,5 @@
 import React, { memo, useState, useMemo } from "react";
-import { Search, Plus, User2, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2, Trash } from "lucide-react";
+import { Search, Plus, User2, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2, Trash, Bookmark } from "lucide-react";
 import type { Conversation, CustomMessage } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { messagingStore } from "../../../store/messagingStore";
@@ -256,11 +256,10 @@ export const ChatList = memo(function ChatList({
                 setSelectedIds([]);
               }}
               title={isSelectMode ? "Cancel Selection" : "Select Conversations"}
-              className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${
-                isSelectMode
-                  ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-sm"
-                  : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-              }`}
+              className={`p-1.5 rounded-lg transition-colors flex items-center justify-center ${isSelectMode
+                ? "bg-slate-800 text-white dark:bg-slate-200 dark:text-slate-900 shadow-sm"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+                }`}
             >
               {isSelectMode ? <X className="h-4 w-4" /> : <ListChecks className="h-4 w-4" />}
             </button>
@@ -320,9 +319,8 @@ export const ChatList = memo(function ChatList({
                     : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 group-hover:border-[#007e3a]/50"
                     }`}
                 >
-                  <Check className={`h-3 w-3 stroke-[3] transition-all duration-200 ${
-                    filteredChats.length > 0 && selectedIds.length === filteredChats.length ? "scale-100 opacity-100" : "scale-50 opacity-0"
-                  }`} />
+                  <Check className={`h-3 w-3 stroke-[3] transition-all duration-200 ${filteredChats.length > 0 && selectedIds.length === filteredChats.length ? "scale-100 opacity-100" : "scale-50 opacity-0"
+                    }`} />
                 </div>
                 <span className="text-xs text-slate-700 dark:text-slate-300 font-medium group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">Select All</span>
               </button>
@@ -443,9 +441,19 @@ export const ChatList = memo(function ChatList({
                     >
                       {c.contact.name || c.contact.phone}
                     </h4>
-                    <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap ml-2 flex-shrink-0">
-                      {timeStr}
-                    </span>
+                    <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                      {c.contact.stage_color && (
+                        <span title={c.contact.stage_name || "In Pipeline Stage"} className="flex items-center">
+                          <Bookmark
+                            className="w-3.5 h-3.5 opacity-100 drop-shadow-sm"
+                            style={{ color: c.contact.stage_color, fill: c.contact.stage_color }}
+                          />
+                        </span>
+                      )}
+                      <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
+                        {timeStr}
+                      </span>
+                    </div>
                   </div>
 
                   <div className="flex items-center justify-between mt-1">

@@ -86,11 +86,10 @@ export function Sidebar() {
                 key={item.id}
                 onClick={() => navigate(item.id)}
                 title={isCollapsed ? item.label : undefined}
-                className={`w-full flex items-center py-2.5 rounded-lg text-sm font-semibold transition-colors duration-200 group ${
-                  isActive
+                className={`w-full flex items-center py-2.5 rounded-lg text-sm font-semibold transition-colors duration-200 group ${isActive
                     ? "bg-[#007e3a] text-white shadow-lg shadow-[#007e3a]/15"
                     : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
-                }`}
+                  }`}
               >
                 <div className="w-14 flex items-center justify-center shrink-0">
                   <Icon className={`h-5 w-5 ${isActive ? "text-white" : "text-slate-400 group-hover:text-[#007e3a] transition-colors"}`} />
@@ -112,7 +111,8 @@ export function Sidebar() {
           </span>
         </div>
         <div className={`overflow-hidden whitespace-nowrap transition-all duration-300 flex items-center text-xs text-slate-500 dark:text-slate-400 font-semibold ${isCollapsed ? "w-0 opacity-0" : "w-32 opacity-100 ml-2 gap-1.5"}`}>
-          <User className="h-3.5 w-3.5" /> Shabeer
+          <User className="h-3.5 w-3.5" />
+          <span className="truncate">{authState?.user?.first_name || authState?.user?.username || authState?.user?.email || "User"}</span>
         </div>
       </div>
     </aside>

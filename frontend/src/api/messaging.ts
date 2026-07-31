@@ -12,6 +12,8 @@ export interface ContactMin {
   profile_pic_url: string;
   is_saved: boolean;
   tags: string[];
+  stage_color?: string | null;
+  stage_name?: string | null;
 }
 
 export interface LastMessage {

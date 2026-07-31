@@ -69,12 +69,30 @@ class ContactTagDetailView(APIView):
 
 # ─── Contact APIs ─────────────────────────────────────────────────────────────
 
+def get_location_scoped_qs(user, base_qs):
+    """
+    Scopes a queryset by the user's department location.
+    Rules:
+      - Superuser / no department / dept has no location → see everything
+      - Dept has a location → only see contacts assigned to that location
+    """
+    if user.is_superuser:
+        return base_qs
+    try:
+        dept = getattr(user, 'department', None)
+        if dept and dept.location_id:
+            return base_qs.filter(location_id=dept.location_id)
+    except Exception:
+        pass
+    return base_qs
+
+
 class ContactListCreateView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_CONTACTS
 
     def get(self, request):
-        qs = Contact.objects.filter(owner=request.user)
+        qs = get_location_scoped_qs(request.user, Contact.objects.all())
         search = request.query_params.get('search', '').strip()
         if search:
             qs = qs.filter(

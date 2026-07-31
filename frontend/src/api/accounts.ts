@@ -1,10 +1,26 @@
 import { apiClient } from './client';
 
+export interface Location {
+  id: string;
+  name: string;
+  description?: string | null;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LocationPayload {
+  name: string;
+  description?: string;
+  is_active?: boolean;
+}
+
 export interface Department {
   id: string;
   name: string;
   description?: string | null;
   is_active: boolean;
+  location_name?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +74,8 @@ export interface User {
   user_type: UserType;
   department?: string | null;
   department_name?: string | null;
+  location?: string | null;
+  location_name?: string | null;
   is_active: boolean;
   is_superuser?: boolean;
   created_at: string;
@@ -72,11 +90,22 @@ export interface UserPayload {
   phone_number?: string;
   user_type?: UserType;
   department?: string | null;
+  location?: string | null;
   password?: string;
   is_active?: boolean;
 }
 
 export const accountsApi = {
+  // Locations CRUD
+  listLocations: () => apiClient.get<Location[]>('/accounts/locations/'),
+  getLocation: (id: string) => apiClient.get<Location>(`/accounts/locations/${id}/`),
+  createLocation: (payload: LocationPayload) => apiClient.post<Location>('/accounts/locations/', payload),
+  updateLocation: (id: string, payload: Partial<LocationPayload>) => apiClient.patch<Location>(`/accounts/locations/${id}/`, payload),
+  deleteLocation: (id: string) => apiClient.delete(`/accounts/locations/${id}/`),
+  toggleLocationActive: async (id: string, currentStatus: boolean) => {
+    return apiClient.patch<Location>(`/accounts/locations/${id}/`, { is_active: !currentStatus });
+  },
+
   // Departments CRUD
   listDepartments: () => apiClient.get<Department[]>('/accounts/departments/'),
   getDepartment: (id: string) => apiClient.get<Department>(`/accounts/departments/${id}/`),

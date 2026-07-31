@@ -31,6 +31,14 @@ class Contact(BaseModel):
         on_delete=models.SET_NULL,
         related_name='wa_contact',
     )
+    
+    # Link to Location
+    location = models.ForeignKey(
+        'accounts.Location',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='wa_contacts',
+    )
 
     class Meta: 
         ordering = ['-created_at']

@@ -21,19 +21,49 @@ class ContactSerializer(serializers.ModelSerializer):
         source='tags', required=False
     )
 
+    stage_color = serializers.SerializerMethodField()
+    stage_name = serializers.SerializerMethodField()
+
+    location_name = serializers.CharField(source='location.name', read_only=True, default=None)
+
     class Meta:
         model = Contact
         fields = [
             'id', 'name', 'phone', 'email', 'status', 'notes',
-            'tags', 'tag_ids', 'created_at', 'updated_at'
+            'tags', 'tag_ids', 'stage_color', 'stage_name',
+            'location', 'location_name',
+            'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'location_name', 'created_at', 'updated_at']
+
+    def _get_active_deal(self, obj):
+        if not hasattr(obj, '_cached_deal'):
+            active_deal = None
+            if hasattr(obj, 'wa_contact') and obj.wa_contact:
+                deals = list(obj.wa_contact.pipeline_deals.all())
+                active_deal = next((d for d in deals if d.pipeline.is_active), None)
+                if not active_deal and deals:
+                    active_deal = deals[0]
+            obj._cached_deal = active_deal
+        return obj._cached_deal
+
+    def get_stage_color(self, obj):
+        deal = self._get_active_deal(obj)
+        if deal and deal.stage:
+            return deal.stage.color
+        return None
+
+    def get_stage_name(self, obj):
+        deal = self._get_active_deal(obj)
+        if deal and deal.stage:
+            return deal.stage.title
+        return None
 
 
 class PipelineStageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PipelineStage
-        fields = ['id', 'title', 'order', 'created_at']
+        fields = ['id', 'title', 'color', 'order', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 

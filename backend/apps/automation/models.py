@@ -19,6 +19,7 @@ class NodeType(models.TextChoices):
     SAVE_CONTACT  = "save_contact",  "Save Contact"
     AI_CONTROL    = "ai_control",    "AI Control"
     HTTP_REQUEST  = "http_request",  "HTTP Request"
+    SAVE_LOCATION = "save_location", "Save Location"
 
 
 class TriggerType(models.TextChoices):
@@ -143,6 +144,7 @@ class FlowNode(BaseModel):
         "end_chat":      ["closingMessage"],
         "collect_input": ["prompt", "variableName"],
         "save_contact":  ["fieldToUpdate", "fieldValue"],
+        "save_location": ["locationId"],
         "ai_control":    ["aiAction"],
         "http_request":  ["httpMethod", "url"],
     }

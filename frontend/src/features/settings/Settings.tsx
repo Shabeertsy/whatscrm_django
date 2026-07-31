@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Globe, Bot, Building2, Users, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Globe, Bot, Building2, MapPin, Users, ShieldCheck } from 'lucide-react';
 import type { SettingsTab, TabMeta } from './types';
 import { useSettings } from './hooks/useSettings';
 import { useAuthStore } from '../../store/authStore';
@@ -9,6 +9,7 @@ import { SettingsSidebar } from './components/SettingsSidebar';
 import { WhatsappInstancesTab } from './components/tabs/WhatsappInstancesTab';
 import { ProxyURLsTab } from './components/tabs/ProxyURLsTab';
 import { AiProvidersTab } from './components/tabs/AiProvidersTab';
+import { LocationsTab } from './components/tabs/LocationsTab';
 import { DepartmentsTab } from './components/tabs/DepartmentsTab';
 import { UsersTab } from './components/tabs/UsersTab';
 import { PermissionsTab } from './components/tabs/PermissionsTab';
@@ -41,6 +42,13 @@ export function Settings() {
       subtitle: 'OpenAI, Claude, and Gemini API keys',
       icon: <Bot className="h-4 w-4 flex-shrink-0" />,
       permitted: !!(permissions.canAccessSettingsAi ?? permissions.canAccessSettings),
+    },
+    {
+      id: 'locations',
+      label: 'Locations',
+      subtitle: 'Manage company offices and physical locations',
+      icon: <MapPin className="h-4 w-4 flex-shrink-0" />,
+      permitted: !!permissions.canManageDepartments, // Using same permission for now
     },
     {
       id: 'departments',
@@ -88,6 +96,7 @@ export function Settings() {
           {activeTab === 'whatsapp' && <WhatsappInstancesTab />}
           {activeTab === 'proxy_urls' && <ProxyURLsTab />}
           {activeTab === 'ai_providers' && <AiProvidersTab />}
+          {activeTab === 'locations' && <LocationsTab />}
           {activeTab === 'departments' && <DepartmentsTab />}
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'permissions' && <PermissionsTab />}

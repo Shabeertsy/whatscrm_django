@@ -1,9 +1,16 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Department, DepartmentRolePermission
+from .models import Department, DepartmentRolePermission, Location
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 User = get_user_model()
+
+
+class LocationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Location
+        fields = ('id', 'name', 'description', 'is_active', 'created_at', 'updated_at')
+        read_only_fields = ('id', 'created_at', 'updated_at')
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -11,6 +18,16 @@ class DepartmentSerializer(serializers.ModelSerializer):
         model = Department
         fields = ('id', 'name', 'description', 'is_active', 'created_at', 'updated_at')
         read_only_fields = ('id', 'created_at', 'updated_at')
+
+    def validate_name(self, value):
+        qs = Department.objects.filter(name__iexact=value)
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError(
+                f'A department named "{value}" already exists. Please choose a different name.'
+            )
+        return value
 
 
 class DepartmentRolePermissionSerializer(serializers.ModelSerializer):
@@ -35,6 +52,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'role': 'Owner' if getattr(user, 'is_superuser', False) else 'User',
             'user_type': user.user_type,
             'department': str(user.department_id) if user.department_id else None,
+            'location': str(user.location_id) if user.location_id else None,
         }
         
         return data
@@ -43,8 +61,9 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
+    location_name = serializers.CharField(source='location.name', read_only=True, default=None)
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'phone_number', 'user_type', 'department', 'department_name', 'password', 'is_active', 'is_superuser', 'created_at', 'updated_at')
+        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'phone_number', 'user_type', 'department', 'department_name', 'location', 'location_name', 'password', 'is_active', 'is_superuser', 'created_at', 'updated_at')
         read_only_fields = ('id', 'is_superuser', 'created_at', 'updated_at')

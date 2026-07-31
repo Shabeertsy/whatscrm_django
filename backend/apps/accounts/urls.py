@@ -7,12 +7,14 @@ from .views import (
     UserViewSet,
     DepartmentViewSet,
     DepartmentRolePermissionViewSet,
+    LocationViewSet,
 )
 
 app_name = 'accounts'
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet, basename='user')
+router.register(r'locations', LocationViewSet, basename='location')
 router.register(r'departments', DepartmentViewSet, basename='department')
 router.register(r'department-role-permissions', DepartmentRolePermissionViewSet, basename='department-role-permission')
 

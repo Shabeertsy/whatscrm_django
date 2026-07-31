@@ -1,16 +1,18 @@
 import React, { useState } from 'react';
-import { Users, X, AlertTriangle, Loader2, Shield, Building2, Mail, Phone, User as UserIcon, Lock } from 'lucide-react';
-import type { User, UserPayload, UserType, Department } from '../../../../api/accounts';
+import { Users, X, AlertTriangle, Loader2, Shield, Building2, Globe, Mail, Phone, User as UserIcon, Lock } from 'lucide-react';
+import type { User, UserPayload, UserType, Department, Location } from '../../../../api/accounts';
 import { FormField } from '../ui/FormField';
 
 export function UserModal({
   initial,
   departments = [],
+  locations = [],
   onClose,
   onSave,
 }: {
   initial?: User | null;
   departments?: Department[];
+  locations?: Location[];
   onClose: () => void;
   onSave: (payload: UserPayload) => Promise<void>;
 }) {
@@ -25,6 +27,7 @@ export function UserModal({
         phone_number: initial.phone_number || '',
         user_type: initial.user_type || 'staff',
         department: initial.department || '',
+        location: initial.location || '',
         is_active: initial.is_active,
         password: '',
       }
@@ -36,6 +39,7 @@ export function UserModal({
         phone_number: '',
         user_type: 'agent',
         department: '',
+        location: '',
         is_active: true,
         password: '',
       }
@@ -52,8 +56,13 @@ export function UserModal({
     e.preventDefault();
     setSaving(true);
     setError('');
+
     try {
-      await onSave(form);
+      await onSave({
+        ...form,
+        department: form.department || null,
+        location: form.location || null,
+      });
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -92,7 +101,7 @@ export function UserModal({
                 {isEdit ? 'Edit User Account' : 'Create User Account'}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                {isEdit ? 'Update credentials and role assignments' : 'Add a new agent or administrator to your CRM'}
+                {isEdit ? 'Update credentials and role assignments' : 'Add a new agent or administrator'}
               </p>
             </div>
           </div>
@@ -139,30 +148,63 @@ export function UserModal({
               icon={Phone}
               value={form.phone_number || ''}
               onChange={set('phone_number')}
-              hint="Optional contact number for notifications."
             />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Location selector */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center gap-1.5">
-                <Building2 className="h-3.5 w-3.5 text-slate-400" />
-                Department Assignment
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                Location
               </label>
-              <select
-                value={form.department || ''}
-                onChange={(e) => set('department')(e.target.value || null)}
-                className="w-full px-3.5 py-2 text-xs bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] transition font-medium text-slate-800 dark:text-slate-200"
-              >
-                <option value="">No Department (General)</option>
-                {departments.map((dept) => (
-                  <option key={dept.id} value={dept.id}>
-                    {dept.name} {dept.is_active ? '' : '(Inactive)'}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <Globe className="h-4 w-4" />
+                </span>
+                <select
+                  value={form.location || ''}
+                  onChange={(e) => set('location')(e.target.value || null)}
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007e3a]/30 focus:border-[#007e3a] transition shadow-sm"
+                >
+                  <option value="">No Location (All Access)</option>
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>
+                      {loc.name} {loc.is_active ? '' : '(Inactive)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="mt-1.5 text-[11px] text-slate-400">
+                User will only see data for this location.
+              </p>
             </div>
 
+            {/* Department selector */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 uppercase tracking-wider">
+                Department Assignment
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                  <Building2 className="h-4 w-4" />
+                </span>
+                <select
+                  value={form.department || ''}
+                  onChange={(e) => set('department')(e.target.value || null)}
+                  className="w-full pl-9 pr-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/90 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007e3a]/30 focus:border-[#007e3a] transition shadow-sm"
+                >
+                  <option value="">No Department (General)</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id} value={dept.id}>
+                      {dept.name} {dept.is_active ? '' : '(Inactive)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               label={isEdit ? 'Reset Password' : 'Password'}
               icon={Lock}

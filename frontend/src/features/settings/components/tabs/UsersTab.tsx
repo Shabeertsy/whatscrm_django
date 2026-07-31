@@ -17,13 +17,14 @@ import {
   UserX
 } from 'lucide-react';
 import { ConfirmDialog } from '../../../../components/shared/ConfirmDialog';
-import { accountsApi, User, UserPayload, Department, UserType } from '../../../../api/accounts';
+import { accountsApi, User, UserPayload, Department, Location, UserType } from '../../../../api/accounts';
 import toast from 'react-hot-toast';
 import { UserModal } from '../modals/UserModal';
 
 export function UsersTab() {
   const [users, setUsers] = useState<User[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<string>('all');
@@ -38,14 +39,17 @@ export function UsersTab() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [usersRes, deptsRes] = await Promise.all([
+      const [usersRes, deptsRes, locsRes] = await Promise.all([
         accountsApi.listUsers(),
         accountsApi.listDepartments(),
+        accountsApi.listLocations(),
       ]);
       const usersData = usersRes.data;
       const deptsData = deptsRes.data;
+      const locsData = locsRes.data;
       setUsers(Array.isArray(usersData) ? usersData : (usersData as any).results ?? []);
       setDepartments(Array.isArray(deptsData) ? deptsData : (deptsData as any).results ?? []);
+      setLocations(Array.isArray(locsData) ? locsData : (locsData as any).results ?? []);
     } catch {
       toast.error('Failed to load users or departments');
     } finally {
@@ -369,6 +373,7 @@ export function UsersTab() {
         <UserModal
           initial={editTarget}
           departments={departments}
+          locations={locations}
           onClose={() => setModalOpen(false)}
           onSave={handleSave}
         />

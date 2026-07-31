@@ -47,15 +47,36 @@ class ContactSerializer(serializers.ModelSerializer):
 
 class ContactMinimalSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
+    stage_color = serializers.SerializerMethodField()
+    stage_name = serializers.SerializerMethodField()
 
     class Meta:
         model  = Contact
-        fields = ['id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags']
+        fields = ['id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags', 'stage_color', 'stage_name']
 
     def get_name(self, obj):
         if obj.crm_contact:
             return obj.crm_contact.name
         return obj.name
+
+    def _get_active_deal(self, obj):
+        if not hasattr(obj, '_cached_deal'):
+            deals = list(obj.pipeline_deals.all())
+            active_deal = next((d for d in deals if d.pipeline.is_active), None)
+            obj._cached_deal = active_deal if active_deal else (deals[0] if deals else None)
+        return obj._cached_deal
+
+    def get_stage_color(self, obj):
+        deal = self._get_active_deal(obj)
+        if deal and deal.stage:
+            return deal.stage.color
+        return None
+
+    def get_stage_name(self, obj):
+        deal = self._get_active_deal(obj)
+        if deal and deal.stage:
+            return deal.stage.title
+        return None
 
 
 ##  Message ##

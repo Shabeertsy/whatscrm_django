@@ -141,6 +141,9 @@ class AutomationEngine(BaseChatbotEngine):
             elif node_type in (NodeType.SAVE_CONTACT, "save_contact"):
                 result = self._handle_save_contact_node(current_node, execution)
 
+            elif node_type in (NodeType.SAVE_LOCATION, "save_location"):
+                result = self._handle_save_location_node(current_node, execution)
+
             elif node_type in (NodeType.AI_CONTROL, "ai_control"):
                 result = self._handle_ai_control_node(current_node, execution, ctx, reply)
 
@@ -155,6 +158,8 @@ class AutomationEngine(BaseChatbotEngine):
 
             # Sentinels end the loop; a FlowNode continues it
             if result in (_STOP, _WAITING, _DELAYED) or result is None:
+                execution.current_node = current_node
+                execution.save(update_fields=["current_node"])
                 break
 
             current_node = result
@@ -203,17 +208,31 @@ class AutomationEngine(BaseChatbotEngine):
         return _WAITING
 
     def _handle_condition_node(self, node, execution, ctx):
-        """Evaluate conditions and follow the true/false edge."""
+        """Evaluate conditions sequentially and follow the matched edge."""
         conditions = node.config.get("conditions", [])
-        is_true    = self._evaluate_conditions(conditions, ctx)
+        
+        matched_index = None
+        for idx, cond in enumerate(conditions):
+            if self._evaluate_condition(cond, ctx):
+                matched_index = idx
+                break
 
         logger.debug(
-            "[AutomationEngine] Condition node %s → %s", node.node_id, is_true
+            "[AutomationEngine] Condition node %s → matched rule %s", node.node_id, matched_index
         )
         self._log_step(execution, node, StepStatus.COMPLETED)
 
-        handle_id = "true" if is_true else "false"
+        handle_id = f"cond_{matched_index}" if matched_index is not None else "fallback"
+        
         edge = node.outgoing_edges.filter(source_handle=handle_id).first()
+        
+        # Legacy support for older graphs
+        if not edge and matched_index is None:
+            edge = node.outgoing_edges.filter(source_handle="false").first()
+            
+        if not edge and matched_index is not None:
+            edge = node.outgoing_edges.filter(source_handle="true").first()
+
         if not edge:
             execution.complete()
             return _STOP
@@ -331,6 +350,42 @@ class AutomationEngine(BaseChatbotEngine):
                 "[AutomationEngine] Conv %s contact updated: %s.",
                 self.conv.id, update_fields,
             )
+
+        self._log_step(execution, node, StepStatus.COMPLETED)
+
+        next_node = self._advance_to_next(execution, node)
+        if next_node is None:
+            execution.complete()
+            return _STOP
+        return next_node
+
+    def _handle_save_location_node(self, node, execution):
+        """
+        Assign the location to the WhatsApp contact and linked CRM contact.
+        """
+        location_id = node.config.get("locationId")
+
+        if location_id:
+            contact = self.conv.contact
+            
+            # Save location to WhatsApp contact
+            contact.location_id = location_id
+            contact.save(update_fields=["location", "updated_at"])
+
+            # Save location to CRM contact
+            crm = getattr(contact, "crm_contact", None)
+            if crm:
+                crm.location_id = location_id
+                crm.save(update_fields=["location", "updated_at"])
+                logger.info(
+                    "[AutomationEngine] Conv %s WhatsApp and CRM contact location set to '%s'.",
+                    self.conv.id, location_id,
+                )
+            else:
+                logger.info(
+                    "[AutomationEngine] Conv %s WhatsApp contact location set to '%s' (no CRM contact).",
+                    self.conv.id, location_id,
+                )
 
         self._log_step(execution, node, StepStatus.COMPLETED)
 

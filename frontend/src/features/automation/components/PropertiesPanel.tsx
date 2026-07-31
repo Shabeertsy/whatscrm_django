@@ -1,6 +1,6 @@
 import React from "react";
 import { Node } from "@xyflow/react";
-import { Trash2, Zap, GitBranch, Clock, MessageSquare, Sliders, Settings, Sparkles } from "lucide-react";
+import { Trash2, Zap, GitBranch, Clock, MessageSquare, Sliders, Settings, Sparkles, MapPin } from "lucide-react";
 
 
 import { TriggerPanel } from "./panels/TriggerPanel";
@@ -13,6 +13,7 @@ import { SaveContactPanel } from "./panels/SaveContactPanel";
 import { AiControlPanel } from "./panels/AiControlPanel";
 import { HttpRequestPanel } from "./panels/HttpRequestPanel";
 import { MenuOptionsPanel } from "./panels/MenuOptionsPanel";
+import { SaveLocationPanel } from "./panels/SaveLocationPanel";
 
 
 
@@ -44,6 +45,7 @@ function resolvePanel(type: string, title: string): React.FC<PanelProps> | null 
   if (type === "save_contact" || type === "saveContact" || t.includes("save contact")) return SaveContactPanel;
   if (type === "ai_control" || type === "aiControl" || t.includes("ai control")) return AiControlPanel;
   if (type === "http_request" || type === "httpRequest" || t.includes("http request")) return HttpRequestPanel;
+  if (type === "save_location" || type === "saveLocation" || t.includes("save location")) return SaveLocationPanel;
   if (type === "action") return SendMessagePanel;
 
   return null;
@@ -54,12 +56,14 @@ function getNodeStyle(type: string) {
     case "trigger":
       return { bg: "bg-amber-500", shadow: "shadow-amber-500/20", label: "Trigger Event", icon: Zap };
     case "condition":
-      return { bg: "bg-purple-600", shadow: "shadow-purple-500/20", label: "Condition Split", icon: GitBranch };
+      return { bg: "bg-amber-500", shadow: "shadow-amber-500/20", label: "Condition Split", icon: GitBranch };
     case "wait":
     case "delay":
       return { bg: "bg-blue-600", shadow: "shadow-blue-500/20", label: "Time Delay", icon: Clock };
     case "action":
       return { bg: "bg-emerald-600", shadow: "shadow-emerald-500/20", label: "Send Message", icon: MessageSquare };
+    case "save_location":
+      return { bg: "bg-rose-600", shadow: "shadow-rose-500/20", label: "Save Location", icon: MapPin };
     default:
       return { bg: "bg-slate-800 dark:bg-slate-700", shadow: "shadow-slate-500/20", label: "Action Node", icon: Sliders };
   }

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { X, Megaphone, Loader2, Calendar, Users, Search, CheckCircle2, Circle, User } from "lucide-react";
+import { X, Megaphone, Loader2, Calendar, Users, Search, CheckCircle2, Circle, User, Bookmark } from "lucide-react";
 import { whatsappApi } from "../../../api/whatsapp";
 import { contactsApi } from "../../../api/contacts";
 import { Campaign } from "../api";
@@ -38,6 +38,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
   const [contactsList, setContactsList] = useState<any[]>([]);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [contactSearch, setContactSearch] = useState("");
+  const [selectedStageFilter, setSelectedStageFilter] = useState("all");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Format date helper for datetime-local input
@@ -51,6 +52,16 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
       return "";
     }
   };
+
+  const availableStages = React.useMemo(() => {
+    const stagesMap = new Map<string, { name: string; color: string }>();
+    contactsList.forEach(c => {
+      if (c.stage_name) {
+        stagesMap.set(c.stage_name, { name: c.stage_name, color: c.stage_color });
+      }
+    });
+    return Array.from(stagesMap.values());
+  }, [contactsList]);
 
   useEffect(() => {
     if (isOpen) {
@@ -73,6 +84,8 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
         setFrequency("once");
         setCustomDaysGap("");
       }
+      setContactSearch("");
+      setSelectedStageFilter("all");
       loadTemplates();
       loadContacts();
     }
@@ -129,10 +142,15 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
   };
 
   const filteredContacts = contactsList.filter((c) => {
+    if (selectedStageFilter !== "all" && c.stage_name !== selectedStageFilter) {
+      return false;
+    }
     const query = contactSearch.toLowerCase();
     const cName = (c.name || `${c.first_name || ''} ${c.last_name || ''}`).toLowerCase();
     const cPhone = (c.phone || c.phone_number || '').toLowerCase();
-    return cName.includes(query) || cPhone.includes(query);
+    const cStageName = (c.stage_name || '').toLowerCase();
+    const cStageColor = (c.stage_color || '').toLowerCase();
+    return cName.includes(query) || cPhone.includes(query) || cStageName.includes(query) || cStageColor.includes(query);
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -347,16 +365,33 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
               {targetType === "specific" && (
                 <div className="bg-slate-50/80 dark:bg-slate-800/30 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-3.5 animate-in fade-in duration-150">
                   {/* Search & Actions Bar */}
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="relative flex-1">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="relative flex-1 min-w-[150px]">
                       <Search className="h-4 w-4 absolute left-3.5 top-2.5 text-slate-400" />
                       <input
                         type="text"
                         value={contactSearch}
                         onChange={(e) => setContactSearch(e.target.value)}
+                        placeholder="Search by name or phone..."
                         className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl pl-9 pr-4 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a]"
                       />
                     </div>
+                    
+                    {availableStages.length > 0 && (
+                      <select
+                        value={selectedStageFilter}
+                        onChange={(e) => setSelectedStageFilter(e.target.value)}
+                        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] max-w-[180px]"
+                      >
+                        <option value="all">All Stages</option>
+                        {availableStages.map((stage) => (
+                          <option key={stage.name} value={stage.name}>
+                            {stage.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
                     {filteredContacts.length > 0 && (
                       <button
                         type="button"
@@ -396,7 +431,17 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                                 {displayName.charAt(0).toUpperCase() || <User className="h-3.5 w-3.5" />}
                               </div>
                               <div className="min-w-0">
-                                <div className="font-bold truncate">{displayName}</div>
+                                <div className="font-bold truncate flex items-center gap-1.5">
+                                  {displayName}
+                                  {c.stage_color && (
+                                    <span title={c.stage_name || "In Pipeline Stage"} className="flex items-center shrink-0">
+                                      <Bookmark
+                                        className="w-3.5 h-3.5 opacity-100 drop-shadow-sm"
+                                        style={{ color: c.stage_color, fill: c.stage_color }}
+                                      />
+                                    </span>
+                                  )}
+                                </div>
                                 {c.phone && <div className="text-[10px] text-slate-400 truncate">{c.phone}</div>}
                               </div>
                             </div>

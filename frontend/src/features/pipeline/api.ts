@@ -3,6 +3,7 @@ import { apiClient } from "../../api/client";
 export interface PipelineStage {
   id: string;
   title: string;
+  color?: string;
   order: number;
 }
 
@@ -61,7 +62,7 @@ export const getStages = async (pipelineId: string): Promise<PipelineStage[]> =>
   return res.data;
 };
 
-export const createStage = async (pipelineId: string, data: { title: string; order?: number }): Promise<PipelineStage> => {
+export const createStage = async (pipelineId: string, data: { title: string; color?: string; order?: number }): Promise<PipelineStage> => {
   const res = await apiClient.post('/contacts/pipeline/stages/', { ...data, pipeline: pipelineId });
   return res.data;
 };

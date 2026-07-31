@@ -1,31 +1,27 @@
 import React, { useState } from 'react';
-import { Building2, X, AlertTriangle, Loader2 } from 'lucide-react';
-import type { Department, DepartmentPayload } from '../../../../api/accounts';
+import { MapPin, X, AlertTriangle, Loader2 } from 'lucide-react';
+import type { Location, LocationPayload } from '../../../../api/accounts';
 import { FormField } from '../ui/FormField';
 
-export function DepartmentModal({
+export function LocationModal({
   initial,
   onClose,
   onSave,
 }: {
-  initial?: Department | null;
+  initial?: Location | null;
   onClose: () => void;
-  onSave: (payload: DepartmentPayload) => Promise<void>;
+  onSave: (payload: LocationPayload) => Promise<void>;
 }) {
   const isEdit = !!initial;
-  const [form, setForm] = useState<DepartmentPayload>(
+  const [form, setForm] = useState<LocationPayload>(
     initial
-      ? {
-        name: initial.name,
-        description: initial.description ?? '',
-        is_active: initial.is_active,
-      }
+      ? { name: initial.name, description: initial.description ?? '', is_active: initial.is_active }
       : { name: '', description: '', is_active: true }
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
-  const set = (key: keyof DepartmentPayload) => (val: any) =>
+  const set = (key: keyof LocationPayload) => (val: any) =>
     setForm((f) => ({ ...f, [key]: val }));
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,18 +31,8 @@ export function DepartmentModal({
     try {
       await onSave(form);
       onClose();
-    } catch (err: any) {
-      const data = err?.response?.data;
-      if (data) {
-        const msg =
-          data?.name?.[0] ||
-          data?.detail ||
-          data?.non_field_errors?.[0] ||
-          Object.values(data).flat().join(' ');
-        setError(msg || 'Failed to save department. Please try again.');
-      } else {
-        setError('Failed to save department. Please try again.');
-      }
+    } catch {
+      setError('Failed to save location. Location name must be unique.');
     } finally {
       setSaving(false);
     }
@@ -59,13 +45,13 @@ export function DepartmentModal({
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-amber-500/10 dark:bg-amber-500/20 flex items-center justify-center border border-amber-500/20">
-              <Building2 className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
+              <MapPin className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400" />
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white">
-                {isEdit ? 'Edit Department' : 'New Department'}
+                {isEdit ? 'Edit Location' : 'New Location'}
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Organizational team structure</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Manage company locations</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition">
@@ -74,10 +60,11 @@ export function DepartmentModal({
         </div>
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <FormField
-            label="Department Name"
+            label="Location Name"
             name="name"
             value={form.name}
             onChange={set('name')}
+            placeholder="e.g. Wayanad"
             required
           />
           <FormField
@@ -85,9 +72,9 @@ export function DepartmentModal({
             name="description"
             value={form.description ?? ''}
             onChange={set('description')}
+            placeholder="Overview of this location"
             isTextArea
           />
-
           {error && (
             <div className="flex items-center gap-2.5 text-xs text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 p-3 rounded-xl">
               <AlertTriangle className="h-4 w-4 flex-shrink-0" />
@@ -100,7 +87,7 @@ export function DepartmentModal({
             </button>
             <button type="submit" disabled={saving} className="flex-1 px-4 py-2.5 text-xs font-bold text-white bg-[#007e3a] hover:bg-[#00602d] rounded-xl transition shadow-sm hover:shadow flex items-center justify-center gap-2 disabled:opacity-60">
               {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isEdit ? 'Save Changes' : 'Create Department'}
+              {isEdit ? 'Save Changes' : 'Create Location'}
             </button>
           </div>
         </form>

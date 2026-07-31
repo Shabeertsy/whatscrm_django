@@ -6,6 +6,7 @@ import { usePipeline } from "./hooks/usePipeline";
 import { AddDealModal } from "./components/AddDealModal";
 import { CreatePipelineModal } from "./components/CreatePipelineModal";
 import { ManagePipelinesModal } from "./components/ManagePipelinesModal";
+import { AddStageModal } from "./components/AddStageModal";
 import { PipelineSwitcher, PipelineInfoBar } from "./components/PipelineSwitcher";
 import { Pipeline as PipelineType, Deal } from "./api";
 
@@ -36,6 +37,7 @@ export function Pipeline() {
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [showCreatePipelineModal, setShowCreatePipelineModal] = useState(false);
   const [showPipelineSettingsModal, setShowPipelineSettingsModal] = useState(false);
+  const [showAddStageModal, setShowAddStageModal] = useState(false);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -51,10 +53,7 @@ export function Pipeline() {
           onManage={() => setShowPipelineSettingsModal(true)}
         />
         <button
-          onClick={() => {
-            const title = prompt("Enter new Stage Title:");
-            if (title) handleAddStage(title);
-          }}
+          onClick={() => setShowAddStageModal(true)}
           className="px-4 py-2 border border-[#007e3a] text-[#007e3a] hover:bg-[#007e3a]/5 text-xs font-bold rounded-lg transition duration-200 flex items-center space-x-2"
         >
           <Plus className="h-4 w-4" />
@@ -131,6 +130,16 @@ export function Pipeline() {
           onCreateNew={() => {
             setShowCreatePipelineModal(true);
             setShowPipelineSettingsModal(false);
+          }}
+        />
+      )}
+      
+      {showAddStageModal && (
+        <AddStageModal
+          onClose={() => setShowAddStageModal(false)}
+          onSubmit={(title, color) => {
+            handleAddStage(title, color);
+            setShowAddStageModal(false);
           }}
         />
       )}

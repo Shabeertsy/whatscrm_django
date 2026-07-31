@@ -76,10 +76,14 @@ class RoomsProxyView(APIView):
 
     def get(self, request):
         uuid = request.query_params.get('uuid')
-        query_params = request.GET.urlencode()
+        query_params_dict = request.GET.copy()
         
+        # If location isn't provided, and user has a location assigned, default to it
+        if 'location' not in query_params_dict and request.user.location:
+            query_params_dict['location'] = request.user.location.name
+            
+        query_params = query_params_dict.urlencode()
         base = get_proxy_url(request.user)
-        print(base,'base')
         if uuid:
             url = f"{base}/crm/rooms/{uuid}/?{query_params}"
         else:

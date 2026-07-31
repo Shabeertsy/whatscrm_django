@@ -11,7 +11,7 @@
 
 import {
   MessageSquare, Image as ImageIcon, Menu, SplitSquareHorizontal, Clock, XCircle, FileInput, Save,
-  Sparkles, Globe, Zap, LucideIcon,
+  Sparkles, Globe, Zap, LucideIcon, MapPin
 } from "lucide-react";
 
 
@@ -25,13 +25,12 @@ import CollectInputNode from "../components/nodes/CollectInputNode";
 import SaveContactNode from "../components/nodes/SaveContactNode";
 import AiControlNode from "../components/nodes/AiControlNode";
 import HttpRequestNode from "../components/nodes/HttpRequestNode";
+import SaveLocationNode from "../components/nodes/SaveLocationNode";
 import DeletableEdge from "../components/DeletableEdge";
 
 
-// ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
-
 export type CanonicalType =
   | "trigger"
   | "action"
@@ -41,6 +40,7 @@ export type CanonicalType =
   | "end_chat"
   | "collect_input"
   | "save_contact"
+  | "save_location"
   | "ai_control"
   | "http_request";
 
@@ -228,6 +228,25 @@ export const NODE_REGISTRY: Record<CanonicalType, NodeRegistryEntry> = {
       fieldToUpdate: "name",
       fieldValue: "{{user_input}}",
       tagToAdd: "",
+    }),
+  },
+
+  save_location: {
+    component: SaveLocationNode,
+    label: "Save Location",
+    description: "Assign chat to location",
+    icon: MapPin,
+    color: "text-rose-500",
+    category: "Data & Actions",
+    aliases: ["save_location", "saveLocation", "Save Location"],
+    defaultWidth: 220,
+    defaultHeight: 100,
+    defaultConfig: (title, desc) => ({
+      version: 1,
+      title,
+      description: desc,
+      locationId: "",
+      locationName: "",
     }),
   },
 

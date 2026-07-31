@@ -41,6 +41,13 @@ class Contact(BaseModel, SoftDeleteModel):
         on_delete=models.CASCADE,
         related_name='crm_contacts'
     )
+    location = models.ForeignKey(
+        'accounts.Location',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='contacts'
+    )
     tags = models.ManyToManyField(ContactTag, blank=True, related_name='contacts')
 
     class Meta:
@@ -85,6 +92,7 @@ class PipelineStage(BaseModel):
         null=True, blank=True 
     )
     title = models.CharField(max_length=100)
+    color = models.CharField(max_length=20, default='#e2e8f0')
     order = models.PositiveIntegerField(default=0)
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

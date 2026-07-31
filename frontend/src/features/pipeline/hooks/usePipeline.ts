@@ -152,11 +152,12 @@ export function usePipeline() {
     }
   };
 
-  const handleAddStage = async (title: string) => {
+  const handleAddStage = async (title: string, color?: string) => {
     if (!activePipeline || !title) return;
     try {
       const stage = await createStage(activePipeline.id, {
         title,
+        color,
         order: (activePipeline.stages?.length || 0) + 1,
       });
       const updatedStages = [...(activePipeline.stages || []), stage];

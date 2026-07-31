@@ -4,12 +4,13 @@ from rest_framework.decorators import action
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
-from .models import Department, DepartmentRolePermission
+from .models import Department, DepartmentRolePermission, Location
 from .serializers import (
     UserSerializer,
     CustomTokenObtainPairSerializer,
     DepartmentSerializer,
     DepartmentRolePermissionSerializer,
+    LocationSerializer,
 )
 from apps.core.permissions import RequirePermission, Permission
 
@@ -17,12 +18,34 @@ from apps.core.permissions import RequirePermission, Permission
 User = get_user_model()
 
 
+## Location ViewSet
+class LocationViewSet(viewsets.ModelViewSet):
+    queryset = Location.objects.all().order_by('-created_at')
+    serializer_class = LocationSerializer
+    permission_classes = [permissions.IsAuthenticated, RequirePermission]
+    required_permission = Permission.MANAGE_DEPARTMENTS
+
 ## Department ViewSet
 class DepartmentViewSet(viewsets.ModelViewSet):
     queryset = Department.objects.all().order_by('-created_at')
     serializer_class = DepartmentSerializer
     permission_classes = [permissions.IsAuthenticated, RequirePermission]
     required_permission = Permission.MANAGE_DEPARTMENTS
+
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        try:
+            instance.validate_unique()
+        except Exception as e:
+            instance.delete()
+            raise e
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        try:
+            instance.validate_unique()
+        except Exception as e:
+            raise e
 
 
 class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):

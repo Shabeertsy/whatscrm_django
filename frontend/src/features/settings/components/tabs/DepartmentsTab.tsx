@@ -97,6 +97,7 @@ export function DepartmentsTab() {
 
   return (
     <div className="space-y-5">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
@@ -106,7 +107,7 @@ export function DepartmentsTab() {
             </span>
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Organize team members, permissions, and agent assignments by department.
+            Organize your team members by department.
           </p>
         </div>
         <button
@@ -118,6 +119,7 @@ export function DepartmentsTab() {
         </button>
       </div>
 
+      {/* Search */}
       {departments.length > 0 && (
         <div className="relative">
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
@@ -131,6 +133,7 @@ export function DepartmentsTab() {
         </div>
       )}
 
+      {/* Department List */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-16 gap-3">
           <Loader2 className="h-6 w-6 animate-spin text-[#007e3a]" />
@@ -141,65 +144,53 @@ export function DepartmentsTab() {
           <div className="h-12 w-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mx-auto mb-3">
             <Building2 className="h-6 w-6" />
           </div>
-          <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-            {searchQuery ? 'No matching departments found' : 'No departments created yet'}
-          </p>
-          <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-            {searchQuery
-              ? 'Try modifying your search filter.'
-              : 'Create departments to organize CRM agents and categorize inbox workflows.'}
-          </p>
-          {!searchQuery && (
-            <button
-              onClick={() => { setEditTarget(null); setModalOpen(true); }}
-              className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#007e3a] hover:bg-[#00602d] text-white text-xs font-bold rounded-xl transition"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Department
-            </button>
-          )}
+          <button
+            onClick={() => { setEditTarget(null); setModalOpen(true); }}
+            className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 bg-[#007e3a] hover:bg-[#00602d] text-white text-xs font-bold rounded-xl transition"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add Department
+          </button>
         </div>
       ) : (
         <div className="grid gap-3">
           {filteredDepartments.map((dept) => (
             <div
               key={dept.id}
-              className="bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+              className="bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
             >
               <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                <div className={`h-11 w-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                  dept.is_active
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                    : 'bg-slate-100 text-slate-400 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-                }`}>
+                <div className={`h-10 w-10 rounded-2xl flex items-center justify-center flex-shrink-0 ${dept.is_active
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                  : 'bg-slate-100 text-slate-400 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+                  }`}>
                   <Building2 className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate">{dept.name}</h3>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      dept.is_active
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-                    }`}>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-bold text-slate-900 dark:text-white text-sm">{dept.name}</h3>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${dept.is_active
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                      }`}>
                       {dept.is_active && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
                       {dept.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   {dept.description ? (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">{dept.description}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{dept.description}</p>
                   ) : (
                     <p className="text-xs text-slate-400 italic">No description provided</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 flex-shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-1 flex-shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => handleToggle(dept.id, dept.is_active)}
                   disabled={togglingId === dept.id}
                   title={dept.is_active ? 'Deactivate Department' : 'Activate Department'}
-                  className="p-2 text-slate-400 hover:text-[#007e3a] transition"
+                  className="p-2 text-slate-400 hover:text-[#007e3a] transition rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   {togglingId === dept.id ? (
                     <Loader2 className="h-4 w-4 animate-spin text-[#007e3a]" />
@@ -213,7 +204,7 @@ export function DepartmentsTab() {
                 <button
                   onClick={() => { setEditTarget(dept); setModalOpen(true); }}
                   title="Edit Department"
-                  className="p-2 text-slate-400 hover:text-blue-600 transition"
+                  className="p-2 text-slate-400 hover:text-blue-600 transition rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   <Pencil className="h-4 w-4" />
                 </button>
@@ -221,7 +212,7 @@ export function DepartmentsTab() {
                 <button
                   onClick={() => setDeleteTargetId(dept.id)}
                   title="Delete Department"
-                  className="p-2 text-slate-400 hover:text-red-600 transition"
+                  className="p-2 text-slate-400 hover:text-red-600 transition rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800"
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>

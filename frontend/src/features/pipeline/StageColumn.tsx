@@ -20,11 +20,13 @@ interface StageColumnProps {
 
 export function StageColumn({
   title, stage, deals, onMoveDeal, onEditDeal,
-  onUpdateStage, onDeleteStage, onMoveLeft, onMoveRight
+  stages, onUpdateStage, onDeleteStage, onMoveLeft, onMoveRight
 }: StageColumnProps) {
+  const stageObj = stages.find(s => s.id === stage);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
+  const [editColor, setEditColor] = useState(stageObj?.color || "#e2e8f0");
   const [confirmDelete, setConfirmDelete] = useState(false);
   const dragCounter = useRef(0);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -36,7 +38,7 @@ export function StageColumn({
   }, []);
 
 
-  
+
   const columnDeals = deals.filter((d) => d.stage === stage);
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
@@ -61,11 +63,19 @@ export function StageColumn({
     if (dealId) onMoveDeal(dealId, stage);
   };
 
-  const handleSaveTitle = () => {
-    if (editTitle.trim() && editTitle.trim() !== title && onUpdateStage) {
-      onUpdateStage(stage, { title: editTitle.trim() });
+  const handleSave = () => {
+    const newTitle = editTitle.trim();
+    const isTitleChanged = newTitle && newTitle !== title;
+    const isColorChanged = editColor !== stageObj?.color;
+
+    if ((isTitleChanged || isColorChanged) && onUpdateStage) {
+      onUpdateStage(stage, {
+        ...(isTitleChanged ? { title: newTitle } : {}),
+        ...(isColorChanged ? { color: editColor } : {})
+      });
     } else {
       setEditTitle(title);
+      setEditColor(stageObj?.color || "#e2e8f0");
     }
     setIsEditing(false);
   };
@@ -81,17 +91,18 @@ export function StageColumn({
     }
   };
 
+
   return (
     <div
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex-1 min-w-[300px] rounded-xl flex flex-col h-full transition-all duration-200 border ${
-        isDraggingOver
-          ? "bg-[#007e3a]/5 border-[#007e3a] border-dashed shadow-lg shadow-[#007e3a]/10"
-          : "bg-slate-100/80 dark:bg-slate-900 border-slate-200 dark:border-slate-800 shadow-sm"
-      }`}
+      style={{ backgroundColor: !isDraggingOver && stageObj?.color ? `${stageObj.color}45` : undefined }}
+      className={`flex-1 min-w-[300px] rounded-xl flex flex-col h-full transition-all duration-200 border ${isDraggingOver
+        ? "bg-[#007e3a]/5 border-[#007e3a] border-dashed shadow-lg shadow-[#007e3a]/10"
+        : "border-slate-200 dark:border-slate-800 shadow-sm"
+        }`}
     >
       {/* ── Column Header ── */}
       <div className="px-4 pt-4 pb-3 border-b border-slate-200/60 dark:border-slate-800">
@@ -100,26 +111,35 @@ export function StageColumn({
         <div className="flex items-center justify-between gap-2 mb-2.5">
           {isEditing ? (
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
+              <div className="relative w-8 h-8 flex-shrink-0 rounded-lg overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm hover:ring-[#007e3a] transition-all">
+                <input
+                  type="color"
+                  value={editColor}
+                  onChange={(e) => setEditColor(e.target.value)}
+                  className="absolute -top-2 -left-2 w-12 h-12 cursor-pointer border-0 p-0"
+                  title="Stage Color"
+                />
+              </div>
               <input
                 type="text"
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveTitle();
-                  if (e.key === 'Escape') { setIsEditing(false); setEditTitle(title); }
+                  if (e.key === 'Enter') handleSave();
+                  if (e.key === 'Escape') { setIsEditing(false); setEditTitle(title); setEditColor(stageObj?.color || "#e2e8f0"); }
                 }}
                 className="flex-1 min-w-0 bg-white dark:bg-slate-800 border border-[#007e3a]/50 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-[#007e3a] focus:ring-2 focus:ring-[#007e3a]/10"
                 autoFocus
               />
               <button
-                onClick={handleSaveTitle}
+                onClick={handleSave}
                 className="flex-shrink-0 p-1.5 bg-[#007e3a] text-white rounded-lg hover:bg-[#00662f] transition-colors"
                 title="Save"
               >
                 <Check className="h-3.5 w-3.5" />
               </button>
               <button
-                onClick={() => { setIsEditing(false); setEditTitle(title); }}
+                onClick={() => { setIsEditing(false); setEditTitle(title); setEditColor(stageObj?.color || "#e2e8f0"); }}
                 className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
                 title="Cancel"
               >
@@ -128,14 +148,22 @@ export function StageColumn({
             </div>
           ) : (
             <div className="flex items-center gap-2 flex-1 min-w-0 group">
+              {stageObj?.color && (
+                <div
+                  className="w-4 h-4 rounded-full flex-shrink-0 cursor-pointer ring-2 ring-white dark:ring-slate-800 shadow-sm hover:scale-110 transition-transform"
+                  style={{ backgroundColor: stageObj.color }}
+                  onClick={() => setIsEditing(true)}
+                  title="Click to edit color or rename"
+                />
+              )}
               <h4
                 onClick={() => setIsEditing(true)}
                 className="font-bold text-xs text-slate-600 dark:text-slate-400 uppercase tracking-widest truncate cursor-pointer group-hover:text-[#007e3a] dark:group-hover:text-[#00b355] transition-colors"
-                title="Click to rename"
+                title="Click to edit color or rename"
               >
                 {title}
               </h4>
-       
+
             </div>
           )}
 
@@ -154,11 +182,10 @@ export function StageColumn({
               <button
                 onClick={onMoveLeft}
                 disabled={!onMoveLeft}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                  onMoveLeft
-                    ? "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 hover:shadow-sm"
-                    : "text-slate-300 dark:text-slate-700 cursor-not-allowed"
-                }`}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${onMoveLeft
+                  ? "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 hover:shadow-sm"
+                  : "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                  }`}
                 title="Move stage left"
               >
                 <ChevronLeft className="h-3.5 w-3.5" />
@@ -166,11 +193,10 @@ export function StageColumn({
               <button
                 onClick={onMoveRight}
                 disabled={!onMoveRight}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${
-                  onMoveRight
-                    ? "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 hover:shadow-sm"
-                    : "text-slate-300 dark:text-slate-700 cursor-not-allowed"
-                }`}
+                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${onMoveRight
+                  ? "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 hover:shadow-sm"
+                  : "text-slate-300 dark:text-slate-700 cursor-not-allowed"
+                  }`}
                 title="Move stage right"
               >
                 <ChevronRight className="h-3.5 w-3.5" />
