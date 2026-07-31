@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import { X, Copy, Phone } from "lucide-react";
 
 interface Props {
   contacts: any[];
@@ -26,6 +26,14 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
       note: form.note || undefined,
     });
     if (ok) onClose();
+  };
+
+  const selectedContact = contacts.find(c => String(c.id) === String(form.wa_contact));
+
+  const handleCopyPhone = () => {
+    if (selectedContact?.phone) {
+      navigator.clipboard.writeText(selectedContact.phone);
+    }
   };
 
   return (
@@ -58,7 +66,8 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
             <select
               value={form.wa_contact}
               onChange={e => setForm({ ...form, wa_contact: e.target.value })}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+              disabled={!!initialData}
+              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a] disabled:opacity-60 disabled:cursor-not-allowed ${initialData ? 'appearance-none' : ''}`}
             >
               <option value="">-- Select Contact (Optional) --</option>
               {contacts.map(c => (
@@ -66,6 +75,34 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
               ))}
             </select>
           </div>
+          
+          {selectedContact && selectedContact.phone && (
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={selectedContact.phone}
+                  readOnly
+                  className="flex-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 cursor-not-allowed outline-none"
+                />
+                <button
+                  onClick={(e) => { e.preventDefault(); handleCopyPhone(); }}
+                  title="Copy Phone Number"
+                  className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                >
+                  <Copy className="h-4 w-4" />
+                </button>
+                <a
+                  href={`tel:${selectedContact.phone}`}
+                  title="Call Contact"
+                  className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#007e3a] transition-colors"
+                >
+                  <Phone className="h-4 w-4" />
+                </a>
+              </div>
+            </div>
+          )}
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Note (Optional)</label>
             <textarea

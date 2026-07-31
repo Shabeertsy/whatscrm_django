@@ -103,7 +103,7 @@ class CampaignRunner:
                 continue
 
             try:
-                self._send_template(instance=instance, to_phone=wa_id)
+                self._send_template(instance=instance, crm_contact=contact, to_phone=wa_id)
                 delivery.status = "sent"
                 delivery.sent_at = timezone.now()
                 delivery.error = ""
@@ -194,9 +194,10 @@ class CampaignRunner:
             run_id=run_id,
         )
 
-    def _send_template(self, instance, to_phone: str) -> None:
-        from apps.messaging.utils import send_whatsapp_message
+    def _send_template(self, instance, crm_contact, to_phone: str) -> None:
+        from apps.messaging.utils import send_and_save_message
         from apps.whatsapp.models import WhatsappTemplate
+        from apps.messaging.models import Contact as MsgContact, Conversation
 
         template_name = self.campaign.template_name
         template_language = "en"  # Default
@@ -215,13 +216,44 @@ class CampaignRunner:
         if template_obj and template_obj.language:
             template_language = template_obj.language
 
-        send_whatsapp_message(
-            phone_number_id=instance.phone_number_id,
-            access_token=instance.access_token,
-            to_phone=to_phone,
+        # Resolve messaging Contact
+        msg_contact = getattr(crm_contact, 'wa_contact', None)
+        if not msg_contact:
+            msg_contact, created = MsgContact.objects.get_or_create(
+                wa_id=to_phone,
+                defaults={'phone': to_phone, 'name': crm_contact.name, 'crm_contact': crm_contact}
+            )
+            if not created and not msg_contact.crm_contact:
+                msg_contact.crm_contact = crm_contact
+                msg_contact.save(update_fields=['crm_contact'])
+
+        # Resolve Conversation
+        conv = Conversation.objects.filter(contact=msg_contact, instance=instance).order_by('-last_message_at').first()
+        if not conv:
+            conv = Conversation.objects.create(contact=msg_contact, instance=instance, status='open')
+        elif conv.status == 'resolved':
+            conv.status = 'open'
+            conv.save(update_fields=['status'])
+
+        # Extract actual template text if available
+        category = template_obj.template_type if template_obj else "TEMPLATE"
+        msg_body = f"[Template: {category}]"
+        
+        if template_obj and template_obj.components:
+            for comp in template_obj.components:
+                if isinstance(comp, dict) and comp.get("type") == "BODY":
+                    text = comp.get("text")
+                    if text:
+                        msg_body = f"[Template: {category}]\n{text}"
+                    break
+
+        send_and_save_message(
+            conversation=conv,
             msg_type="template",
+            body=msg_body,
             template_name=template_name,
             template_language=template_language,
+            sent_by=self.campaign.owner,
         )
 
     def _finalize(self, sent: int) -> None:

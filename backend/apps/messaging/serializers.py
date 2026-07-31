@@ -49,15 +49,20 @@ class ContactMinimalSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     stage_color = serializers.SerializerMethodField()
     stage_name = serializers.SerializerMethodField()
+    active_deal_id = serializers.SerializerMethodField()
 
     class Meta:
         model  = Contact
-        fields = ['id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags', 'stage_color', 'stage_name']
+        fields = ['id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags', 'stage_color', 'stage_name', 'active_deal_id']
 
     def get_name(self, obj):
         if obj.crm_contact:
             return obj.crm_contact.name
         return obj.name
+
+    def get_active_deal_id(self, obj):
+        deal = self._get_active_deal(obj)
+        return deal.id if deal else None
 
     def _get_active_deal(self, obj):
         if not hasattr(obj, '_cached_deal'):

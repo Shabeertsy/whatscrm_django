@@ -442,6 +442,9 @@ export const ChatList = memo(function ChatList({
                       {c.contact.name || c.contact.phone}
                     </h4>
                     <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
+                      <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
+                        {timeStr}
+                      </span>
                       {c.contact.stage_color && (
                         <span title={c.contact.stage_name || "In Pipeline Stage"} className="flex items-center">
                           <Bookmark
@@ -450,9 +453,6 @@ export const ChatList = memo(function ChatList({
                           />
                         </span>
                       )}
-                      <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
-                        {timeStr}
-                      </span>
                     </div>
                   </div>
 

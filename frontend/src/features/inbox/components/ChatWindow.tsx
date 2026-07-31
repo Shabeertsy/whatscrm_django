@@ -7,6 +7,7 @@ import { useRouter } from "../../../router";
 
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { MessageBubble } from './chat/MessageBubble';
+import { StagePopup } from './StagePopup';
 
 
 
@@ -150,6 +151,7 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
                </span>
              </button>
           )}
+          <StagePopup conversation={conversation} />
         </div>
       </div>
 

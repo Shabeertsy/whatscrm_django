@@ -93,7 +93,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           <DocumentMessage msgType={message.msg_type} mediaUrl={message.media_url} />
         )}
 
-        {message.msg_type === 'template' && message.body && <TemplateMessage body={message.body} />}
+        {message.msg_type === 'template' && <TemplateMessage body={message.body || '[Template Message]'} />}
         {message.msg_type !== 'audio' && message.msg_type !== 'template' && message.body && <TextMessage body={message.body} />}
 
         {/* Room Details Link */}

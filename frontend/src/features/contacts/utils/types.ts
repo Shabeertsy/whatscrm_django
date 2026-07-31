@@ -15,6 +15,8 @@ export interface Contact {
   tags: CTag[];
   created_at: string;
   wa_id?: string;
+  stage_name?: string;
+  stage_color?: string;
 }
 
 export interface WAContact {
