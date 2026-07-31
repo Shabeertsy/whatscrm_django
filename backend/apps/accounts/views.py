@@ -13,6 +13,7 @@ from .serializers import (
     LocationSerializer,
 )
 from apps.core.permissions import RequirePermission, Permission
+from django.core.cache import cache
 
 
 User = get_user_model()
@@ -84,6 +85,10 @@ class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
             role=role,
             defaults={'permissions': perm_data}
         )
+        
+        # Clear the RBAC cache for this department and role
+        cache.delete(f"rbac_{department_id}_{role}")
+
         serializer = self.get_serializer(obj)
         code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
         return Response(serializer.data, status=code)
