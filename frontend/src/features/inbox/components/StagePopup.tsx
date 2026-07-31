@@ -55,7 +55,7 @@ export function StagePopup({ conversation }: StagePopupProps) {
 
   const handleSelectStage = async (stage: PipelineStage) => {
     setIsOpen(false);
-    
+
     // Optimistic Update
     const prevContact = { ...contact };
     messagingStore.updateConversationMeta(conversation.id, {
@@ -110,7 +110,7 @@ export function StagePopup({ conversation }: StagePopupProps) {
           <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/80">
             <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Update Pipeline Deal</span>
           </div>
-          
+
           <div className="p-3 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700/50">
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">
               Deal Note (Optional)
@@ -118,7 +118,7 @@ export function StagePopup({ conversation }: StagePopupProps) {
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder="E.g. Followed up with client..."
+              placeholder="Type your notes.."
               className="w-full text-xs p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none h-16 transition-colors placeholder:text-slate-400"
             />
           </div>
