@@ -537,6 +537,13 @@ class PipelineDealDetailView(APIView):
         except PipelineDeal.DoesNotExist:
             return None
 
+    def get(self, request, pk):
+        deal = self.get_object(pk, request.user)
+        if not deal:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        serializer = PipelineDealSerializer(deal)
+        return Response(serializer.data)
+
     def patch(self, request, pk):
         deal = self.get_object(pk, request.user)
         if not deal:

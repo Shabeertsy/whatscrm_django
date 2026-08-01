@@ -2,12 +2,12 @@ import React, { useEffect, useRef, useState, memo } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { messagingStore } from "../../../store/messagingStore";
-import { Check, CheckCheck, Clock, User2, Trash2, ExternalLink, Reply, ChevronDown, Bot } from "lucide-react";
+import { User2, ChevronDown, Bot } from "lucide-react";
 import { useRouter } from "../../../router";
 
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { MessageBubble } from './chat/MessageBubble';
-import { StagePopup } from './StagePopup';
+import { StagePopup } from './stage-popup/StagePopup';
 
 
 
@@ -61,16 +61,16 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
   // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
   const handleToggleStatus = async () => {
     const nextStatus: 'open' | 'resolved' = conversation.status === 'resolved' ? 'open' : 'resolved';
-    
+
     // Optimistic UI update in store
     messagingStore.updateStatus(conversation.id, nextStatus);
-    
+
     try {
       await messagingApi.updateConversation(conversation.id, { status: nextStatus });
     } catch (err) {
@@ -82,10 +82,10 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
 
   const handleToggleAi = async () => {
     const newStatus = !conversation.ai_active;
-    
+
     // Optimistic UI update
     messagingStore.updateConversationMeta(conversation.id, { ai_active: newStatus });
-    
+
     try {
       await messagingApi.updateConversation(conversation.id, { ai_active: newStatus });
     } catch (err) {
@@ -121,45 +121,43 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
           <button
             onClick={handleToggleStatus}
             title={conversation.status === 'resolved' ? 'Click to mark as Open' : 'Click to mark as Resolved'}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-[9px] rounded-full font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${
-              conversation.status === 'resolved'
-                ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
-                : 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 border border-emerald-300/50 dark:border-emerald-500/30'
-            }`}
+            className={`flex items-center gap-1.5 px-2.5 py-1 text-[9px] rounded-full font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.status === 'resolved'
+              ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+              : 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 border border-emerald-300/50 dark:border-emerald-500/30'
+              }`}
           >
             <span className={`w-1.5 h-1.5 rounded-full ${conversation.status === 'resolved' ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></span>
             {conversation.status === 'resolved' ? 'Resolved' : 'Open'}
           </button>
           {conversation.agent_name && (
-             <span className="px-2.5 py-1 text-[9px] bg-[#007e3a]/10 dark:bg-[#007e3a]/20 text-[#007e3a] dark:text-[#007e3a] border border-[#007e3a]/20 rounded-full font-bold">
-               Agent: {conversation.agent_name}
-             </span>
+            <span className="px-2.5 py-1 text-[9px] bg-[#007e3a]/10 dark:bg-[#007e3a]/20 text-[#007e3a] dark:text-[#007e3a] border border-[#007e3a]/20 rounded-full font-bold">
+              Agent: {conversation.agent_name}
+            </span>
           )}
           {isAiActive && (
-             <button
-               onClick={handleToggleAi}
-               title={conversation.ai_active ? "Click to disable AI for this contact" : "Click to enable AI for this contact"}
-               className={`flex items-center space-x-1.5 px-2 py-1 rounded-full transition-colors ${
-                 conversation.ai_active
-                   ? "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-500/30"
-                   : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
-               }`}
-             >
-               <Bot className="h-3.5 w-3.5" />
-               <span className="text-[10px] font-bold">
-                 {conversation.ai_active ? "AI Active" : "AI Disabled"}
-               </span>
-             </button>
+            <button
+              onClick={handleToggleAi}
+              title={conversation.ai_active ? "Click to disable AI for this contact" : "Click to enable AI for this contact"}
+              className={`flex items-center space-x-1.5 px-2 py-1 rounded-full transition-colors ${conversation.ai_active
+                ? "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-500/30"
+                : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
+                }`}
+            >
+              <Bot className="h-3.5 w-3.5" />
+              <span className="text-[10px] font-bold">
+                {conversation.ai_active ? "AI Active" : "AI Disabled"}
+              </span>
+            </button>
           )}
           <StagePopup conversation={conversation} />
         </div>
       </div>
 
       {/* Messages Area */}
-      <div 
+      <div
         ref={scrollRef}
         onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2] dark:bg-slate-950/50 relative">
-        
+
         <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/r_QPEkMbpXb.png")' }}></div>
 
         {isLoading ? (
@@ -176,7 +174,7 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
           </div>
         ) : (
           messages.map((m) => (
-            <MessageBubble 
+            <MessageBubble
               key={m.id}
               message={m}
               isOutbound={m.direction === 'outbound'}

@@ -111,3 +111,8 @@ export const updateDeal = async (id: string, data: Partial<Deal>): Promise<Deal>
 export const deleteDeal = async (id: string): Promise<void> => {
   await apiClient.delete(`/contacts/pipeline/deals/${id}/`);
 };
+
+export const getDeal = async (id: string): Promise<Deal> => {
+  const res = await apiClient.get(`/contacts/pipeline/deals/${id}/`);
+  return res.data;
+};
