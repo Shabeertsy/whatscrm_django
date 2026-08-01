@@ -103,11 +103,13 @@ class CampaignRunner:
                 continue
 
             try:
-                self._send_template(instance=instance, crm_contact=contact, to_phone=wa_id)
+                msg = self._send_template(instance=instance, crm_contact=contact, to_phone=wa_id)
                 delivery.status = "sent"
                 delivery.sent_at = timezone.now()
                 delivery.error = ""
-                delivery.save(update_fields=["status", "sent_at", "error"])
+                if msg and msg.wa_message_id:
+                    delivery.wa_message_id = msg.wa_message_id
+                delivery.save(update_fields=["status", "sent_at", "error", "wa_message_id"])
                 sent += 1
             except Exception as exc:
                 delivery.status = "failed"
@@ -194,7 +196,7 @@ class CampaignRunner:
             run_id=run_id,
         )
 
-    def _send_template(self, instance, crm_contact, to_phone: str) -> None:
+    def _send_template(self, instance, crm_contact, to_phone: str):
         from apps.messaging.utils import send_and_save_message
         from apps.whatsapp.models import WhatsappTemplate
         from apps.messaging.models import Contact as MsgContact, Conversation
@@ -247,7 +249,7 @@ class CampaignRunner:
                         msg_body = f"[Template: {category}]\n{text}"
                     break
 
-        send_and_save_message(
+        return send_and_save_message(
             conversation=conv,
             msg_type="template",
             body=msg_body,

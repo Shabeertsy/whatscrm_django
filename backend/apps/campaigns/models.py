@@ -67,6 +67,8 @@ class CampaignDelivery(models.Model):
     STATUS_CHOICES = [
         ('pending', 'Pending'),
         ('sent', 'Sent'),
+        ('delivered', 'Delivered'),
+        ('read', 'Read'),
         ('failed', 'Failed'),
         ('skipped', 'Skipped'),
     ]
@@ -85,6 +87,7 @@ class CampaignDelivery(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     error = models.TextField(blank=True, default='')
     sent_at = models.DateTimeField(null=True, blank=True)
+    wa_message_id = models.CharField(max_length=255, blank=True, null=True, db_index=True)
 
     class Meta:
         unique_together = ('campaign', 'contact', 'run_id')

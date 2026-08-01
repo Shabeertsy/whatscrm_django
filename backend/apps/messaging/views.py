@@ -684,6 +684,27 @@ class WebhookView(APIView):
                 msg.save(update_fields=['status'])
                 from .utils import broadcast_message_status_update
                 broadcast_message_status_update(msg.conversation, wa_msg_id, new_status)
+                
+            # Update CampaignDelivery and Campaign stats if applicable
+            if new_status in ['delivered', 'read']:
+                from apps.campaigns.models import CampaignDelivery
+                from django.db.models import F
+                delivery = CampaignDelivery.objects.filter(wa_message_id=wa_msg_id).first()
+                if delivery:
+                    if new_status == 'delivered' and delivery.status not in ['delivered', 'read']:
+                        delivery.status = 'delivered'
+                        delivery.save(update_fields=['status'])
+                        delivery.campaign.delivered = F('delivered') + 1
+                        delivery.campaign.save(update_fields=['delivered'])
+                    elif new_status == 'read' and delivery.status != 'read':
+                        update_fields = ['read']
+                        delivery.campaign.read = F('read') + 1
+                        if delivery.status != 'delivered':
+                            delivery.campaign.delivered = F('delivered') + 1
+                            update_fields.append('delivered')
+                        delivery.status = 'read'
+                        delivery.save(update_fields=['status'])
+                        delivery.campaign.save(update_fields=update_fields)
 
 
     def _handle_template_status_update(self, value: dict, waba_id: str):
