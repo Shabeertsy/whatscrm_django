@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.core.permissions import RequirePermission, Permission
 from .models import AutomationFlow, FlowStatus
 from .serializers import AutomationFlowSerializer
+from apps.core.scoping import scope_by_owner
 
 
 
@@ -14,7 +15,7 @@ class AutomationFlowViewSet(viewsets.ModelViewSet):
     required_permission = Permission.ACCESS_AUTOMATIONS
 
     def get_queryset(self):
-        return AutomationFlow.objects.filter(owner=self.request.user)
+        return scope_by_owner(AutomationFlow.objects.all(), self.request.user)
 
 
     def update(self, request, *args, **kwargs):

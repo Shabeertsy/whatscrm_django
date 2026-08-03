@@ -12,13 +12,17 @@ import { HotelFilters } from '../features/hotels/components/HotelFilters';
 import { ShareRoomModal } from '../features/hotels/components/ShareRoomModal';
 import { EmptyState } from '../features/hotels/components/EmptyState';
 import { LoadingState } from '../features/hotels/components/LoadingState';
-
+import { useCurrentUser } from '../utils/dataScope';
 
 
 
 export function Hotels() {
   const { navigate } = useRouter();
   const setSelectedHotel = useHotelStore(state => state.setSelectedHotel);
+  
+  const currentUser = useCurrentUser();
+  const isSuperuser = currentUser?.is_superuser || currentUser?.role === 'Owner';
+  const locationName = currentUser?.location_name || '';
 
   const { filters, setFilters, updateFilter, toggleArrayFilter, clearFilters } = useRoomFilters();
   const [page, setPage] = useState(1);
@@ -48,6 +52,11 @@ export function Hotels() {
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <Bed className="h-6 w-6 text-[#007e3a]" /> Rooms & Stays
+            {!isSuperuser && locationName && (
+              <span className="text-sm font-semibold bg-[#007e3a]/10 text-[#007e3a] px-3 py-1 rounded-full flex items-center gap-1.5 ml-3">
+                <MapPin className="h-4 w-4" /> {locationName}
+              </span>
+            )}
           </h1>
           {!loading && <p className="text-sm text-slate-500 mt-0.5">{resultCount} rooms found</p>}
         </div>

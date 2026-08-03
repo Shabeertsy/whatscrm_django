@@ -1,6 +1,10 @@
 from rest_framework import serializers
 from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem
 from .storage_backends import get_whatsapp_storage
+from django.conf import settings
+from apps.messaging.storage_backends import get_whatsapp_storage
+
+
 
 def _resolve_media_url(storage_path, fallback_url):
     if storage_path:
@@ -216,8 +220,30 @@ class CustomMessageSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'created_at', 'updated_at', 'owner']
 
 
+
 class MediaLibraryItemSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+
     class Meta:
         model = MediaLibraryItem
         fields = ['id', 'name', 'file_url', 'storage_path', 'media_type', 'mime_type', 'file_size', 'owner', 'created_at', 'updated_at']
         read_only_fields = ['id', 'created_at', 'updated_at', 'owner']
+
+    def get_file_url(self, obj):
+        if obj.storage_path:
+            try:
+                storage = get_whatsapp_storage()
+                url = storage.url(obj.storage_path)
+                if url.startswith('http://') or url.startswith('https://'):
+                    return url
+                
+                request = self.context.get('request')
+                if getattr(settings, 'BACKEND_PUBLIC_URL', None):
+                    base_url = settings.BACKEND_PUBLIC_URL.rstrip('/')
+                    return f"{base_url}{url}"
+                elif request:
+                    return request.build_absolute_uri(url)
+                return url
+            except Exception:
+                pass
+        return obj.file_url

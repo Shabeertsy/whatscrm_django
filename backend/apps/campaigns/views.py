@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Campaign
 from .serializers import CampaignSerializer, CampaignDeliverySerializer
+from apps.core.scoping import scope_by_owner
 
 
 class CampaignViewSet(viewsets.ModelViewSet):
@@ -10,7 +11,7 @@ class CampaignViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Campaign.objects.filter(owner=self.request.user)
+        return scope_by_owner(Campaign.objects.all(), self.request.user)
 
     @action(detail=False, methods=['get'])
     def stats(self, request):

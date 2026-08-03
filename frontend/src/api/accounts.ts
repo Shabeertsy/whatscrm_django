@@ -76,6 +76,8 @@ export interface User {
   department_name?: string | null;
   location?: string | null;
   location_name?: string | null;
+  owner?: string | null;
+  permissions?: Partial<PermissionMap>;
   is_active: boolean;
   is_superuser?: boolean;
   created_at: string;
@@ -125,6 +127,7 @@ export const accountsApi = {
     apiClient.delete(`/accounts/department-role-permissions/${id}/`),
 
   // Users CRUD
+  getMe: () => apiClient.get<User>('/accounts/me/'),
   listUsers: (params?: { department?: string; user_type?: string }) => apiClient.get<User[]>('/accounts/users/', { params }),
   getUser: (id: string) => apiClient.get<User>(`/accounts/users/${id}/`),
   createUser: (payload: UserPayload) => apiClient.post<User>('/accounts/users/', payload),

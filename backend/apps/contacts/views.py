@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from apps.core.permissions import RequirePermission, Permission
+from apps.core.scoping import scope_by_owner, scope_by_location, is_superuser, get_tenant_owner
+
 from django.db.models import Q
 from django.db import transaction
 
@@ -28,13 +30,13 @@ class ContactTagListCreateView(APIView):
     required_permission = Permission.ACCESS_CONTACTS
 
     def get(self, request):
-        tags = ContactTag.objects.filter(owner=request.user)
+        tags = scope_by_owner(ContactTag.objects.all(), request.user)
         return Response(ContactTagSerializer(tags, many=True).data)
 
     def post(self, request):
         serializer = ContactTagSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(owner=request.user)
+            serializer.save(owner=get_tenant_owner(request.user))
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -45,7 +47,7 @@ class ContactTagDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return ContactTag.objects.get(pk=pk, owner=user)
+            return scope_by_owner(ContactTag.objects.all(), user).get(pk=pk)
         except ContactTag.DoesNotExist:
             return None
 
@@ -69,30 +71,15 @@ class ContactTagDetailView(APIView):
 
 # ─── Contact APIs ─────────────────────────────────────────────────────────────
 
-def get_location_scoped_qs(user, base_qs):
-    """
-    Scopes a queryset by the user's department location.
-    Rules:
-      - Superuser / no department / dept has no location → see everything
-      - Dept has a location → only see contacts assigned to that location
-    """
-    if user.is_superuser:
-        return base_qs
-    try:
-        dept = getattr(user, 'department', None)
-        if dept and dept.location_id:
-            return base_qs.filter(location_id=dept.location_id)
-    except Exception:
-        pass
-    return base_qs
-
-
 class ContactListCreateView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_CONTACTS
 
     def get(self, request):
-        qs = get_location_scoped_qs(request.user, Contact.objects.all())
+        qs = Contact.objects.all()
+        qs = scope_by_owner(qs, request.user)
+        qs = scope_by_location(qs, request.user)
+        
         search = request.query_params.get('search', '').strip()
         if search:
             qs = qs.filter(
@@ -106,6 +93,7 @@ class ContactListCreateView(APIView):
             
         status_filter = request.query_params.get('status', '').strip()
         if status_filter:
+
             qs = qs.filter(status=status_filter)
 
         paginator = ContactPagination()
@@ -116,7 +104,7 @@ class ContactListCreateView(APIView):
     def post(self, request):
         serializer = ContactSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(owner=request.user)
+            serializer.save(owner=get_tenant_owner(request.user))
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -127,7 +115,7 @@ class ContactDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return Contact.objects.get(pk=pk, owner=user)
+            return scope_by_owner(Contact.objects.all(), user).get(pk=pk)
         except Contact.DoesNotExist:
             return None
 
@@ -165,7 +153,7 @@ class WAContactsListView(APIView):
         from apps.messaging.models import Contact as WAContact
         # Get already-imported wa_ids for this user
         imported_wa_ids = set(
-            Contact.objects.filter(owner=request.user)
+            scope_by_owner(Contact.objects.all(), request.user)
             .exclude(wa_id='')
             .values_list('wa_id', flat=True)
         )
@@ -209,12 +197,12 @@ class WAContactsImportView(APIView):
                 skipped.append(wa_id)
                 continue
 
-            if Contact.objects.filter(owner=request.user, wa_id=wa_id).exists():
+            if scope_by_owner(Contact.objects.all(), request.user).filter(wa_id=wa_id).exists():
                 skipped.append(wa_id)
                 continue
 
             crm = Contact.objects.create(
-                owner=request.user,
+                owner=get_tenant_owner(request.user),
                 name=wa_contact.name or wa_contact.phone,
                 phone=wa_contact.phone,
                 wa_id=wa_id,
@@ -240,7 +228,7 @@ class PipelineListCreateView(APIView):
     required_permission = Permission.ACCESS_PIPELINE
 
     def get(self, request):
-        pipelines = Pipeline.objects.filter(owner=request.user)
+        pipelines = scope_by_owner(Pipeline.objects.all(), request.user)
         # Auto-create a default pipeline if user has none
         if not pipelines.exists():
             with transaction.atomic():
@@ -248,23 +236,23 @@ class PipelineListCreateView(APIView):
                     name='Default Pipeline',
                     description='Your main sales pipeline',
                     is_active=True,
-                    owner=request.user,
+                    owner=get_tenant_owner(request.user),
                 )
                 PipelineStage.objects.create(
                     pipeline=default_pipeline,
                     title='Incoming Leads',
                     order=1,
-                    owner=request.user,
+                    owner=get_tenant_owner(request.user),
                 )
-                pipelines = Pipeline.objects.filter(owner=request.user)
+                pipelines = scope_by_owner(Pipeline.objects.all(), request.user)
         return Response(PipelineSerializer(pipelines, many=True).data)
 
     def post(self, request):
         serializer = PipelineSerializer(data=request.data)
         if serializer.is_valid():
-            pipeline = serializer.save(owner=request.user)
+            pipeline = serializer.save(owner=get_tenant_owner(request.user))
             # If this is the first pipeline, activate it automatically
-            if Pipeline.objects.filter(owner=request.user).count() == 1:
+            if Pipeline.objects.filter(owner=get_tenant_owner(request.user)).count() == 1:
                 pipeline.is_active = True
                 pipeline.save(update_fields=['is_active'])
             # Auto-create the default "Incoming Leads" stage
@@ -272,7 +260,7 @@ class PipelineListCreateView(APIView):
                 pipeline=pipeline,
                 title='Incoming Leads',
                 order=1,
-                owner=request.user,
+                owner=get_tenant_owner(request.user),
             )
             return Response(PipelineSerializer(pipeline).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -284,7 +272,7 @@ class PipelineDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return Pipeline.objects.get(pk=pk, owner=user)
+            return scope_by_owner(Pipeline.objects.all(), user).get(pk=pk)
         except Pipeline.DoesNotExist:
             return None
 
@@ -330,13 +318,13 @@ class PipelineActivateView(APIView):
 
     def post(self, request, pk):
         try:
-            pipeline = Pipeline.objects.get(pk=pk, owner=request.user)
+            pipeline = scope_by_owner(Pipeline.objects.all(), request.user).get(pk=pk)
         except Pipeline.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         with transaction.atomic():
             # Deactivate all others (also clear auto_create_deals on deactivated pipelines)
-            Pipeline.objects.filter(owner=request.user, is_active=True).update(
+            Pipeline.objects.filter(owner=get_tenant_owner(request.user), is_active=True).update(
                 is_active=False, auto_create_deals=False
             )
             pipeline.is_active = True
@@ -353,7 +341,7 @@ class PipelineStageListCreateView(APIView):
 
     def _get_pipeline(self, pipeline_id, user):
         try:
-            return Pipeline.objects.get(pk=pipeline_id, owner=user)
+            return scope_by_owner(Pipeline.objects.all(), user).get(pk=pipeline_id)
         except Pipeline.DoesNotExist:
             return None
 
@@ -363,14 +351,13 @@ class PipelineStageListCreateView(APIView):
             pipeline = self._get_pipeline(pipeline_id, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
-            stages = PipelineStage.objects.filter(pipeline=pipeline, owner=request.user)
+            stages = scope_by_owner(PipelineStage.objects.filter(pipeline=pipeline), request.user)
         else:
             # Fallback: return stages of active pipeline
-            pipeline = Pipeline.objects.filter(owner=request.user, is_active=True).first()
+            pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
                 return Response([], status=status.HTTP_200_OK)
-            stages = PipelineStage.objects.filter(pipeline=pipeline, owner=request.user)
-
+            stages = scope_by_owner(PipelineStage.objects.filter(pipeline=pipeline), request.user)
         return Response(PipelineStageSerializer(stages, many=True).data)
 
     def post(self, request):
@@ -383,7 +370,7 @@ class PipelineStageListCreateView(APIView):
 
         serializer = PipelineStageSerializer(data=request.data)
         if serializer.is_valid():
-            serializer.save(pipeline=pipeline, owner=request.user)
+            serializer.save(pipeline=pipeline, owner=get_tenant_owner(request.user))
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -394,7 +381,7 @@ class PipelineStageDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return PipelineStage.objects.get(pk=pk, owner=user)
+            return scope_by_owner(PipelineStage.objects.all(), user).get(pk=pk)
         except PipelineStage.DoesNotExist:
             return None
 
@@ -418,7 +405,7 @@ class PipelineStageDetailView(APIView):
 
         # Re-normalize orders of remaining stages: 1, 2, 3, ...
         remaining = list(
-            PipelineStage.objects.filter(pipeline=pipeline, owner=request.user).order_by('order')
+            scope_by_owner(PipelineStage.objects.filter(pipeline=pipeline), request.user).order_by('order')
         )
         for i, s in enumerate(remaining):
             new_order = i + 1
@@ -444,8 +431,8 @@ class PipelineStageSwapView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
         try:
-            stage_a = PipelineStage.objects.get(pk=stage_a_id, owner=request.user)
-            stage_b = PipelineStage.objects.get(pk=stage_b_id, owner=request.user)
+            stage_a = scope_by_owner(PipelineStage.objects.all(), request.user).get(pk=stage_a_id)
+            stage_b = scope_by_owner(PipelineStage.objects.all(), request.user).get(pk=stage_b_id)
         except PipelineStage.DoesNotExist:
             return Response({'detail': 'One or both stages not found.'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -477,7 +464,7 @@ class PipelineDealListCreateView(APIView):
 
     def _get_pipeline(self, pipeline_id, user):
         try:
-            return Pipeline.objects.get(pk=pipeline_id, owner=user)
+            return scope_by_owner(Pipeline.objects.all(), user).get(pk=pipeline_id)
         except Pipeline.DoesNotExist:
             return None
 
@@ -487,12 +474,15 @@ class PipelineDealListCreateView(APIView):
             pipeline = self._get_pipeline(pipeline_id, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
-            deals = PipelineDeal.objects.filter(pipeline=pipeline, owner=request.user)
+            deals = scope_by_owner(PipelineDeal.objects.filter(pipeline=pipeline), request.user)
         else:
-            pipeline = Pipeline.objects.filter(owner=request.user, is_active=True).first()
+            pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
                 return Response([], status=status.HTTP_200_OK)
-            deals = PipelineDeal.objects.filter(pipeline=pipeline, owner=request.user)
+            deals = scope_by_owner(PipelineDeal.objects.filter(pipeline=pipeline), request.user)
+
+        deals = scope_by_location(deals, request.user, location_field='wa_contact__location')
+
         return Response(PipelineDealSerializer(deals, many=True).data)
 
     def post(self, request):
@@ -505,7 +495,7 @@ class PipelineDealListCreateView(APIView):
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
         else:
-            pipeline = Pipeline.objects.filter(owner=request.user, is_active=True).first()
+            pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
                 return Response({'detail': 'No active pipeline found.'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -516,13 +506,13 @@ class PipelineDealListCreateView(APIView):
             stage = pipeline.stages.order_by('order').first()
             if not stage:
                 stage = PipelineStage.objects.create(
-                    pipeline=pipeline, title='Incoming Leads', order=1, owner=request.user
+                    pipeline=pipeline, title='Incoming Leads', order=1, owner=get_tenant_owner(request.user)
                 )
             data['stage'] = str(stage.id)
 
         serializer = PipelineDealSerializer(data=data)
         if serializer.is_valid():
-            serializer.save(owner=request.user, pipeline=pipeline)
+            serializer.save(owner=get_tenant_owner(request.user), pipeline=pipeline)
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -533,7 +523,7 @@ class PipelineDealDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return PipelineDeal.objects.get(pk=pk, owner=user)
+            return scope_by_owner(PipelineDeal.objects.all(), user).get(pk=pk)
         except PipelineDeal.DoesNotExist:
             return None
 

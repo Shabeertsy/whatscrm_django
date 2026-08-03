@@ -1,16 +1,12 @@
 from rest_framework import serializers
 from django.db import transaction
 from .models import AutomationFlow, FlowNode, FlowEdge, FlowStatus
-
+from apps.core.scoping import get_tenant_owner
 
 class FlowNodeSerializer(serializers.ModelSerializer):
-    # Map React Flow's 'id' to 'node_id' in our model
     id = serializers.CharField(source='node_id')
-    # Map React Flow's 'position' to 'pos_x' and 'pos_y'
     position = serializers.SerializerMethodField()
-    # Map React Flow's 'type' to 'node_type'
     type = serializers.CharField(source='node_type')
-    # Map React Flow's 'data' to 'config' and 'title'/'description'
     data = serializers.SerializerMethodField()
 
     class Meta:
@@ -21,7 +17,6 @@ class FlowNodeSerializer(serializers.ModelSerializer):
         return {"x": obj.pos_x, "y": obj.pos_y}
 
     def get_data(self, obj):
-        # Merge config with title and description
         return {
             "title": obj.title,
             "description": obj.description,
@@ -30,9 +25,7 @@ class FlowNodeSerializer(serializers.ModelSerializer):
 
 
 class FlowEdgeSerializer(serializers.ModelSerializer):
-    # Map React Flow's 'id' to 'edge_id'
     id = serializers.CharField(source='edge_id')
-    # Map React Flow's 'source' to 'source_node.node_id'
     source = serializers.CharField(source='source_node.node_id', read_only=True)
     target = serializers.CharField(source='target_node.node_id', read_only=True)
     sourceHandle = serializers.CharField(source='source_handle', required=False, allow_blank=True)
@@ -111,7 +104,7 @@ class AutomationFlowSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
-            validated_data['owner'] = request.user
+            validated_data['owner'] = get_tenant_owner(request.user)
             
         return super().create(validated_data)
 

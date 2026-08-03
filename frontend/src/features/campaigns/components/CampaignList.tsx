@@ -121,7 +121,7 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
       accessor: (c: Campaign) => (
         <div className="text-right">
           <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
-            {(c.delivered || 0).toLocaleString()} / {(c.sent || 0).toLocaleString()}
+            {(c.sent || 0).toLocaleString()} / {(c.delivered || 0).toLocaleString()}
           </span>
         </div>
       ),

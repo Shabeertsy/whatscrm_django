@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { MapPin } from "lucide-react";
 import { ChatList } from "./components/ChatList";
 import { ChatWindow } from "./components/ChatWindow";
 import { MessageComposer } from "./components/MessageComposer";
@@ -11,10 +12,13 @@ import { messagingApi } from "../../api/messaging";
 import { fetchAiAgentConfig } from "../../api/ai";
 import { showToast } from "../../utils/toast";
 import { useCallback } from "react";
+import { usePermissionGate, useCurrentUser, AccessDenied } from "../../utils/dataScope";
 
 
 
 export function Inbox() {
+  const { allowed } = usePermissionGate('canAccessChats');
+  const currentUser = useCurrentUser();
   const [store] = useMessagingStore();
   const [initialComposerText, setInitialComposerText] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -22,6 +26,15 @@ export function Inbox() {
   const [showStartChat, setShowStartChat] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAiActive, setIsAiActive] = useState(false);
+
+  // Guard: user doesn't have access to chats
+  if (!allowed) {
+    return <AccessDenied module="Live Chats &amp; Inbox" />;
+  }
+
+  // Guard: non-superuser with no location assigned
+  const hasNoLocation = !currentUser?.is_superuser && currentUser?.role !== 'Owner' && !currentUser?.location;
+
 
   // Fetch AI agent global status
   useEffect(() => {
@@ -39,6 +52,8 @@ export function Inbox() {
       setSearchParams(searchParams, { replace: true });
     }
   }, [searchParams, setSearchParams]);
+
+
 
   // Initialize live WebSocket connection
   useInboxSocket();
@@ -103,7 +118,7 @@ export function Inbox() {
       }
       const res = await messagingApi.sendMessage(store.activeConversationId, payload);
       setReplyingTo(null);
-      
+
       messagingStore.pushMessage(store.activeConversationId, res.data);
       messagingStore.updateConversationMeta(store.activeConversationId, {
         last_message: {
@@ -117,7 +132,7 @@ export function Inbox() {
     } catch (error) {
       console.error("Failed to send message:", error);
       alert("Failed to send message. Please try again.");
-      throw error; 
+      throw error;
     } finally {
       setIsSending(false);
     }
@@ -125,7 +140,7 @@ export function Inbox() {
 
   const handleMediaSelect = async (file: File) => {
     if (!store.activeConversationId || isSending || !windowOpen) return;
-    
+
     // Determine msg_type
     let msgType = 'document';
     if (file.type.startsWith('image/')) msgType = 'image';
@@ -133,7 +148,7 @@ export function Inbox() {
     else if (file.type.startsWith('audio/')) msgType = 'audio';
 
     const isCeleryEnabled = import.meta.env.VITE_CELERY_ENABLED === 'true';
-    
+
     let limit = 16 * 1024 * 1024; // 16MB default
     if (msgType === 'document') {
       limit = 100 * 1024 * 1024;
@@ -143,9 +158,9 @@ export function Inbox() {
 
     if (file.size > limit) {
       if (msgType === 'video' && !isCeleryEnabled) {
-         showToast('Video Too Large', 'File size exceeds the 16MB limit. Enable background processing for larger videos.', 'error');
+        showToast('Video Too Large', 'File size exceeds the 16MB limit. Enable background processing for larger videos.', 'error');
       } else {
-         showToast('File Too Large', `File size exceeds the ${limit / (1024 * 1024)}MB limit for ${msgType}.`, 'error');
+        showToast('File Too Large', `File size exceeds the ${limit / (1024 * 1024)}MB limit for ${msgType}.`, 'error');
       }
       return;
     }
@@ -158,18 +173,18 @@ export function Inbox() {
     try {
       //  Upload file to Django backend
       const uploadRes = await messagingApi.uploadMedia(file, store.activeConversationId);
-      
+
       //  Send message with media
-      const payload: any = { 
-        msg_type: msgType, 
+      const payload: any = {
+        msg_type: msgType,
         media_url: uploadRes.data.url,
         storage_path: uploadRes.data.path,
-        body: '' 
+        body: ''
       };
       if (replyingTo) {
         payload.reply_to_message_id = replyingTo.id;
       }
-      
+
       const res = await messagingApi.sendMessage(store.activeConversationId, payload);
       setReplyingTo(null);
 
@@ -194,27 +209,27 @@ export function Inbox() {
 
   const handleSendTemplate = async (template: any) => {
     if (!store.activeConversationId || isSending) return;
-    
+
     setIsSending(true);
     try {
       const headerText = template.components?.find((c: any) => c.type === 'HEADER')?.text;
       const bodyText = template.components?.find((c: any) => c.type === 'BODY')?.text || '';
       const footerText = template.components?.find((c: any) => c.type === 'FOOTER')?.text;
-      
+
       let previewText = `[Template: ${template.name}]\n`;
       if (headerText) previewText += `*${headerText}*\n\n`;
       previewText += bodyText;
       if (footerText) previewText += `\n\n_${footerText}_`;
 
-      const payload: any = { 
-        msg_type: 'template', 
+      const payload: any = {
+        msg_type: 'template',
         template_name: template.name,
         template_language: template.language,
-        body: previewText 
+        body: previewText
       };
-      
+
       const res = await messagingApi.sendMessage(store.activeConversationId, payload);
-      
+
       messagingStore.pushMessage(store.activeConversationId, res.data);
       messagingStore.updateConversationMeta(store.activeConversationId, {
         last_message: {
@@ -264,47 +279,65 @@ export function Inbox() {
 
   return (
     <div className="h-[calc(100vh-10rem)] flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition duration-200">
-      <ChatList
-        chats={store.conversations}
-        selectedChatId={store.activeConversationId}
-        isLoading={store.isLoadingConversations}
-        onSelectChat={handleSelectChat}
-        onStartNewChat={() => setShowStartChat(true)}
-      />
-      <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
-        {!activeConversation ? (
-          <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
-            Select a conversation to start messaging
+      {/* Location notice for non-superusers with no location */}
+      {hasNoLocation && (
+        <div className="flex flex-col items-center justify-center flex-1 text-center px-8">
+          <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center mb-4">
+            <MapPin className="h-7 w-7 text-amber-500" />
           </div>
-        ) : (
-          <>
-            <ChatWindow
-              conversation={activeConversation}
-              messages={activeMessages}
-              isLoading={store.isLoadingMessages}
-              isAiActive={isAiActive}
-              onReply={handleReply}
-            />
-            <MessageComposer
-              initialValue={initialComposerText}
-              onClearInitial={() => setInitialComposerText("")}
-              onSubmit={handleSendMessage}
-              onMediaSelect={handleMediaSelect}
-              disabled={!windowOpen}
-              isSending={isSending}
-              replyingTo={replyingTo}
-              onCancelReply={() => setReplyingTo(null)}
-              onSendTemplate={handleSendTemplate}
-            />
-          </>
-        )}
-      </div>
+          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">No Location Assigned</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+            Your account doesn't have a location assigned. Chat data is scoped by location.
+            Please ask your administrator to assign a location to your account.
+          </p>
+        </div>
+      )}
 
-      {showStartChat && (
-        <StartChatModal
-          onClose={() => setShowStartChat(false)}
-          onSubmit={handleStartNewChat}
-        />
+      {!hasNoLocation && (
+        <>
+          <ChatList
+            chats={store.conversations}
+            selectedChatId={store.activeConversationId}
+            isLoading={store.isLoadingConversations}
+            onSelectChat={handleSelectChat}
+            onStartNewChat={() => setShowStartChat(true)}
+          />
+          <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
+            {!activeConversation ? (
+              <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+                Select a conversation to start messaging
+              </div>
+            ) : (
+              <>
+                <ChatWindow
+                  conversation={activeConversation}
+                  messages={activeMessages}
+                  isLoading={store.isLoadingMessages}
+                  isAiActive={isAiActive}
+                  onReply={handleReply}
+                />
+                <MessageComposer
+                  initialValue={initialComposerText}
+                  onClearInitial={() => setInitialComposerText("")}
+                  onSubmit={handleSendMessage}
+                  onMediaSelect={handleMediaSelect}
+                  disabled={!windowOpen}
+                  isSending={isSending}
+                  replyingTo={replyingTo}
+                  onCancelReply={() => setReplyingTo(null)}
+                  onSendTemplate={handleSendTemplate}
+                />
+              </>
+            )}
+          </div>
+
+          {showStartChat && (
+            <StartChatModal
+              onClose={() => setShowStartChat(false)}
+              onSubmit={handleStartNewChat}
+            />
+          )}
+        </>
       )}
     </div>
   );

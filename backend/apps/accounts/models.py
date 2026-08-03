@@ -1,6 +1,7 @@
 import uuid
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.conf import settings
 
 from apps.core.models import BaseModel
 
@@ -8,6 +9,13 @@ class Location(BaseModel):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
 
     def __str__(self):
         return self.name
@@ -17,6 +25,14 @@ class Department(BaseModel):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
+
 
     def __str__(self):
         return self.name
@@ -65,6 +81,16 @@ class User(AbstractUser):
         related_name='users'
     )
 
+    # The superuser who owns this account (null for superusers themselves)
+    owner = models.ForeignKey(
+        'self',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='sub_users',
+        help_text='The superuser/owner who this user belongs to. Null for superusers.'
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     email = models.EmailField(unique=True)
@@ -90,6 +116,13 @@ class DepartmentRolePermission(BaseModel):
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES)
     permissions = models.JSONField(default=dict, blank=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
 
     class Meta:
         unique_together = ('department', 'role')

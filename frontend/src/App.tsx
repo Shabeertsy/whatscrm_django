@@ -1,12 +1,29 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { RouterProvider, Router } from "./router";
-import { useAuthStore } from "./store/authStore";
+import { useAuthStore, logoutUser } from "./store/authStore";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import Login from "./pages/Login";
 import { Toaster } from "react-hot-toast";
+import { accountsApi } from "./api/accounts";
+import { tokenService } from "./api/token";
 
 function AppContent() {
-  const [authState] = useAuthStore();
+  const [authState, setAuthState] = useAuthStore();
+
+  useEffect(() => {
+    if (authState.isAuthenticated) {
+      accountsApi.getMe()
+        .then((res) => {
+          tokenService.setUser(res.data);
+          setAuthState({ user: res.data });
+        })
+        .catch((err) => {
+          if (err.response?.status === 401) {
+            logoutUser();
+          }
+        });
+    }
+  }, [authState.isAuthenticated, setAuthState]);
 
   if (!authState.isAuthenticated) {
     return <Login />;

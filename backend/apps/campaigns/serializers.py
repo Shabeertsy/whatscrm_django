@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from .models import Campaign, CampaignDelivery
 from apps.contacts.models import Contact
+from apps.core.scoping import get_tenant_owner
 
 
 class BasicContactSerializer(serializers.ModelSerializer):
@@ -35,7 +36,7 @@ class CampaignSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
-            validated_data['owner'] = request.user
+            validated_data['owner'] = get_tenant_owner(request.user)
         
         tags_data = validated_data.pop('tags', [])
         contacts_data = validated_data.pop('contacts', [])

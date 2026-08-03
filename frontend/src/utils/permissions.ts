@@ -103,6 +103,7 @@ export function getUserPermissions(
     role?: string;
     is_superuser?: boolean;
     department?: string | null;
+    permissions?: Partial<PermissionMap>;
   } | null,
   departmentRolePerms?: DepartmentRolePermission[]
 ): UserPermissions {
@@ -112,7 +113,7 @@ export function getUserPermissions(
     return {
       ...DEFAULT_PERMISSIONS.admin,
       dataScope: 'all',
-      roleLabel: 'Owner / Super Admin',
+      roleLabel: 'Admin',
       roleBadgeColor: 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800',
     };
   }
@@ -133,6 +134,12 @@ export function getUserPermissions(
         ...meta,
       };
     }
+  } else if (user?.permissions && Object.keys(user.permissions).length > 0) {
+    return {
+      ...defaults,
+      ...user.permissions,
+      ...meta,
+    };
   }
 
   return { ...defaults, ...meta };
@@ -153,7 +160,7 @@ export async function fetchAndGetUserPermissions(user?: {
     return {
       ...DEFAULT_PERMISSIONS.admin,
       dataScope: 'all',
-      roleLabel: 'Owner / Super Admin',
+      roleLabel: 'Admin',
       roleBadgeColor: 'bg-purple-50 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 border border-purple-200 dark:border-purple-800',
     };
   }

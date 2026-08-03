@@ -106,6 +106,13 @@ class AuditableModel(models.Model):
 class ProxyURL(BaseModel, SoftDeleteModel):
     name = models.CharField(max_length=255, default="Default Proxy")
     url = models.URLField()
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
 
     def __str__(self):
         return f"{self.name} ({self.url})"

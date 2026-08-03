@@ -10,29 +10,40 @@ from .serializers import AIAgentSettingsSerializer, AIProviderSettingsSerializer
 from .chatbot.base import ChatbotContext
 from .chatbot.ai_engine import AIEngine
 from rest_framework.views import APIView
+from apps.core.scoping import scope_by_owner
+from apps.core.scoping import get_tenant_owner
 
 
 class AIProviderSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = AIProviderSettingsSerializer
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_SETTINGS_AI
-    queryset = AIProviderSettings.objects.all()
+    def get_queryset(self):
+        return scope_by_owner(AIProviderSettings.objects.all(), self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=get_tenant_owner(self.request.user))
 
 
 class AIAgentSettingsViewSet(viewsets.ModelViewSet):
     serializer_class = AIAgentSettingsSerializer
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_SETTINGS_AI
-    queryset = AIAgentSettings.objects.all()
+    def get_queryset(self):
+        return scope_by_owner(AIAgentSettings.objects.all(), self.request.user)
 
     def create(self, request, *args, **kwargs):
-        existing_instance = AIAgentSettings.objects.first()
+        tenant_owner = get_tenant_owner(request.user)
+        existing_instance = AIAgentSettings.objects.filter(owner=tenant_owner).first()
         if existing_instance:
             serializer = self.get_serializer(existing_instance, data=request.data, partial=True)
             serializer.is_valid(raise_exception=True)
             self.perform_update(serializer)
             return Response(serializer.data)
-        return super().create(request, *args, **kwargs)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(owner=tenant_owner)
+        return Response(serializer.data)
 
 
 class TestAIAgentAPIView(APIView):
@@ -56,7 +67,8 @@ class TestAIAgentAPIView(APIView):
             return Response({"error": "Selected provider is missing an API key."}, status=400)
 
         # Fetch the real agent to get the uploaded knowledge base file if it exists
-        real_agent = AIAgentSettings.objects.filter(is_active=True).first()
+        tenant_owner = get_tenant_owner(request.user)
+        real_agent = AIAgentSettings.objects.filter(is_active=True, owner=tenant_owner).first()
         kb_file = real_agent.knowledge_base if real_agent else None
 
         agent = AIAgentSettings(

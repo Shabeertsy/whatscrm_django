@@ -14,6 +14,9 @@ from .serializers import (
 )
 from apps.core.permissions import RequirePermission, Permission
 from django.core.cache import cache
+from apps.core.scoping import scope_by_owner
+from apps.core.scoping import get_tenant_owner
+
 
 
 User = get_user_model()
@@ -21,20 +24,26 @@ User = get_user_model()
 
 ## Location ViewSet
 class LocationViewSet(viewsets.ModelViewSet):
-    queryset = Location.objects.all().order_by('-created_at')
+    def get_queryset(self):
+        return scope_by_owner(Location.objects.all(), self.request.user).order_by('-created_at')
     serializer_class = LocationSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(owner=get_tenant_owner(self.request.user))
     permission_classes = [permissions.IsAuthenticated, RequirePermission]
     required_permission = Permission.MANAGE_DEPARTMENTS
 
+
 ## Department ViewSet
 class DepartmentViewSet(viewsets.ModelViewSet):
-    queryset = Department.objects.all().order_by('-created_at')
+    def get_queryset(self):
+        return scope_by_owner(Department.objects.all(), self.request.user).order_by('-created_at')
     serializer_class = DepartmentSerializer
     permission_classes = [permissions.IsAuthenticated, RequirePermission]
     required_permission = Permission.MANAGE_DEPARTMENTS
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        instance = serializer.save(owner=get_tenant_owner(self.request.user))
         try:
             instance.validate_unique()
         except Exception as e:
@@ -50,13 +59,14 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
 
 class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
-    queryset = DepartmentRolePermission.objects.select_related('department').all()
+    def get_queryset(self):
+        return scope_by_owner(DepartmentRolePermission.objects.select_related('department').all(), self.request.user)
     serializer_class = DepartmentRolePermissionSerializer
     permission_classes = [permissions.IsAuthenticated, RequirePermission]
     required_permission = Permission.MANAGE_ROLE_PERMISSIONS
 
     def get_queryset(self):
-        qs = DepartmentRolePermission.objects.select_related('department').all()
+        qs = scope_by_owner(DepartmentRolePermission.objects.select_related('department').all(), self.request.user)
         department = self.request.query_params.get('department')
         role = self.request.query_params.get('role')
         if department:
@@ -68,7 +78,7 @@ class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='upsert')
     def upsert(self, request):
         """
-        Create or update a DepartmentRolePermission record for a
+        Create or update a DepartmentRolePermission record
         """
         department_id = request.data.get('department')
         role = request.data.get('role')
@@ -83,7 +93,10 @@ class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
         obj, created = DepartmentRolePermission.objects.update_or_create(
             department_id=department_id,
             role=role,
-            defaults={'permissions': perm_data}
+            defaults={
+                'permissions': perm_data,
+                'owner': get_tenant_owner(request.user)
+            }
         )
         
         # Clear the RBAC cache for this department and role
@@ -115,13 +128,13 @@ class CurrentUserAPIView(generics.RetrieveAPIView):
 
 ## User ViewSet
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.filter(is_superuser=False).order_by('-created_at')
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated, RequirePermission]
     required_permission = Permission.MANAGE_USERS
 
     def get_queryset(self):
-        queryset = User.objects.filter(is_superuser=False).order_by('-created_at')
+        queryset = scope_by_owner(User.objects.filter(is_superuser=False), self.request.user).order_by('-created_at')
+
         department = self.request.query_params.get('department')
         if department:
             if department in ['null', 'none', 'None', '']:
@@ -137,8 +150,9 @@ class UserViewSet(viewsets.ModelViewSet):
         if 'username' not in serializer.validated_data:
             serializer.validated_data['username'] = serializer.validated_data.get('email')
 
+        owner = get_tenant_owner(self.request.user)
         password = serializer.validated_data.pop('password', 'password123')
-        user = serializer.save()
+        user = serializer.save(owner=owner)
         if password:
             user.set_password(password)
             user.save()

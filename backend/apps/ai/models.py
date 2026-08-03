@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from apps.core.models import BaseModel
 
 
@@ -12,6 +13,13 @@ class AIProviderSettings(BaseModel):
     ai_provider_name = models.CharField(max_length=255, choices=PROVIDER_CHOICES)
     ai_provider_api_key = models.CharField(max_length=255, blank=True, null=True)
     ai_provider_secret_key = models.CharField(max_length=255, blank=True, null=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
 
     def __str__(self):
         return self.name
@@ -29,6 +37,13 @@ class AIAgentSettings(BaseModel):
     auto_reply_delay = models.PositiveIntegerField(default=2) 
     is_active = models.BooleanField(default=True)
     knowledge_base = models.FileField(upload_to="ai_knowledge_bases/", blank=True, null=True)
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='+',
+    )
 
     def save(self, *args, **kwargs):
         if self._state.adding and AIAgentSettings.objects.exists():

@@ -44,6 +44,18 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         data = super().validate(attrs)
         
         user = self.user
+        
+        permissions = {}
+        if not getattr(user, 'is_superuser', False) and user.department_id:
+            try:
+                drp = DepartmentRolePermission.objects.get(
+                    department_id=user.department_id,
+                    role=user.user_type
+                )
+                permissions = drp.permissions
+            except DepartmentRolePermission.DoesNotExist:
+                permissions = {}
+
         data['user'] = {
             'id': str(user.id),
             'email': user.email,
@@ -53,6 +65,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'user_type': user.user_type,
             'department': str(user.department_id) if user.department_id else None,
             'location': str(user.location_id) if user.location_id else None,
+            'owner': str(user.owner_id) if user.owner_id else None,
+            'permissions': permissions,
         }
         
         return data
@@ -62,8 +76,21 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     location_name = serializers.CharField(source='location.name', read_only=True, default=None)
+    permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'phone_number', 'user_type', 'department', 'department_name', 'location', 'location_name', 'password', 'is_active', 'is_superuser', 'created_at', 'updated_at')
+        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'phone_number', 'user_type', 'department', 'department_name', 'location', 'location_name', 'owner', 'permissions', 'password', 'is_active', 'is_superuser', 'created_at', 'updated_at')
         read_only_fields = ('id', 'is_superuser', 'created_at', 'updated_at')
+
+    def get_permissions(self, obj):
+        if getattr(obj, 'is_superuser', False) or not obj.department_id:
+            return {}
+        try:
+            drp = DepartmentRolePermission.objects.get(
+                department_id=obj.department_id,
+                role=obj.user_type
+            )
+            return drp.permissions
+        except DepartmentRolePermission.DoesNotExist:
+            return {}

@@ -19,6 +19,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from apps.core.permissions import RequirePermission, Permission
+from apps.core.scoping import scope_by_location, scope_by_owner
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -50,6 +51,8 @@ from .utils import update_contact_whatsapp_profile
 
 from apps.automation.models import FlowExecution, ExecutionStatus
 from apps.automation.serializers import FlowExecutionSerializer
+from apps.core.scoping import scope_by_owner
+from apps.core.scoping import get_tenant_owner
 
 
 
@@ -64,6 +67,12 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Contact.objects.all()
+
+        # owner and location isolation 
+        qs = scope_by_owner(qs, self.request.user, owner_field='location__users__owner')
+        qs = scope_by_location(qs, self.request.user, location_field='location')
+
+
         is_saved = self.request.query_params.get('is_saved')
         search   = self.request.query_params.get('search')
         if is_saved is not None:
@@ -76,7 +85,7 @@ class ContactViewSet(viewsets.ModelViewSet):
             ) | qs.filter(
                 wa_id__icontains=search
             )
-        return qs.order_by('-created_at')
+        return qs.distinct().order_by('-created_at')
 
     @action(detail=True, methods=['post'], url_path='save')
     def save_contact(self, request, pk=None):
@@ -102,6 +111,10 @@ class ConversationListAPIView(APIView):
         qs = Conversation.objects.select_related(
             'contact', 'contact__crm_contact', 'instance', 'assigned_agent'
         )
+
+        # owner and location isolation 
+        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
+        qs = scope_by_location(qs, request.user, location_field='contact__location')
 
         status_filter = request.query_params.get('status')
         instance_id   = request.query_params.get('instance')
@@ -134,6 +147,11 @@ class ConversationDetailAPIView(APIView):
             'messages__replied_to__sent_by',
             'messages__replied_to__conversation__contact__crm_contact'
         )
+
+        # owner and location isolation
+        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
+        qs = scope_by_location(qs, request.user, location_field='contact__location')
+        
         conv = get_object_or_404(qs, pk=pk)
         serializer = ConversationDetailSerializer(conv)
         return Response(serializer.data)
@@ -795,10 +813,11 @@ class CustomMessageViewSet(viewsets.ModelViewSet):
     required_permission = Permission.ACCESS_CUSTOM_MESSAGES
 
     def get_queryset(self):
-        return CustomMessage.objects.filter(Q(owner=self.request.user) | Q(owner__isnull=True))
+        user_scoped = scope_by_owner(CustomMessage.objects.all(), self.request.user)
+        return user_scoped | CustomMessage.objects.filter(owner__isnull=True)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(owner=get_tenant_owner(self.request.user))
 
 
 class MediaLibraryViewSet(viewsets.ModelViewSet):
@@ -807,7 +826,10 @@ class MediaLibraryViewSet(viewsets.ModelViewSet):
     required_permission = Permission.ACCESS_MEDIA
 
     def get_queryset(self):
-        queryset = MediaLibraryItem.objects.filter(Q(owner=self.request.user) | Q(owner__isnull=True))
+
+        user_scoped = scope_by_owner(MediaLibraryItem.objects.all(), self.request.user)
+        queryset = user_scoped | MediaLibraryItem.objects.filter(owner__isnull=True)
+        
         media_type = self.request.query_params.get('media_type')
         if media_type and media_type != 'all':
             queryset = queryset.filter(media_type=media_type)
@@ -854,6 +876,6 @@ class MediaLibraryViewSet(viewsets.ModelViewSet):
         return super().create(request, *args, **kwargs)
 
     def perform_create(self, serializer):
-        serializer.save(owner=self.request.user)
+        serializer.save(owner=get_tenant_owner(self.request.user))
 
 

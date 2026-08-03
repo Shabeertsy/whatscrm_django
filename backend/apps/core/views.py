@@ -11,6 +11,8 @@ import time
 import hashlib
 from .models import ProxyURL, UserActiveProxy
 from .serializers import ProxyURLSerializer
+from apps.core.scoping import scope_by_owner
+from apps.core.scoping import get_tenant_owner
 
 
 
@@ -25,7 +27,11 @@ class ProxyURLViewSet(viewsets.ModelViewSet):
     serializer_class = ProxyURLSerializer
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_SETTINGS_PROXIES
-    queryset = ProxyURL.objects.all()
+    def get_queryset(self):
+        return scope_by_owner(ProxyURL.objects.all(), self.request.user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=get_tenant_owner(self.request.user))
 
     def update(self, request, *args, **kwargs):
         is_active = request.data.get('is_active')

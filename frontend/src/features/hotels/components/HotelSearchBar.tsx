@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, MapPin } from 'lucide-react';
 import { GuestSelector } from './GuestSelector';
 import { RoomFilters } from '../hooks/useRoomFilters';
-
+import { useCurrentUser } from '../../../utils/dataScope';
 
 
 interface HotelSearchBarProps {
@@ -13,11 +13,17 @@ interface HotelSearchBarProps {
 
 export function HotelSearchBar({ filters, updateFilter, onSearch }: HotelSearchBarProps) {
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
+  const currentUser = useCurrentUser();
+  const isSuperuser = currentUser?.is_superuser || currentUser?.role === 'Owner';
+  const locationName = currentUser?.location_name || '';
 
   return (
     <div className="flex justify-end">
       <div className="inline-block w-full md:w-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
         <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700">
+          
+
+
           <div className="w-full md:w-[300px] lg:w-[400px] px-5 py-3.5">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Search</label>
             <div className="flex items-center gap-2">

@@ -11,6 +11,8 @@ import logging
 from django.utils import timezone
 from rest_framework.views import APIView
 from .utils import get_meta_template_url
+from apps.core.scoping import scope_by_owner
+from apps.core.scoping import get_tenant_owner
 
 
 
@@ -19,7 +21,7 @@ class WhatsappInstanceViewSet(viewsets.ModelViewSet):
     required_permission = Permission.ACCESS_SETTINGS_WHATSAPP
 
     def get_queryset(self):
-        return WhatsappInstance.objects.filter(user=self.request.user)
+        return scope_by_owner(WhatsappInstance.objects.all(), self.request.user, owner_field='user')
 
     def get_serializer_class(self):
         if self.action == "list":
@@ -27,7 +29,7 @@ class WhatsappInstanceViewSet(viewsets.ModelViewSet):
         return WhatsappInstanceSerializer
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(user=get_tenant_owner(self.request.user))
 
     @action(detail=True, methods=["post"], url_path="toggle-active")
     def toggle_active(self, request, pk=None):
@@ -46,7 +48,7 @@ class WhatsappTemplateSyncAPIView(APIView):
 
     def post(self, request, instance_id):
         try:
-            instance = WhatsappInstance.objects.get(id=instance_id, user=request.user)
+            instance = scope_by_owner(WhatsappInstance.objects.all(), request.user, owner_field='user').get(id=instance_id)
         except WhatsappInstance.DoesNotExist:
             return Response({"error": "Instance not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -95,7 +97,7 @@ class WhatsappTemplateListCreateAPIView(APIView):
     required_permission = Permission.ACCESS_TEMPLATES
 
     def get(self, request):
-        templates = WhatsappTemplate.objects.filter(instance__user=request.user)
+        templates = scope_by_owner(WhatsappTemplate.objects.all(), request.user, owner_field='instance__user')
         serializer = WhatsappTemplateSerializer(templates, many=True)
         return Response(serializer.data)
 
@@ -103,7 +105,7 @@ class WhatsappTemplateListCreateAPIView(APIView):
         # Forward creation to Meta API
         instance_id = request.data.get("instance")
         try:
-            instance = WhatsappInstance.objects.get(id=instance_id, user=request.user)
+            instance = scope_by_owner(WhatsappInstance.objects.all(), request.user, owner_field='user').get(id=instance_id)
         except WhatsappInstance.DoesNotExist:
             return Response({"error": "Instance not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -143,7 +145,7 @@ class WhatsappTemplateDetailAPIView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return WhatsappTemplate.objects.get(pk=pk, instance__user=user)
+            return scope_by_owner(WhatsappTemplate.objects.all(), user, owner_field='instance__user').get(pk=pk)
         except WhatsappTemplate.DoesNotExist:
             return None
 
