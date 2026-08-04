@@ -1,8 +1,8 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import PageHeader from "../components/shared/PageHeader";
-import StatCard from "../features/analytics/StatCard";
+import StatCard, { StatCardSkeleton } from "../features/analytics/StatCard";
 import PerformanceChart from "../features/analytics/PerformanceChart";
-import { getMetrics } from "../features/analytics/api";
+import { getMetrics, Metric } from "../features/analytics/api";
 import { useTeamStore } from "../store/teamStore";
 import { Plus, CheckCircle, TrendingUp, AlertTriangle } from "lucide-react";
 import { useRouter } from "../router";
@@ -11,7 +11,16 @@ import { useRouter } from "../router";
 export function Analytics() {
   const [teamState] = useTeamStore();
   const { navigate } = useRouter();
-  const metrics = getMetrics(teamState.credits);
+  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsLoading(true);
+    getMetrics()
+      .then(setMetrics)
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
+  }, []);
 
   const logs = [
     { time: "Just now", type: "success", text: "Flow 'Welcome Msg' ran successfully for +15552345678" },
@@ -33,9 +42,13 @@ export function Analytics() {
       </PageHeader>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {metrics.map((m, idx) => (
-          <StatCard key={idx} label={m.label} val={m.val} desc={m.desc} />
-        ))}
+        {isLoading
+          ? Array.from({ length: 4 }).map((_, idx) => (
+              <StatCardSkeleton key={idx} />
+            ))
+          : metrics.map((m, idx) => (
+              <StatCard key={idx} label={m.label} val={m.val} desc={m.desc} />
+            ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

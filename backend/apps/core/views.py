@@ -13,6 +13,12 @@ from .models import ProxyURL, UserActiveProxy
 from .serializers import ProxyURLSerializer
 from apps.core.scoping import scope_by_owner
 from apps.core.scoping import get_tenant_owner
+from apps.whatsapp.models import WhatsappInstance
+from apps.automation.models import AutomationFlow, FlowExecution, ExecutionStatus
+from apps.contacts.models import Pipeline
+from apps.messaging.models import Message
+from django.utils import timezone
+from datetime import timedelta
 
 
 
@@ -207,4 +213,67 @@ class CRMRoomsProxyView(APIView):
             return Response({"error": str(e)}, status=500)
 
 
-
+class DashboardMetricsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        user = request.user
+        
+        
+        # Active Automations
+        active_automations = AutomationFlow.objects.filter(owner=user, status='active').count()
+        automations_metric = {
+            "label": "Active Automations",
+            "val": str(active_automations),
+            "desc": "Currently running automations",
+            "success": True
+        }
+        
+        # Active Pipelines
+        active_pipelines = Pipeline.objects.filter(owner=user, is_active=True).count()
+        pipelines_metric = {
+            "label": "Active Pipelines",
+            "val": str(active_pipelines),
+            "desc": "Sales pipelines active",
+            "success": True
+        }
+        
+        # Total Messages Sent (Month)
+        thirty_days_ago = timezone.now() - timedelta(days=30)
+        messages_sent = Message.objects.filter(
+            conversation__instance__user=user, 
+            direction='outbound', 
+            timestamp__gte=thirty_days_ago
+        ).count()
+        messages_metric = {
+            "label": "Messages Sent (30d)",
+            "val": f"{messages_sent:,}",
+            "desc": "Total outbound messages",
+            "success": True
+        }
+        
+        #  Automation Success Rate
+        executions_30d = FlowExecution.objects.filter(
+            flow__owner=user,
+            started_at__gte=thirty_days_ago
+        )
+        total_executions = executions_30d.count()
+        successful_executions = executions_30d.filter(status=ExecutionStatus.COMPLETED).count()
+        
+        success_rate = 0
+        if total_executions > 0:
+            success_rate = (successful_executions / total_executions) * 100
+            
+        success_rate_metric = {
+            "label": "Automation Success Rate",
+            "val": f"{success_rate:.1f}%",
+            "desc": f"Based on {total_executions} executions",
+            "success": success_rate >= 90
+        }
+        
+        return Response([
+            automations_metric,
+            pipelines_metric,
+            messages_metric,
+            success_rate_metric
+        ])

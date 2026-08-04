@@ -30,4 +30,17 @@ export function StatCard({ label, val, desc }: StatCardProps) {
   );
 }
 
+export function StatCardSkeleton() {
+  return (
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-xl p-5 relative overflow-hidden shadow-sm animate-pulse">
+      <div className="flex items-center justify-between mb-3">
+        <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-24"></div>
+        <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg h-8 w-8"></div>
+      </div>
+      <div className="h-6 bg-slate-200 dark:bg-slate-700 rounded w-16 mb-2 mt-1"></div>
+      <div className="h-2.5 bg-slate-200 dark:bg-slate-700 rounded w-32"></div>
+    </div>
+  );
+}
+
 export default StatCard;
