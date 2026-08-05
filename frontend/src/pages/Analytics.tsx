@@ -47,24 +47,26 @@ export function Analytics() {
           ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
+        <div className="lg:col-span-2 h-full">
           <PerformanceChart />
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-205 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm transition duration-200">
-          <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4">Live System Log</h4>
-          <div className="space-y-4 font-sans">
-            {logs.map((act, index) => (
+        <div className="bg-white dark:bg-slate-900 border border-slate-205 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm transition duration-200 flex flex-col h-[400px] lg:h-auto lg:min-h-0">
+          <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 shrink-0">Live System Log</h4>
+          <div className="space-y-4 font-sans overflow-y-auto custom-scrollbar flex-1 pr-2">
+            {logs.length === 0 ? (
+              <div className="text-slate-500 text-xs flex h-full items-center justify-center">No recent activity</div>
+            ) : logs.map((act, index) => (
               <div key={index} className="flex space-x-3 text-xs">
-                <div className="mt-0.5">
+                <div className="mt-0.5 shrink-0">
                   {act.type === "success" && <CheckCircle className="h-4 w-4 text-[#007e3a]" />}
                   {act.type === "info" && <TrendingUp className="h-4 w-4 text-emerald-500" />}
                   {act.type === "warning" && <AlertTriangle className="h-4 w-4 text-amber-500" />}
                 </div>
                 <div className="flex-1">
                   <p className="text-slate-700 dark:text-slate-300 font-medium">{act.text}</p>
-                  <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">{act.time}</span>
+                  <span className="text-[9px] text-slate-400 dark:text-slate-500 font-bold block mt-0.5">{act.time}</span>
                 </div>
               </div>
             ))}
