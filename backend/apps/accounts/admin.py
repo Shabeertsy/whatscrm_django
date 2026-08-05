@@ -1,8 +1,11 @@
 from django.contrib import admin
+from .models import ( 
+    User, 
+    Location,
+    Department, 
+    DepartmentRolePermission
+  )
 
-# Register your models here.
-
-from .models import User, Location, Department, DepartmentRolePermission
 
 @admin.register(User)
 class UserAdmin(admin.ModelAdmin):
@@ -11,16 +14,19 @@ class UserAdmin(admin.ModelAdmin):
     search_fields = ('email', 'username', 'first_name', 'last_name')
     ordering = ('email',)
 
+
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_active', 'created_at')
     search_fields = ('name',)
+
 
 @admin.register(Department)
 class DepartmentAdmin(admin.ModelAdmin):
     list_display = ('name', 'is_active', 'created_at')
     list_filter = ('is_active',)
     search_fields = ('name',)
+
 
 @admin.register(DepartmentRolePermission)
 class DepartmentRolePermissionAdmin(admin.ModelAdmin):

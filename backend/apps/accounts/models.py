@@ -1,9 +1,11 @@
 import uuid
+
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.conf import settings
 
 from apps.core.models import BaseModel
+
 
 class Location(BaseModel):
     name = models.CharField(max_length=100, unique=True)
@@ -45,7 +47,6 @@ class User(AbstractUser):
         ('staff', 'Staff'),
     )
 
-    # Primary Key (UUID)
     id = models.UUIDField( 
         primary_key=True,
         default=uuid.uuid4,

@@ -5,7 +5,14 @@ from typing import Optional
 from django.conf import settings
 from django.db.models import Q
 
-from apps.ai.chatbot.base import BaseChatbotEngine, ChatbotContext, ChatbotReply
+## Chatbot engine imports
+from apps.ai.chatbot.base import (
+    BaseChatbotEngine, 
+    ChatbotContext, 
+    ChatbotReply
+    )
+
+## Model imports
 from apps.automation.models import (
     AutomationFlow, FlowExecution, FlowStepLog, FlowStatus,
     NodeType, StepStatus, ExecutionStatus, TriggerType,
@@ -35,7 +42,7 @@ class AutomationEngine(BaseChatbotEngine):
         """
         inbound_text = self._normalize_text(ctx.inbound_message_body or "")
 
-        # Resume an existing WAITING execution (e.g. user answered a menu)
+        # Resume an existing WAITING execution
         waiting = FlowExecution.objects.filter(
             contact=self.conv.contact,
             status=ExecutionStatus.WAITING,
@@ -300,7 +307,7 @@ class AutomationEngine(BaseChatbotEngine):
         resolved_value = self._interpolate_text(field_value, execution.variables).strip()
         resolved_tag = self._interpolate_text(tag_to_add, execution.variables).strip()
 
-        # --- Update a contact field ---
+        #  Update a contact field 
         CONTACT_FIELD_MAP = {
             "name":  "name",
             "notes": "notes",
@@ -313,7 +320,6 @@ class AutomationEngine(BaseChatbotEngine):
         }
 
         if field_to_update and resolved_value:
-            # Update WhatsApp Contact directly writable fields
             if field_to_update == "name":
                 contact.name = resolved_value
                 update_fields.append("name")
@@ -333,7 +339,7 @@ class AutomationEngine(BaseChatbotEngine):
                     self.conv.id, crm_field, resolved_value,
                 )
 
-        # --- Add a tag to the WhatsApp Contact ---
+        # Add a tag to the WhatsApp Contact
         if resolved_tag:
             tags = contact.tags if isinstance(contact.tags, list) else []
             if resolved_tag not in tags:
@@ -358,6 +364,7 @@ class AutomationEngine(BaseChatbotEngine):
             execution.complete()
             return _STOP
         return next_node
+
 
     def _handle_save_location_node(self, node, execution):
         """
@@ -394,6 +401,7 @@ class AutomationEngine(BaseChatbotEngine):
             execution.complete()
             return _STOP
         return next_node
+
 
     def _handle_http_request_node(self, node, execution):
         """
@@ -462,6 +470,7 @@ class AutomationEngine(BaseChatbotEngine):
             return _STOP
         return next_node
 
+
     def _handle_ai_control_node(self, node, execution, ctx, reply):
         """
         Enable or disable AI for the conversation.
@@ -484,7 +493,6 @@ class AutomationEngine(BaseChatbotEngine):
                 logger.info("[AutomationEngine] Conv %s generating immediate AI reply.", self.conv.id)
                 ai_reply = ai_engine.generate_reply(ctx)
                 if ai_reply and not ai_reply.is_empty:
-                    # Append the AI's messages to the automation's outbound batch!
                     reply.messages.extend(ai_reply.messages)
 
         elif ai_action == "disable_ai":
@@ -501,6 +509,7 @@ class AutomationEngine(BaseChatbotEngine):
             return _STOP
         return next_node
 
+
     def _handle_collect_input_node(self, node, execution, reply):
         """Send the prompt and pause execution waiting for the user's answer."""
         prompt = node.config.get("prompt", "")
@@ -511,6 +520,7 @@ class AutomationEngine(BaseChatbotEngine):
         execution.save(update_fields=["status"])
         self._log_step(execution, node, StepStatus.PENDING)
         return _WAITING
+
 
     def _resume_collect_input(self, node, execution, ctx, reply, inbound_text):
         """Validate the user's reply, store it in execution.variables, and continue."""
@@ -613,6 +623,7 @@ class AutomationEngine(BaseChatbotEngine):
         )
         return None
 
+
     def _resume_menu(self, node, execution, ctx, reply, inbound_text):
         """Find which menu option the user picked and continue the flow."""
         options = node.config.get("options", [])
@@ -631,7 +642,6 @@ class AutomationEngine(BaseChatbotEngine):
             )
             self._log_step(execution, node, StepStatus.COMPLETED)
 
-            # Prefer the edge tied to this specific option handle
             edge = (
                 node.outgoing_edges.filter(source_handle=selected.get("id")).first()
                 or node.outgoing_edges.first()
@@ -758,7 +768,7 @@ class AutomationEngine(BaseChatbotEngine):
             if match_type == "exact":
                 if inbound_text == kw_lower:
                     return True
-            else:  # contains — whole-word match
+            else:  # contains
                 if re.search(rf"\b{re.escape(kw_lower)}\b", inbound_text):
                     return True
         return False

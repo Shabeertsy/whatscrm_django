@@ -1,10 +1,11 @@
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
-from .models import Department, DepartmentRolePermission, Location
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
-User = get_user_model()
+from django.contrib.auth import get_user_model
+from .models import Department, DepartmentRolePermission, Location
 
+
+User = get_user_model()
 
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -39,6 +40,7 @@ class DepartmentRolePermissionSerializer(serializers.ModelSerializer):
         read_only_fields = ('id', 'created_at', 'updated_at')
 
 
+## Authentication serializer
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
     def validate(self, attrs):
         data = super().validate(attrs)

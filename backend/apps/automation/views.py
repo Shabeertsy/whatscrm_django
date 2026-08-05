@@ -2,10 +2,14 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from apps.core.permissions import RequirePermission, Permission
+
+
 from .models import AutomationFlow, FlowStatus
 from .serializers import AutomationFlowSerializer
+
+
 from apps.core.scoping import scope_by_owner
+from apps.core.permissions import RequirePermission, Permission
 
 
 
@@ -26,7 +30,7 @@ class AutomationFlowViewSet(viewsets.ModelViewSet):
         partial = kwargs.pop('partial', False)
         instance = self.get_object()
         
-        # Serialize the normal fields (name, description, viewport, etc)
+        # Serialize the normal fields 
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)

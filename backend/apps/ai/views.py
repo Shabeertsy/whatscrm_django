@@ -1,15 +1,25 @@
+## Rest imports
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
-from apps.core.permissions import RequirePermission, Permission
 from rest_framework.response import Response
+from rest_framework.views import APIView
 
+
+## Model  and Serializer  imports
 from .models import AIAgentSettings, AIProviderSettings
 from .serializers import AIAgentSettingsSerializer, AIProviderSettingsSerializer
 
 
+## AI module imports
 from .chatbot.base import ChatbotContext
 from .chatbot.ai_engine import AIEngine
-from rest_framework.views import APIView
+
+
+## Permission import
+from apps.core.permissions import RequirePermission, Permission
+
+
+## Scoping import
 from apps.core.scoping import scope_by_owner
 from apps.core.scoping import get_tenant_owner
 

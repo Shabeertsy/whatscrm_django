@@ -3,6 +3,8 @@ from django.db import transaction
 from .models import AutomationFlow, FlowNode, FlowEdge, FlowStatus
 from apps.core.scoping import get_tenant_owner
 
+
+
 class FlowNodeSerializer(serializers.ModelSerializer):
     id = serializers.CharField(source='node_id')
     position = serializers.SerializerMethodField()
@@ -59,7 +61,7 @@ class AutomationFlowSerializer(serializers.ModelSerializer):
         Custom method to handle saving the graph structure from the frontend
         since the frontend sends a specific React Flow JSON structure.
         """
-        # Delete existing nodes and edges (cascade handles edges)
+        # Delete existing nodes and edges
         instance.nodes.all().delete()
 
         node_map = {}

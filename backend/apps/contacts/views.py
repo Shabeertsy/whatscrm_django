@@ -2,19 +2,35 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.pagination import PageNumberPagination
+
 from apps.core.permissions import RequirePermission, Permission
-from apps.core.scoping import scope_by_owner, scope_by_location, is_superuser, get_tenant_owner
 
-from django.db.models import Q
-from django.db import transaction
 
-from .models import Contact, ContactTag, Pipeline, PipelineStage, PipelineDeal
+from apps.core.scoping import (
+    scope_by_owner, 
+    scope_by_location, 
+    is_superuser, 
+    get_tenant_owner
+    )
+
+from .models import (
+    Contact, 
+    ContactTag, 
+    Pipeline, 
+    PipelineStage, 
+    PipelineDeal
+    )
+
 from .serializers import (
     ContactSerializer, ContactTagSerializer,
     PipelineSerializer, PipelineStageSerializer, PipelineDealSerializer
 )
 
-from rest_framework.pagination import PageNumberPagination
+from django.db.models import Q
+from django.db import transaction
+from django.utils import timezone
+from datetime import timedelta
 
 
 class ContactPagination(PageNumberPagination):
@@ -151,13 +167,11 @@ class WAContactsListView(APIView):
 
     def get(self, request):
         from apps.messaging.models import Contact as WAContact
-        # Get already-imported wa_ids for this user
         imported_wa_ids = set(
             scope_by_owner(Contact.objects.all(), request.user)
             .exclude(wa_id='')
             .values_list('wa_id', flat=True)
         )
-        # Return WA contacts not yet in CRM (no crm_contact link)
         wa_contacts = WAContact.objects.filter(crm_contact__isnull=True).exclude(wa_id__in=imported_wa_ids)
         data = [
             {
@@ -255,6 +269,7 @@ class PipelineListCreateView(APIView):
             if Pipeline.objects.filter(owner=get_tenant_owner(request.user)).count() == 1:
                 pipeline.is_active = True
                 pipeline.save(update_fields=['is_active'])
+
             # Auto-create the default "Incoming Leads" stage
             PipelineStage.objects.create(
                 pipeline=pipeline,
@@ -323,7 +338,6 @@ class PipelineActivateView(APIView):
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
         with transaction.atomic():
-            # Deactivate all others (also clear auto_create_deals on deactivated pipelines)
             Pipeline.objects.filter(owner=get_tenant_owner(request.user), is_active=True).update(
                 is_active=False, auto_create_deals=False
             )
@@ -484,8 +498,7 @@ class PipelineDealListCreateView(APIView):
             deals = scope_by_owner(PipelineDeal.objects.filter(pipeline=pipeline), request.user)
 
         if timeframe:
-            from django.utils import timezone
-            from datetime import timedelta
+
             now = timezone.now()
             if timeframe == 'daily':
                 deals = deals.filter(created_at__gte=now - timedelta(days=1))

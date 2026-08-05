@@ -1,10 +1,21 @@
+
+## Rest imports
 from rest_framework import generics, permissions, viewsets, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework_simplejwt.views import TokenObtainPairView
+
+
+## Django imports
 from django.contrib.auth import get_user_model
 from django.db import IntegrityError
+from django.core.cache import cache
+
+
+## Model imports
 from .models import Department, DepartmentRolePermission, Location
+
+## Serializer imports
 from .serializers import (
     UserSerializer,
     CustomTokenObtainPairSerializer,
@@ -12,8 +23,11 @@ from .serializers import (
     DepartmentRolePermissionSerializer,
     LocationSerializer,
 )
+
+## Permission imports
 from apps.core.permissions import RequirePermission, Permission
-from django.core.cache import cache
+
+## Scoping imports
 from apps.core.scoping import scope_by_owner
 from apps.core.scoping import get_tenant_owner
 
@@ -101,7 +115,6 @@ class DepartmentRolePermissionViewSet(viewsets.ModelViewSet):
         
         # Clear the RBAC cache for this department and role
         cache.delete(f"rbac_{department_id}_{role}")
-
         serializer = self.get_serializer(obj)
         code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
         return Response(serializer.data, status=code)

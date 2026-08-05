@@ -4,6 +4,7 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+
 from apps.core.models import BaseModel, SoftDeleteModel
 
 
@@ -64,7 +65,6 @@ class AutomationFlow(BaseModel, SoftDeleteModel):
         max_length=20, choices=FlowStatus.choices, default=FlowStatus.DRAFT, db_index=True
     )
 
-    # The WhatsApp instance this flow is scoped to (optional – NULL = all instances)
     instance = models.ForeignKey(
         "whatsapp.WhatsappInstance",
         null=True, blank=True,
@@ -113,16 +113,14 @@ class FlowNode(BaseModel):
 
     # Frontend-assigned node id (stable across saves)
     node_id = models.CharField(max_length=64, db_index=True)
-
     node_type = models.CharField(
         max_length=20, choices=NodeType.choices, db_index=True
     )
 
-    # Human-readable label shown on the canvas card
     title       = models.CharField(max_length=255, blank=True, default="")
     description = models.TextField(blank=True, default="")
 
-    # Canvas position & size (mirrors ReactFlow node.position / width / height)
+    # Canvas position & size
     pos_x  = models.FloatField(default=0)
     pos_y  = models.FloatField(default=0)
     width  = models.FloatField(default=220)
@@ -131,10 +129,10 @@ class FlowNode(BaseModel):
     # All node-type-specific fields live here
     config = models.JSONField(default=dict, blank=True)
 
-    # Bumped whenever the config schema changes — lets the executor handle old saved flows
+    # Bumped whenever the config schema changes
     config_version = models.PositiveSmallIntegerField(default=1)
 
-    # Required config keys per node type (used in clean()) 
+    # Required config keys per node type
     _REQUIRED_CONFIG_KEYS: dict[str, list[str]] = {
         "trigger":       [],
         "action":        ["message"],
@@ -228,7 +226,7 @@ class FlowExecution(BaseModel):
         default=ExecutionStatus.RUNNING, db_index=True,
     )
 
-    # The node currently being processed (NULL when finished)
+    # The node currently being processed 
     current_node = models.ForeignKey(
         FlowNode,
         null=True, blank=True,
@@ -236,20 +234,16 @@ class FlowExecution(BaseModel):
         related_name="active_executions",
     )
 
-    # Runtime accumulated variables (template interpolation)
     variables = models.JSONField(default=dict, blank=True)
     resume_at = models.DateTimeField(null=True, blank=True, db_index=True)
     started_at   = models.DateTimeField(auto_now_add=True)
     completed_at = models.DateTimeField(null=True, blank=True)
-
-    # Error message if status == failed
     error = models.TextField(blank=True, default="")
 
     class Meta:
         ordering = ["-started_at"]
         verbose_name        = "Flow Execution"
         verbose_name_plural = "Flow Executions"
-        # Composite indexes for fast dashboard/queue queries
         indexes = [
             models.Index(fields=["flow", "status"],    name="exec_flow_status_idx"),
             models.Index(fields=["contact", "status"], name="exec_contact_status_idx"),
