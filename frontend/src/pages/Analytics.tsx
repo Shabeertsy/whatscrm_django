@@ -2,29 +2,25 @@ import React, { useState, useEffect } from "react";
 import PageHeader from "../components/shared/PageHeader";
 import StatCard, { StatCardSkeleton } from "../features/analytics/StatCard";
 import PerformanceChart from "../features/analytics/PerformanceChart";
-import { getMetrics, Metric } from "../features/analytics/api";
-import { useTeamStore } from "../store/teamStore";
-import { Plus, CheckCircle, TrendingUp, AlertTriangle } from "lucide-react";
-import { useRouter } from "../router";
+import { getMetrics, Metric, getSystemLogs, SystemLog } from "../features/analytics/api";
+import { CheckCircle, TrendingUp, AlertTriangle } from "lucide-react";
 
 
 export function Analytics() {
-  const [teamState] = useTeamStore();
-  const { navigate } = useRouter();
   const [metrics, setMetrics] = useState<Metric[]>([]);
+  const [logs, setLogs] = useState<SystemLog[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsLoading(true);
-    getMetrics()
-      .then(setMetrics)
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
+    
+    Promise.all([
+      getMetrics().then(setMetrics).catch(console.error),
+      getSystemLogs().then(setLogs).catch(console.error)
+    ]).finally(() => {
+      setIsLoading(false);
+    });
   }, []);
-
-  const logs = [
-    { time: "Just now", type: "success", text: "Flow 'Welcome Msg' ran successfully for +15552345678" },
-  ];
 
   return (
     <div className="space-y-6 min-w-0 transition duration-200">
@@ -44,11 +40,11 @@ export function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {isLoading
           ? Array.from({ length: 4 }).map((_, idx) => (
-              <StatCardSkeleton key={idx} />
-            ))
+            <StatCardSkeleton key={idx} />
+          ))
           : metrics.map((m, idx) => (
-              <StatCard key={idx} label={m.label} val={m.val} desc={m.desc} />
-            ))}
+            <StatCard key={idx} label={m.label} val={m.val} desc={m.desc} />
+          ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

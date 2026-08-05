@@ -27,6 +27,7 @@ export interface Deal {
   contact_name?: string;
   contact_phone?: string;
   note?: string | null;
+  created_at?: string;
 }
 
 // ─── Pipeline APIs ──────────────────────────────────────────────────────────
@@ -86,8 +87,12 @@ export const swapStages = async (stageAId: string, stageBId: string): Promise<{ 
 
 // ─── Deal APIs ───────────────────────────────────────────────────────────────
 
-export const getDeals = async (pipelineId: string): Promise<Deal[]> => {
-  const res = await apiClient.get('/contacts/pipeline/deals/', { params: { pipeline: pipelineId } });
+export const getDeals = async (pipelineId: string, timeframe?: string): Promise<Deal[]> => {
+  const params: any = { pipeline: pipelineId };
+  if (timeframe) {
+    params.timeframe = timeframe;
+  }
+  const res = await apiClient.get('/contacts/pipeline/deals/', { params });
   return res.data;
 };
 

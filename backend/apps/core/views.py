@@ -11,15 +11,21 @@ import time
 import hashlib
 from .models import ProxyURL, UserActiveProxy
 from .serializers import ProxyURLSerializer
+
 from apps.core.scoping import scope_by_owner
 from apps.core.scoping import get_tenant_owner
 from apps.whatsapp.models import WhatsappInstance
 from apps.automation.models import AutomationFlow, FlowExecution, ExecutionStatus
 from apps.contacts.models import Pipeline
 from apps.messaging.models import Message
+from apps.automation.models import FlowExecution, ExecutionStatus
+
+
 from django.utils import timezone
 from datetime import timedelta
 
+
+from django.utils.timesince import timesince
 
 
 
@@ -277,3 +283,40 @@ class DashboardMetricsView(APIView):
             messages_metric,
             success_rate_metric
         ])
+
+
+class DashboardLogsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        executions = FlowExecution.objects.filter(flow__owner=user).select_related('flow', 'contact').order_by('-created_at')[:10]
+        logs = []
+       
+        for ex in executions:
+            time_str = timesince(ex.created_at).split(',')[0] + " ago"
+            if time_str == "0 minutes ago" or "0 minutes" in time_str:
+                time_str = "Just now"
+                
+            status = 'warning'
+            if ex.status == ExecutionStatus.COMPLETED:
+                status = 'success'
+            elif ex.status in (ExecutionStatus.RUNNING, ExecutionStatus.WAITING):
+                status = 'info'
+            
+            contact_name = ex.contact.name or ex.contact.phone
+            if status == 'success':
+                text = f"Flow '{ex.flow.name}' ran successfully for {contact_name}"
+            elif status == 'info':
+                text = f"Flow '{ex.flow.name}' is running for {contact_name}"
+            else:
+                text = f"Flow '{ex.flow.name}' failed or cancelled for {contact_name}"
+                
+            logs.append({
+                "time": time_str,
+                "type": status,
+                "text": text,
+                "timestamp": ex.created_at.isoformat()
+            })
+            
+        return Response(logs)

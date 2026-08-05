@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     HotelsProxyView, RoomsProxyView, 
     RoomConfigProxyView, PropertyConfigProxyView,
-    CRMRoomsProxyView, ProxyURLViewSet, DashboardMetricsView
+    CRMRoomsProxyView, ProxyURLViewSet, DashboardMetricsView, DashboardLogsView
 )
 
 router = DefaultRouter()
@@ -18,5 +18,6 @@ urlpatterns = [
     path('crm-rooms/', CRMRoomsProxyView.as_view(), name='crm_rooms_proxy'),
     path('crm-rooms/<str:uuid>/', CRMRoomsProxyView.as_view(), name='crm_rooms_proxy_detail'),
     path('dashboard/metrics/', DashboardMetricsView.as_view(), name='dashboard_metrics'),
+    path('dashboard/logs/', DashboardLogsView.as_view(), name='dashboard_logs'),
     path('', include(router.urls)),
 ]

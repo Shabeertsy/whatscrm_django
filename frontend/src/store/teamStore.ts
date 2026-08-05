@@ -11,7 +11,6 @@ class Store<T> {
   }
 
   getState = () => this.state;
-
   setState = (nextState: Partial<T> | ((state: T) => Partial<T>)) => {
     const next = typeof nextState === 'function' ? nextState(this.state) : nextState;
     this.state = { ...this.state, ...next };

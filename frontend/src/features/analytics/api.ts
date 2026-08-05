@@ -7,7 +7,19 @@ export interface Metric {
   success: boolean;
 }
 
-export async function getMetrics(): Promise<Metric[]> {
+export interface SystemLog {
+  time: string;
+  type: "success" | "info" | "warning";
+  text: string;
+  timestamp: string;
+}
+
+export const getMetrics = async (): Promise<Metric[]> => {
   const res = await apiClient.get('/core/dashboard/metrics/');
   return res.data;
-}
+};
+
+export const getSystemLogs = async (): Promise<SystemLog[]> => {
+  const res = await apiClient.get('/core/dashboard/logs/');
+  return res.data;
+};

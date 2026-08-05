@@ -470,6 +470,8 @@ class PipelineDealListCreateView(APIView):
 
     def get(self, request):
         pipeline_id = request.query_params.get('pipeline')
+        timeframe = request.query_params.get('timeframe')
+
         if pipeline_id:
             pipeline = self._get_pipeline(pipeline_id, request.user)
             if not pipeline:
@@ -480,6 +482,17 @@ class PipelineDealListCreateView(APIView):
             if not pipeline:
                 return Response([], status=status.HTTP_200_OK)
             deals = scope_by_owner(PipelineDeal.objects.filter(pipeline=pipeline), request.user)
+
+        if timeframe:
+            from django.utils import timezone
+            from datetime import timedelta
+            now = timezone.now()
+            if timeframe == 'daily':
+                deals = deals.filter(created_at__gte=now - timedelta(days=1))
+            elif timeframe == 'weekly':
+                deals = deals.filter(created_at__gte=now - timedelta(days=7))
+            elif timeframe == 'monthly':
+                deals = deals.filter(created_at__gte=now - timedelta(days=30))
 
         deals = scope_by_location(deals, request.user, location_field='wa_contact__location')
 

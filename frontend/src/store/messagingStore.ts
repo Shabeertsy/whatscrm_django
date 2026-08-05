@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react';
-import type { Conversation, Message, ConversationDetail } from '../api/messaging';
+import type { Conversation, Message } from '../api/messaging';
 
 
 //  State Shape 
 interface MessagingState {
   conversations: Conversation[];
   activeConversationId: string | null;
-  // Messages keyed by conversation ID — loaded on demand
   messagesByConvId: Record<string, Message[]>;
   filter: 'all' | 'open' | 'pending' | 'resolved';
   search: string;
@@ -160,8 +159,7 @@ export const messagingStore = new MessagingStore();
 
 
 
-// ── React Hook ────────────────────────────────────────────────────────────────
-
+// ── React Hook ────────────────────────
 export function useMessagingStore() {
   const [state, setState] = useState(messagingStore.getState());
 
