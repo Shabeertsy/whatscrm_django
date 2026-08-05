@@ -235,12 +235,13 @@ class DashboardMetricsView(APIView):
             "success": True
         }
         
-        # Active Pipelines
-        active_pipelines = Pipeline.objects.filter(owner=user, is_active=True).count()
-        pipelines_metric = {
-            "label": "Active Pipelines",
-            "val": str(active_pipelines),
-            "desc": "Sales pipelines active",
+        # Active Campaigns
+        from apps.campaigns.models import Campaign
+        active_campaigns = Campaign.objects.filter(owner=user, status='Running').count()
+        campaigns_metric = {
+            "label": "Active Campaigns",
+            "val": str(active_campaigns),
+            "desc": "Marketing campaigns active",
             "success": True
         }
         
@@ -279,7 +280,7 @@ class DashboardMetricsView(APIView):
         
         return Response([
             automations_metric,
-            pipelines_metric,
+            campaigns_metric,
             messages_metric,
             success_rate_metric
         ])
