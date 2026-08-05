@@ -70,7 +70,7 @@ export function PerformanceChart() {
 
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-205 border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm min-w-0 transition duration-200">
+    <div className="bg-white dark:bg-slate-900 border border-slate-205 border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm min-w-0 transition duration-200 h-full flex flex-col">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
           <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 capitalize">{timeframe} Pipeline Deals</h4>
@@ -94,17 +94,17 @@ export function PerformanceChart() {
       </div>
 
       {isPipelineLoading || isFiltering ? (
-        <div className="h-64 flex flex-col items-center justify-center space-y-3">
+        <div className="flex-1 min-h-[16rem] flex flex-col items-center justify-center space-y-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
           <span className="text-xs font-medium text-slate-400">Loading data...</span>
         </div>
       ) : chartData.length === 0 ? (
-        <div className="h-64 flex flex-col items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700">
+        <div className="flex-1 min-h-[16rem] flex flex-col items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800/30 border border-dashed border-slate-200 dark:border-slate-700">
           <span className="text-sm font-medium text-slate-500 dark:text-slate-400">No pipeline stages found</span>
           <span className="text-xs text-slate-400 dark:text-slate-500 mt-1">Create stages to see your pipeline metrics</span>
         </div>
       ) : (
-        <div className="relative h-64 flex animate-in fade-in duration-300">
+        <div className="relative flex-1 min-h-[16rem] flex animate-in fade-in duration-300">
           {/* Y-Axis Grid Lines & Labels */}
           <div className="absolute inset-0 flex flex-col justify-between pointer-events-none z-0">
             {yAxisTicks.map((tick, i) => (

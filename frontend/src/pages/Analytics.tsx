@@ -47,12 +47,12 @@ export function Analytics() {
           ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:items-stretch">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:h-[420px]">
         <div className="lg:col-span-2 h-full">
           <PerformanceChart />
         </div>
 
-        <div className="bg-white dark:bg-slate-900 border border-slate-205 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm transition duration-200 flex flex-col h-[400px] lg:h-auto lg:min-h-0">
+        <div className="bg-white dark:bg-slate-900 border border-slate-205 border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm transition duration-200 flex flex-col h-[400px] lg:h-full lg:min-h-0">
           <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100 mb-4 shrink-0">Live System Log</h4>
           <div className="space-y-4 font-sans overflow-y-auto custom-scrollbar flex-1 pr-2">
             {logs.length === 0 ? (
