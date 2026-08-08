@@ -24,7 +24,7 @@ export function ReplyPreview({ messageId, senderName, msgType, body, mediaUrl }:
   };
 
   return (
-    <div 
+    <div
       onClick={scrollToMessage}
       className="mb-2 p-2 rounded bg-black/5 hover:bg-black/10 dark:bg-black/20 dark:hover:bg-black/30 cursor-pointer border-l-2 border-[#007e3a] dark:border-[#00b359] text-xs opacity-90 flex items-center justify-between gap-2 transition-colors"
     >
@@ -32,9 +32,21 @@ export function ReplyPreview({ messageId, senderName, msgType, body, mediaUrl }:
         <div className="font-semibold text-[10px] text-[#007e3a] dark:text-[#00b359] mb-0.5">
           {senderName || "Customer"}
         </div>
+
         <div className="line-clamp-1 opacity-80">
-          {msgType === 'text' ? body : `[${msgType}] ${body || ''}`}
+          {(() => {
+            if (msgType === 'interactive') {
+              try {
+                const parsed = JSON.parse(body);
+                return `[Menu] ${parsed.body || 'Interactive message'}`;
+              } catch {
+                return `[Selection] ${body}`;
+              }
+            }
+            return msgType === 'text' ? body : `[${msgType}] ${body || ''}`;
+          })()}
         </div>
+
       </div>
       {mediaUrl && (
         <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-black/10">
