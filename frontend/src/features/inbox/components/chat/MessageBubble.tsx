@@ -54,8 +54,8 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
       <div
         id={`message-${message.id}`}
         className={`max-w-[75%] rounded-lg px-3 py-2 text-[13px] shadow-sm relative transition-all duration-500 ${isOutbound
-            ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-none"
-            : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-100 dark:border-transparent"
+          ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-none"
+          : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-100 dark:border-transparent"
           }`}
       >
         {(message as any).replied_to_message && (
@@ -89,9 +89,9 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           </div>
         )}
 
-        {/* {message.msg_type === 'interactive' && message.body && (
+        {message.msg_type === 'interactive' && message.body && (
           <InteractiveMessage body={message.body} isOutbound={isOutbound} />
-        )} */}
+        )}
 
         {message.msg_type !== 'text' && message.msg_type !== 'template' && message.msg_type !== 'sticker' && message.msg_type !== 'unsupported' && message.msg_type !== 'interactive' && !['image', 'video', 'audio'].includes(message.msg_type) && (
           <DocumentMessage msgType={message.msg_type} mediaUrl={message.media_url} />
