@@ -146,7 +146,7 @@ class DataChatAPIView(APIView):
 
         agent = (
             AIAgentSettings.objects
-            .filter(owner=tenant_owner, is_active=True)
+            .filter(owner=tenant_owner)
             .select_related('provider')
             .first()
         )
