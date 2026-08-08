@@ -200,10 +200,34 @@ class AutomationEngine(BaseChatbotEngine):
         return next_node
 
     def _handle_menu_node(self, node, execution, reply):
-        """Present a numbered menu and pause execution waiting for user input."""
+        """Present a WhatsApp interactive list menu and pause execution waiting for user input."""
         message_text = node.config.get("message", "Please choose an option:")
         options      = node.config.get("options", [])
+        button_label = node.config.get("buttonLabel", "View Options")
+        header_text  = node.config.get("header", "")
+        footer_text  = node.config.get("footer", "")
 
+        # Try to send as a real WhatsApp interactive list (max 10 options)
+        if options and len(options) <= 10 and self.conv.instance and self.conv.instance.is_active:
+            try:
+                from apps.messaging.utils import send_and_save_interactive_list
+                send_and_save_interactive_list(
+                    self.conv,
+                    body_text=message_text,
+                    button_label=button_label,
+                    options=options,
+                    header_text=header_text,
+                    footer_text=footer_text,
+                )
+                # Don't add to reply — already sent and saved directly
+                execution.status = ExecutionStatus.WAITING
+                execution.save(update_fields=["status"])
+                self._log_step(execution, node, StepStatus.PENDING)
+                return _WAITING
+            except Exception as exc:
+                logger.warning("[AutomationEngine] Interactive list failed (%s), falling back to plain text.", exc)
+
+        # Fallback: plain numbered text
         lines = [message_text]
         for idx, opt in enumerate(options):
             lines.append(f"{idx + 1}. {opt.get('label', f'Option {idx + 1}')}")
@@ -629,10 +653,27 @@ class AutomationEngine(BaseChatbotEngine):
         options = node.config.get("options", [])
         selected = None
 
+        # Also check interactive reply ID from raw WhatsApp payload
+        interactive_reply_id = ""
+        last_inbound = (
+            self.conv.messages.filter(direction="inbound")
+            .order_by("-timestamp").first()
+        )
+        if last_inbound and last_inbound.raw_data:
+            interactive_obj = last_inbound.raw_data.get("interactive", {})
+            i_type = interactive_obj.get("type", "")
+            if i_type == "list_reply":
+                interactive_reply_id = interactive_obj.get("list_reply", {}).get("id", "").strip().lower()
+            elif i_type == "button_reply":
+                interactive_reply_id = interactive_obj.get("button_reply", {}).get("id", "").strip().lower()
+
         for idx, opt in enumerate(options):
             val   = str(opt.get("value", "")).strip().lower()
             label = str(opt.get("label", "")).strip().lower()
-            if inbound_text in (val, label, str(idx + 1)):
+            opt_id = str(opt.get("id", "")).strip().lower()
+            if inbound_text in (val, label, str(idx + 1)) or (
+                interactive_reply_id and interactive_reply_id in (opt_id, val, label)
+            ):
                 selected = opt
                 break
 

@@ -103,14 +103,15 @@ class Message(models.Model):
         ('failed',    'Failed'),
     ]
     TYPE_CHOICES = [
-        ('text',     'Text'),
-        ('image',    'Image'),
-        ('audio',    'Audio'),
-        ('video',    'Video'),
-        ('document', 'Document'),
-        ('template', 'Template'),
-        ('sticker',  'Sticker'),
-        ('location', 'Location'),
+        ('text',        'Text'),
+        ('image',       'Image'),
+        ('audio',       'Audio'),
+        ('video',       'Video'),
+        ('document',    'Document'),
+        ('template',    'Template'),
+        ('sticker',     'Sticker'),
+        ('location',    'Location'),
+        ('interactive', 'Interactive'),
     ]
 
     conversation    = models.ForeignKey(

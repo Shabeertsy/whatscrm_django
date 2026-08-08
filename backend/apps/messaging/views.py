@@ -645,8 +645,20 @@ class WebhookView(APIView):
                 if downloaded:
                     storage_path = downloaded.get('storage_path', '')
                     media_url = downloaded.get('media_url', '')
+                    
+        elif msg_type == 'interactive':
+            interactive_obj = msg_data.get('interactive', {})
+            interactive_type = interactive_obj.get('type', '')
+            if interactive_type == 'list_reply':
+                reply_data = interactive_obj.get('list_reply', {})
+                body = reply_data.get('title', reply_data.get('id', ''))
+            elif interactive_type == 'button_reply':
+                reply_data = interactive_obj.get('button_reply', {})
+                body = reply_data.get('title', reply_data.get('id', ''))
+            else:
+                body = interactive_obj.get('title', '')
 
-        # Check for context/replies
+
         context_data = msg_data.get('context', {})
         context_id = context_data.get('id')
         replied_to_obj = None

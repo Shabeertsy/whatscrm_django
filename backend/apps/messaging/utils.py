@@ -379,6 +379,117 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     return response.json()
 
 
+def send_whatsapp_interactive_list(phone_number_id, access_token, to_phone, body_text, button_label, options, header_text="", footer_text=""):
+    """
+    Sends a WhatsApp Interactive List Message via the Meta Cloud API.
+    `options` is a list of dicts: [{"id": "...", "title": "...", "description": "..."}]
+    Max 10 rows per list, title max 24 chars, id max 200 chars.
+    """
+    url = f"{settings.META_GRAPH_API_BASE_URL}/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    rows = [
+        {
+            "id": str(opt.get("id", opt.get("value", f"opt_{i}")))[:200],
+            "title": str(opt.get("label", f"Option {i+1}"))[:24],
+            "description": str(opt.get("description", ""))[:72],
+        }
+        for i, opt in enumerate(options[:10])
+    ]
+
+    interactive = {
+        "type": "list",
+        "body": {"text": body_text},
+        "action": {
+            "button": (button_label or "Choose an option")[:20],
+            "sections": [{"title": "Options", "rows": rows}],
+        },
+    }
+    if header_text:
+        interactive["header"] = {"type": "text", "text": header_text[:60]}
+    if footer_text:
+        interactive["footer"] = {"text": footer_text[:60]}
+
+    data = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to_phone,
+        "type": "interactive",
+        "interactive": interactive,
+    }
+
+    logger.info(f"[send_whatsapp_interactive_list] Sending interactive list to {to_phone} | {len(rows)} options")
+    response = requests.post(url, headers=headers, json=data, timeout=10)
+    if response.status_code >= 400:
+        logger.error(f"[send_whatsapp_interactive_list] Meta API Error {response.status_code}: {response.text}")
+    response.raise_for_status()
+    return response.json()
+
+
+def send_and_save_interactive_list(conversation, *, body_text, button_label, options, header_text="", footer_text="", sent_by=None):
+    """
+    Send a WhatsApp interactive list message, save to DB, and broadcast.
+    Returns the saved Message instance.
+    """
+    from django.utils import timezone as tz
+    from apps.messaging.models import Message
+
+    log = logging.getLogger(__name__)
+
+    wa_message_id = ""
+    msg_status = "failed"
+    display_body = body_text 
+
+    inst = conversation.instance
+    if inst and inst.is_active:
+        try:
+            wa_resp = send_whatsapp_interactive_list(
+                phone_number_id=inst.phone_number_id,
+                access_token=inst.access_token,
+                to_phone=conversation.contact.wa_id,
+                body_text=body_text,
+                button_label=button_label,
+                options=options,
+                header_text=header_text,
+                footer_text=footer_text,
+            )
+            if wa_resp.get("messages"):
+                wa_message_id = wa_resp["messages"][0]["id"]
+                msg_status = "sent"
+        except Exception as exc:
+            log.error("[send_and_save_interactive_list] WhatsApp API error: %s", exc)
+
+    # Store the body as JSON 
+    stored_body = json.dumps({
+        "type": "interactive_list",
+        "body": body_text,
+        "header": header_text,
+        "footer": footer_text,
+        "button_label": button_label,
+        "options": [{"id": o.get("id", ""), "label": o.get("label", ""), "description": o.get("description", "")} for o in options],
+    })
+
+    msg = Message.objects.create(
+        conversation=conversation,
+        direction="outbound",
+        msg_type="interactive",
+        body=stored_body,
+        media_url="",
+        sent_by=sent_by,
+        status=msg_status,
+        wa_message_id=wa_message_id,
+        timestamp=tz.now(),
+    )
+
+    conversation.last_message_at = msg.timestamp
+    conversation.save(update_fields=["last_message_at"])
+    broadcast_new_message(conversation, msg)
+    return msg
+
+
 ### Common message send function
 def send_and_save_message(
     conversation,

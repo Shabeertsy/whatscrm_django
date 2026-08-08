@@ -12,6 +12,7 @@ import { DocumentMessage } from './document/DocumentMessage';
 import { TemplateMessage } from './template/TemplateMessage';
 import { StickerMessage } from './sticker/StickerMessage';
 import { MessageStatus } from './MessageStatus';
+import { InteractiveMessage } from './interactive/InteractiveMessage';
 
 
 
@@ -89,12 +90,16 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           </div>
         )}
 
-        {message.msg_type !== 'text' && message.msg_type !== 'template' && message.msg_type !== 'sticker' && message.msg_type !== 'unsupported' && !['image', 'video', 'audio'].includes(message.msg_type) && (
+        {message.msg_type === 'interactive' && message.body && (
+          <InteractiveMessage body={message.body} isOutbound={isOutbound} />
+        )}
+
+        {message.msg_type !== 'text' && message.msg_type !== 'template' && message.msg_type !== 'sticker' && message.msg_type !== 'unsupported' && message.msg_type !== 'interactive' && !['image', 'video', 'audio'].includes(message.msg_type) && (
           <DocumentMessage msgType={message.msg_type} mediaUrl={message.media_url} />
         )}
 
         {message.msg_type === 'template' && <TemplateMessage body={message.body || '[Template Message]'} />}
-        {message.msg_type !== 'audio' && message.msg_type !== 'template' && message.body && <TextMessage body={message.body} />}
+        {message.msg_type !== 'audio' && message.msg_type !== 'template' && message.msg_type !== 'interactive' && message.body && <TextMessage body={message.body} />}
 
         {/* Room Details Link */}
         <div className="flex justify-end">
