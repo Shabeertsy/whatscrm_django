@@ -14,6 +14,7 @@ export interface ContactMin {
   tags: string[];
   stage_color?: string | null;
   stage_name?: string | null;
+  stage_order?: number | null;
   active_deal_id?: string | null;
 }
 

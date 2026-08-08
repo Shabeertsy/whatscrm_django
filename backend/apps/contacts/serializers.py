@@ -23,6 +23,7 @@ class ContactSerializer(serializers.ModelSerializer):
 
     stage_color = serializers.SerializerMethodField()
     stage_name = serializers.SerializerMethodField()
+    stage_order = serializers.SerializerMethodField()
 
     location_name = serializers.CharField(source='location.name', read_only=True, default=None)
 
@@ -30,7 +31,7 @@ class ContactSerializer(serializers.ModelSerializer):
         model = Contact
         fields = [
             'id', 'name', 'phone', 'email', 'status', 'notes',
-            'tags', 'tag_ids', 'stage_color', 'stage_name',
+            'tags', 'tag_ids', 'stage_color', 'stage_name', 'stage_order',
             'location', 'location_name',
             'created_at', 'updated_at'
         ]
@@ -58,6 +59,12 @@ class ContactSerializer(serializers.ModelSerializer):
         if deal and deal.stage:
             return deal.stage.title
         return None
+
+    def get_stage_order(self, obj):
+        deal = self._get_active_deal(obj)
+        if deal and deal.stage:
+            return deal.stage.order
+        return 9999
 
 
 class PipelineStageSerializer(serializers.ModelSerializer):

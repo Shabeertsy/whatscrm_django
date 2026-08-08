@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { MapPin } from "lucide-react";
-import { ChatList } from "./components/ChatList";
+import { ChatList } from "./components/chat-list";
 import { ChatWindow } from "./components/ChatWindow";
 import { MessageComposer } from "./components/MessageComposer";
 import { StartChatModal } from "./components/StartChatModal";

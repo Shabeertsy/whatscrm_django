@@ -1,11 +1,13 @@
 import React, { memo, useState, useMemo } from "react";
 import { Search, Plus, User2, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2, Trash, Bookmark } from "lucide-react";
-import type { Conversation, CustomMessage } from "../../../api/messaging";
-import { messagingApi } from "../../../api/messaging";
-import { messagingStore } from "../../../store/messagingStore";
-import { formatChatListTime } from "../utils";
-import { showToast } from "../../../utils/toast";
-import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
+import type { Conversation, CustomMessage } from "../../../../api/messaging";
+import { messagingApi } from "../../../../api/messaging";
+import { messagingStore } from "../../../../store/messagingStore";
+import { formatChatListTime } from "../../utils";
+import { showToast } from "../../../../utils/toast";
+import { ConfirmDialog } from "../../../../components/shared/ConfirmDialog";
+import { useChatFilters } from "../../hooks/useChatFilters";
+import { ChatFilters } from "./ChatFilters";
 
 
 interface ChatListProps {
@@ -100,8 +102,16 @@ export const ChatList = memo(function ChatList({
   onStartNewChat,
   isLoading,
 }: ChatListProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const {
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    sortBy,
+    setSortBy,
+    filteredChats
+  } = useChatFilters(chats);
+
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
@@ -115,21 +125,6 @@ export const ChatList = memo(function ChatList({
 
   // Delete Confirm Modal State
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
-
-
-  const filteredChats = useMemo(() => {
-    return chats.filter((c) => {
-      if (statusFilter !== "all" && c.status !== statusFilter) {
-        return false;
-      }
-      // Search filter
-      if (!searchQuery.trim()) return true;
-      const q = searchQuery.toLowerCase();
-      const name = (c.contact?.name || "").toLowerCase();
-      const phone = (c.contact?.phone || "").toLowerCase();
-      return name.includes(q) || phone.includes(q);
-    });
-  }, [chats, statusFilter, searchQuery]);
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
@@ -273,37 +268,14 @@ export const ChatList = memo(function ChatList({
           </div>
         </div>
 
-        {/* Search Input */}
-        <div className="relative">
-          <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-2.5" />
-          <input
-            type="text"
-            placeholder="Search chats..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pl-8 pr-3 text-xs text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#007e3a] focus:bg-white dark:focus:bg-slate-800 transition-colors"
-          />
-        </div>
-
-        {/* Filter Pills */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
-          {[
-            { id: "all", label: "All" },
-            { id: "open", label: "Open" },
-            { id: "resolved", label: "Resolved" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setStatusFilter(tab.id)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex-shrink-0 ${statusFilter === tab.id
-                ? "bg-[#007e3a] text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60"
-                }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <ChatFilters
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+        />
 
         {/* Select Mode Bar & Bulk Actions */}
         {isSelectMode && (

@@ -53,11 +53,12 @@ class ContactMinimalSerializer(serializers.ModelSerializer):
     name = serializers.SerializerMethodField()
     stage_color = serializers.SerializerMethodField()
     stage_name = serializers.SerializerMethodField()
+    stage_order = serializers.SerializerMethodField()
     active_deal_id = serializers.SerializerMethodField()
 
     class Meta:
         model  = Contact
-        fields = ['id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags', 'stage_color', 'stage_name', 'active_deal_id']
+        fields = ['id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags', 'stage_color', 'stage_name', 'stage_order', 'active_deal_id']
 
     def get_name(self, obj):
         if obj.crm_contact:
@@ -86,6 +87,12 @@ class ContactMinimalSerializer(serializers.ModelSerializer):
         if deal and deal.stage:
             return deal.stage.title
         return None
+
+    def get_stage_order(self, obj):
+        deal = self._get_active_deal(obj)
+        if deal and deal.stage:
+            return deal.stage.order
+        return 9999
 
 
 ##  Message ##
