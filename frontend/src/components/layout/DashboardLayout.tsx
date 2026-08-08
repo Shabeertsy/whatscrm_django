@@ -2,8 +2,10 @@ import React from "react";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import BottomBar from "./BottomBar";
+import { FloatingAIChat } from "../shared/FloatingAIChat";
 
 import { useTeamStore } from "../../store/teamStore";
+import { useAuthStore } from "../../store/authStore";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -12,6 +14,8 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [teamState] = useTeamStore();
   const theme = teamState.theme;
+  const [{ user }] = useAuthStore();
+  const isSuperuser = user?.is_superuser;
 
   return (
     <div className={`flex h-screen bg-[#F8F9FA] dark:bg-slate-950 text-slate-800 dark:text-slate-100 font-sans overflow-hidden w-full ${theme === "dark" ? "dark" : ""}`}>
@@ -25,6 +29,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
         </main>
         <BottomBar />
       </div>
+      {/* Floating AI Data Chat – visible on all pages */}
+      {isSuperuser && <FloatingAIChat />}
     </div>
   );
 }

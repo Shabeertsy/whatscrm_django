@@ -201,11 +201,9 @@ class AutomationEngine(BaseChatbotEngine):
 
     def _handle_menu_node(self, node, execution, reply):
         """
-        Auto-render the menu as the optimal WhatsApp interactive message type:
           1-3 options  → Reply Buttons
           4-10 options → List Message
           >10 options  → Paginated List Messages (multiple messages, 10 per page)
-        Falls back to plain numbered text if the Meta API is unavailable.
         """
         message_text = node.config.get("message", "Please choose an option:")
         options      = node.config.get("options", [])
@@ -268,7 +266,7 @@ class AutomationEngine(BaseChatbotEngine):
                 )
 
         if not sent_interactive:
-            # Fallback: plain numbered text
+            # plain numbered text
             lines = [message_text]
             for idx, opt in enumerate(options):
                 lines.append(f"{idx + 1}. {opt.get('label', f'Option {idx + 1}')}")

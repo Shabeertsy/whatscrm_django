@@ -1,7 +1,7 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views import AIAgentSettingsViewSet, AIProviderSettingsViewSet, TestAIAgentAPIView
+from .views import AIAgentSettingsViewSet, AIProviderSettingsViewSet, TestAIAgentAPIView, DataChatAPIView
 
 
 
@@ -12,5 +12,6 @@ router.register(r'ai-providers', AIProviderSettingsViewSet, basename='ai-provide
 
 urlpatterns = [
     path('test-agent/', TestAIAgentAPIView.as_view(), name='test-agent'),
+    path('data-chat/', DataChatAPIView.as_view(), name='data-chat'),
     path('', include(router.urls)),
 ]

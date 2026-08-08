@@ -13,6 +13,7 @@ class AIEngine(BaseChatbotEngine):
 
     MAX_HISTORY_MESSAGES = 15
     MAX_TOKENS_REPLY = 512
+    MAX_TOKENS_REPLY_DATA = 4096
 
     def __init__(self, settings):
         """
@@ -70,13 +71,14 @@ class AIEngine(BaseChatbotEngine):
 
         try:
             model_name = _get_fallback_model(provider, self.settings.model_name)
+            max_tokens = self.MAX_TOKENS_REPLY_DATA if ctx.contact_wa_id == "datachat" else self.MAX_TOKENS_REPLY
 
             if provider == "openai":
-                text = self._call_openai(api_key, history, ctx, model_name, system_prompt)
+                text = self._call_openai(api_key, history, ctx, model_name, system_prompt, max_tokens)
             elif provider == "claude":
-                text = self._call_claude(api_key, history, ctx, model_name, system_prompt)
+                text = self._call_claude(api_key, history, ctx, model_name, system_prompt, max_tokens)
             elif provider == "gemini":
-                text = self._call_gemini(api_key, history, ctx, model_name, system_prompt)
+                text = self._call_gemini(api_key, history, ctx, model_name, system_prompt, max_tokens)
             else:
                 logger.error(f"Unknown AI provider: {provider}")
                 return None
@@ -95,38 +97,36 @@ class AIEngine(BaseChatbotEngine):
 
     # Provider implementations
     # ------------------------------------------------------------------
-    def _call_openai(self, api_key: str, history: list, ctx: ChatbotContext, model_name: str, system_prompt: str) -> str:
+    def _call_openai(self, api_key: str, history: list, ctx: ChatbotContext, model_name: str, system_prompt: str, max_tokens: int) -> str:
         import openai
 
         client = openai.OpenAI(api_key=api_key)
         messages = [{"role": "system", "content": system_prompt}]
         messages.extend(history)
-
         response = client.chat.completions.create(
             model=model_name or "gpt-4o-mini",
             messages=messages,
             temperature=self.settings.temperature,
-            max_tokens=self.MAX_TOKENS_REPLY,
+            max_tokens=max_tokens,
         )
         return (response.choices[0].message.content or "").strip()
 
-    def _call_claude(self, api_key: str, history: list, ctx: ChatbotContext, model_name: str, system_prompt: str) -> str:
+    def _call_claude(self, api_key: str, history: list, ctx: ChatbotContext, model_name: str, system_prompt: str, max_tokens: int) -> str:
         import anthropic
 
         client = anthropic.Anthropic(api_key=api_key)
         # Claude strictly alternates user/assistant; collapse consecutive same-role messages
         claude_history = _normalize_history_for_claude(history)
-
         response = client.messages.create(
             model=model_name or "claude-3-haiku-20240307",
             system=system_prompt,
             messages=claude_history,
             temperature=self.settings.temperature,
-            max_tokens=self.MAX_TOKENS_REPLY,
+            max_tokens=max_tokens,
         )
         return (response.content[0].text or "").strip()
 
-    def _call_gemini(self, api_key: str, history: list, ctx: ChatbotContext, model_name: str, system_prompt: str) -> str:
+    def _call_gemini(self, api_key: str, history: list, ctx: ChatbotContext, model_name: str, system_prompt: str, max_tokens: int) -> str:
         from google import genai
         from google.genai import types
 
@@ -144,7 +144,7 @@ class AIEngine(BaseChatbotEngine):
         config = types.GenerateContentConfig(
             system_instruction=system_prompt,
             temperature=self.settings.temperature,
-            max_output_tokens=self.MAX_TOKENS_REPLY,
+            max_output_tokens=max_tokens,
         )
 
         chat = client.chats.create(

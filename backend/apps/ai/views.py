@@ -3,11 +3,15 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework import status as drf_status
 
 
 ## Model  and Serializer  imports
 from .models import AIAgentSettings, AIProviderSettings
 from .serializers import AIAgentSettingsSerializer, AIProviderSettingsSerializer
+
+## Data Chat import
+from .data_chat_utils import build_data_context_prompt
 
 
 ## AI module imports
@@ -22,6 +26,10 @@ from apps.core.permissions import RequirePermission, Permission
 ## Scoping import
 from apps.core.scoping import scope_by_owner
 from apps.core.scoping import get_tenant_owner
+
+
+## Logging import
+import logging
 
 
 class AIProviderSettingsViewSet(viewsets.ModelViewSet):
@@ -119,7 +127,87 @@ class TestAIAgentAPIView(APIView):
             else:
                 return Response({"reply": "[No reply generated]"})
         except Exception as e:
-            import logging
             logging.getLogger(__name__).exception("AI Test Error")
             return Response({"error": str(e)}, status=500)
 
+
+class DataChatAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if not request.user.is_superuser:
+            return Response(
+                {"error": "You do not have permission to access the Data Chat."},
+                status=drf_status.HTTP_403_FORBIDDEN
+            )
+
+        messages = request.data.get('messages', [])
+        tenant_owner = get_tenant_owner(request.user)
+
+        agent = (
+            AIAgentSettings.objects
+            .filter(owner=tenant_owner, is_active=True)
+            .select_related('provider')
+            .first()
+        )
+
+        if not agent or not agent.provider:
+            return Response(
+                {"error": "No active AI agent or provider configured. Please set up an AI provider in Settings."},
+                status=drf_status.HTTP_400_BAD_REQUEST
+            )
+
+        if not agent.provider.ai_provider_api_key:
+            return Response(
+                {"error": "AI provider is missing an API key. Please configure it in Settings."},
+                status=drf_status.HTTP_400_BAD_REQUEST
+            )
+
+        # Build data-aware system prompt
+        try:
+            data_system_prompt = build_data_context_prompt(tenant_owner)
+        except Exception as exc:
+            logging.getLogger(__name__).exception("[DataChat] Failed to build data context")
+            data_system_prompt = "You are a helpful business assistant for this WhatsApp CRM."
+
+        if not messages:
+            return Response({"reply": "Hello! I'm your AI business analyst. Ask me anything about your contacts, pipeline deals, conversations, or metrics!"})
+
+        last_message = messages[-1].get('text', '')
+
+        # Build conversation history for the LLM
+        history = []
+        for m in messages[:-1]:
+            history.append({
+                "role": "user" if m.get("sender") == "user" else "assistant",
+                "content": m.get("text", "")
+            })
+
+        # Temporary agent with data-chat system prompt
+        temp_agent = AIAgentSettings(
+            provider=agent.provider,
+            model_name=agent.model_name,
+            system_prompt=data_system_prompt,
+            temperature=0.3,
+        )
+
+        ctx = ChatbotContext(
+            conversation_id=0,
+            contact_name=request.user.get_full_name() or request.user.username,
+            contact_wa_id="datachat",
+            inbound_message_body=last_message,
+            inbound_message_type="text",
+            history=history
+        )
+
+        engine = AIEngine(temp_agent)
+        try:
+            reply = engine.generate_reply(ctx)
+            if reply and reply.messages:
+                reply_text = reply.messages[0].get("body", "")
+                return Response({"reply": reply_text})
+            else:
+                return Response({"reply": "I wasn't able to generate a response. Please try again."})
+        except Exception as e:
+            logging.getLogger(__name__).exception("[DataChat] AI generation error")
+            return Response({"error": str(e)}, status=drf_status.HTTP_500_INTERNAL_SERVER_ERROR)
