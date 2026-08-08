@@ -490,6 +490,112 @@ def send_and_save_interactive_list(conversation, *, body_text, button_label, opt
     return msg
 
 
+def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, body_text, options, header_text="", footer_text=""):
+    """
+    Sends a WhatsApp Interactive Reply Buttons message via the Meta Cloud API.
+    `options` is a list of dicts: [{"id": "...", "label": "..."}]
+    Max 3 buttons. Button title max 20 chars, id max 256 chars.
+    """
+    url = f"{settings.META_GRAPH_API_BASE_URL}/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    buttons = [
+        {
+            "type": "reply",
+            "reply": {
+                "id": str(opt.get("id", opt.get("value", f"opt_{i}")))[:256],
+                "title": str(opt.get("label", f"Option {i+1}"))[:20],
+            },
+        }
+        for i, opt in enumerate(options[:3])
+    ]
+
+    interactive = {
+        "type": "button",
+        "body": {"text": body_text},
+        "action": {"buttons": buttons},
+    }
+    if header_text:
+        interactive["header"] = {"type": "text", "text": header_text[:60]}
+    if footer_text:
+        interactive["footer"] = {"text": footer_text[:60]}
+
+    data = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to_phone,
+        "type": "interactive",
+        "interactive": interactive,
+    }
+
+    logger.info(f"[send_whatsapp_interactive_buttons] Sending buttons to {to_phone} | {len(buttons)} buttons")
+    response = requests.post(url, headers=headers, json=data, timeout=10)
+    if response.status_code >= 400:
+        logger.error(f"[send_whatsapp_interactive_buttons] Meta API Error {response.status_code}: {response.text}")
+    response.raise_for_status()
+    return response.json()
+
+
+def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", sent_by=None):
+    """
+    Send a WhatsApp interactive reply-buttons message, save to DB, and broadcast.
+    Returns the saved Message instance.
+    """
+    from django.utils import timezone as tz
+    from apps.messaging.models import Message
+
+    log = logging.getLogger(__name__)
+
+    wa_message_id = ""
+    msg_status = "failed"
+
+    inst = conversation.instance
+    if inst and inst.is_active:
+        try:
+            wa_resp = send_whatsapp_interactive_buttons(
+                phone_number_id=inst.phone_number_id,
+                access_token=inst.access_token,
+                to_phone=conversation.contact.wa_id,
+                body_text=body_text,
+                options=options,
+                header_text=header_text,
+                footer_text=footer_text,
+            )
+            if wa_resp.get("messages"):
+                wa_message_id = wa_resp["messages"][0]["id"]
+                msg_status = "sent"
+        except Exception as exc:
+            log.error("[send_and_save_interactive_buttons] WhatsApp API error: %s", exc)
+
+    stored_body = json.dumps({
+        "type": "interactive_buttons",
+        "body": body_text,
+        "header": header_text,
+        "footer": footer_text,
+        "options": [{"id": o.get("id", ""), "label": o.get("label", "")} for o in options[:3]],
+    })
+
+    msg = Message.objects.create(
+        conversation=conversation,
+        direction="outbound",
+        msg_type="interactive",
+        body=stored_body,
+        media_url="",
+        sent_by=sent_by,
+        status=msg_status,
+        wa_message_id=wa_message_id,
+        timestamp=tz.now(),
+    )
+
+    conversation.last_message_at = msg.timestamp
+    conversation.save(update_fields=["last_message_at"])
+    broadcast_new_message(conversation, msg)
+    return msg
+
+
 ### Common message send function
 def send_and_save_message(
     conversation,

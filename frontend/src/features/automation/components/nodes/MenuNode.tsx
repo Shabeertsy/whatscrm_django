@@ -1,5 +1,5 @@
 import React from "react";
-import { Menu, ListOrdered } from "lucide-react";
+import { Menu, ListOrdered, LayoutList, List, Layers } from "lucide-react";
 import { Handle, Position, NodeResizer } from "@xyflow/react";
 
 export interface MenuOptionItem {
@@ -20,9 +20,17 @@ interface MenuNodeProps {
   selected?: boolean;
 }
 
+/** Auto-detect delivery mode from count — same logic as the panel */
+function getDeliveryBadge(count: number) {
+  if (count <= 3)  return { icon: <LayoutList className="h-3 w-3" />, label: "Buttons",        cls: "text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/40" };
+  if (count <= 10) return { icon: <List className="h-3 w-3" />,       label: "List",            cls: "text-blue-600   dark:text-blue-300   bg-blue-100   dark:bg-blue-900/40" };
+  return            { icon: <Layers className="h-3 w-3" />,           label: "Paginated Lists", cls: "text-amber-600  dark:text-amber-300  bg-amber-100  dark:bg-amber-900/40" };
+}
+
 export function MenuNode({ data, selected }: MenuNodeProps) {
-  const options = Array.isArray(data.options) ? data.options : [];
+  const options    = Array.isArray(data.options) ? data.options : [];
   const invalidMsg = data.invalidOptionMessage || data.noMatchMessage;
+  const badge      = getDeliveryBadge(options.length);
 
   return (
     <div className="w-full h-full relative">
@@ -39,11 +47,13 @@ export function MenuNode({ data, selected }: MenuNodeProps) {
       />
 
       <div
-        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${selected
+        className={`absolute inset-0 overflow-hidden rounded-xl bg-white dark:bg-[#131924] transition-all duration-150 ${
+          selected
             ? "border-2 border-orange-500 dark:border-orange-400 shadow-lg shadow-orange-500/20"
             : "border border-slate-200 dark:border-[#2a364d] shadow-sm"
-          }`}
+        }`}
       >
+        {/* Header */}
         <div className="bg-orange-50 dark:bg-orange-950/40 px-3 py-2 border-b border-orange-100 dark:border-orange-900/40 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <Menu className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400 shrink-0" />
@@ -51,12 +61,24 @@ export function MenuNode({ data, selected }: MenuNodeProps) {
               Menu Options
             </span>
           </div>
-          <span className="text-[9px] font-extrabold text-orange-600 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/50 px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
-            <ListOrdered className="h-3 w-3" />
-            {options.length}
-          </span>
+
+          <div className="flex items-center gap-1.5">
+            {/* Auto-detected delivery mode badge */}
+            {options.length > 0 && (
+              <span className={`text-[9px] font-extrabold px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0 ${badge.cls}`}>
+                {badge.icon}
+                {badge.label}
+              </span>
+            )}
+            {/* Option count badge */}
+            <span className="text-[9px] font-extrabold text-orange-600 dark:text-orange-300 bg-orange-100 dark:bg-orange-900/50 px-1.5 py-0.5 rounded flex items-center gap-0.5 shrink-0">
+              <ListOrdered className="h-3 w-3" />
+              {options.length}
+            </span>
+          </div>
         </div>
 
+        {/* Body */}
         <div className="p-2.5 space-y-2 overflow-y-auto" style={{ maxHeight: "calc(100% - 36px)" }}>
           <div>
             <h4 className="font-semibold text-[12px] text-slate-900 dark:text-white leading-tight">
@@ -95,6 +117,13 @@ export function MenuNode({ data, selected }: MenuNodeProps) {
                   )}
                 </div>
               ))}
+
+              {/* Pagination hint for >10 options */}
+              {options.length > 10 && (
+                <div className="text-[9px] text-amber-500 dark:text-amber-400 text-center pt-0.5 italic">
+                  ⚡ Auto-split into {Math.ceil(options.length / 10)} list messages
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-[10px] text-slate-400 italic text-center py-1">No options yet</div>
@@ -109,8 +138,11 @@ export function MenuNode({ data, selected }: MenuNodeProps) {
         </div>
       </div>
 
-      <Handle type="target" position={Position.Left}
-        className="!bg-orange-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!bg-orange-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]"
+      />
     </div>
   );
 }

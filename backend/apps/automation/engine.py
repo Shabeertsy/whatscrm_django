@@ -200,43 +200,85 @@ class AutomationEngine(BaseChatbotEngine):
         return next_node
 
     def _handle_menu_node(self, node, execution, reply):
-        """Present a WhatsApp interactive list menu and pause execution waiting for user input."""
+        """
+        Auto-render the menu as the optimal WhatsApp interactive message type:
+          1-3 options  → Reply Buttons
+          4-10 options → List Message
+          >10 options  → Paginated List Messages (multiple messages, 10 per page)
+        Falls back to plain numbered text if the Meta API is unavailable.
+        """
         message_text = node.config.get("message", "Please choose an option:")
         options      = node.config.get("options", [])
-        button_label = node.config.get("buttonLabel", "View Options")
         header_text  = node.config.get("header", "")
         footer_text  = node.config.get("footer", "")
+        button_label = node.config.get("buttonLabel", "View Options")
 
-        # Try to send as a real WhatsApp interactive list (max 10 options)
-        if options and len(options) <= 10 and self.conv.instance and self.conv.instance.is_active:
+        sent_interactive = False
+
+        if options and self.conv.instance and self.conv.instance.is_active:
             try:
-                from apps.messaging.utils import send_and_save_interactive_list
-                send_and_save_interactive_list(
-                    self.conv,
-                    body_text=message_text,
-                    button_label=button_label,
-                    options=options,
-                    header_text=header_text,
-                    footer_text=footer_text,
-                )
-                # Don't add to reply — already sent and saved directly
-                execution.status = ExecutionStatus.WAITING
-                execution.save(update_fields=["status"])
-                self._log_step(execution, node, StepStatus.PENDING)
-                return _WAITING
-            except Exception as exc:
-                logger.warning("[AutomationEngine] Interactive list failed (%s), falling back to plain text.", exc)
+                n = len(options)
 
-        # Fallback: plain numbered text
-        lines = [message_text]
-        for idx, opt in enumerate(options):
-            lines.append(f"{idx + 1}. {opt.get('label', f'Option {idx + 1}')}")
-        reply.add_text("\n".join(lines))
+                if n <= 3:
+                    # ── Reply Buttons ──────────────────────────────────────────
+                    from apps.messaging.utils import send_and_save_interactive_buttons
+                    send_and_save_interactive_buttons(
+                        self.conv,
+                        body_text=message_text,
+                        options=options,
+                        header_text=header_text,
+                        footer_text=footer_text,
+                    )
+                    sent_interactive = True
+
+                elif n <= 10:
+                    # ── Single List Message ────────────────────────────────────
+                    from apps.messaging.utils import send_and_save_interactive_list
+                    send_and_save_interactive_list(
+                        self.conv,
+                        body_text=message_text,
+                        button_label=button_label,
+                        options=options,
+                        header_text=header_text,
+                        footer_text=footer_text,
+                    )
+                    sent_interactive = True
+
+                else:
+                    # ── Paginated Lists (10 per page) ──────────────────────────
+                    from apps.messaging.utils import send_and_save_interactive_list
+                    page_size = 10
+                    chunks = [options[i:i + page_size] for i in range(0, n, page_size)]
+                    for page_idx, chunk in enumerate(chunks):
+                        is_first = page_idx == 0
+                        page_body = message_text if is_first else f"Continued... (part {page_idx + 1}/{len(chunks)})"
+                        send_and_save_interactive_list(
+                            self.conv,
+                            body_text=page_body,
+                            button_label=button_label or "View Options",
+                            options=chunk,
+                            header_text=header_text if is_first else "",
+                            footer_text=footer_text if page_idx == len(chunks) - 1 else "",
+                        )
+                    sent_interactive = True
+
+            except Exception as exc:
+                logger.warning(
+                    "[AutomationEngine] Interactive message failed (%s), falling back to plain text.", exc
+                )
+
+        if not sent_interactive:
+            # Fallback: plain numbered text
+            lines = [message_text]
+            for idx, opt in enumerate(options):
+                lines.append(f"{idx + 1}. {opt.get('label', f'Option {idx + 1}')}")
+            reply.add_text("\n".join(lines))
 
         execution.status = ExecutionStatus.WAITING
         execution.save(update_fields=["status"])
         self._log_step(execution, node, StepStatus.PENDING)
         return _WAITING
+
 
     def _handle_condition_node(self, node, execution, ctx):
         """Evaluate conditions sequentially and follow the matched edge."""

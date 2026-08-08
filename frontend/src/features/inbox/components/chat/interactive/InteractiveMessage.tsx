@@ -16,6 +16,16 @@ interface InteractiveListPayload {
   options: Option[];
 }
 
+interface InteractiveButtonsPayload {
+  type: 'interactive_buttons';
+  body: string;
+  header?: string;
+  footer?: string;
+  options: Option[];
+}
+
+type InteractivePayload = InteractiveListPayload | InteractiveButtonsPayload;
+
 interface InteractiveMessageProps {
   body: string;
   isOutbound: boolean;
@@ -24,9 +34,12 @@ interface InteractiveMessageProps {
 export function InteractiveMessage({ body, isOutbound }: InteractiveMessageProps) {
   if (isOutbound) {
     try {
-      const data: InteractiveListPayload = JSON.parse(body);
+      const data: InteractivePayload = JSON.parse(body);
       if (data.type === 'interactive_list') {
-        return <InteractiveListOutbound data={data} />;
+        return <InteractiveListOutbound data={data as InteractiveListPayload} />;
+      }
+      if (data.type === 'interactive_buttons') {
+        return <InteractiveButtonsOutbound data={data as InteractiveButtonsPayload} />;
       }
     } catch {
 
@@ -44,22 +57,18 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
   return (
 
     <div className="flex flex-col w-full min-w-[220px] max-w-[300px]">
-      {/* Header */}
       {data.header && (
         <div className="font-semibold text-[12px] text-slate-800 dark:text-slate-100 mb-1">
           {data.header}
         </div>
       )}
 
-      {/* Body */}
       <div className="text-[13px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-2">
         {data.body}
       </div>
 
-      {/* Divider */}
       <div className="border-t border-slate-200 dark:border-slate-600 my-1" />
 
-      {/* Options list */}
       <div className="flex flex-col gap-[3px] mb-1">
         {data.options.map((opt, i) => (
           <div
@@ -89,7 +98,6 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
         </span>
       </div>
 
-      {/* Footer */}
       {data.footer && (
         <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 text-center">
           {data.footer}
@@ -100,7 +108,46 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
 }
 
 
-//  Inbound: the customer's option-click reply
+//  Outbound: Button reply message (inline buttons)
+// ──────────────────────────────────────────────────────────────
+function InteractiveButtonsOutbound({ data }: { data: InteractiveButtonsPayload }) {
+  return (
+    <div className="flex flex-col w-full min-w-[200px] max-w-[300px]">
+      {data.header && (
+        <div className="font-semibold text-[12px] text-slate-800 dark:text-slate-100 mb-1">
+          {data.header}
+        </div>
+      )}
+
+      <div className="text-[13px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-3">
+        {data.body}
+      </div>
+
+      {/* WhatsApp-style reply buttons */}
+      <div className="flex flex-col gap-1.5">
+        {data.options.map((opt, i) => (
+          <div
+            key={opt.id || i}
+            className="flex items-center justify-center px-3 py-1.5 rounded-lg border border-[#007e3a]/50 dark:border-[#25d366]/30 bg-white/70 dark:bg-white/5 hover:bg-[#007e3a]/5 dark:hover:bg-[#25d366]/10 transition-colors cursor-default"
+          >
+            <span className="text-[12px] font-semibold text-[#007e3a] dark:text-[#25d366] text-center">
+              {opt.label}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {data.footer && (
+        <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-2 text-center">
+          {data.footer}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+//  Inbound: customer's option-click reply
 // ──────────────────────────────────────────────────────────────
 function InteractiveReplyInbound({ label }: { label: string }) {
   return (
