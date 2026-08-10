@@ -6,8 +6,9 @@ interface ChatFiltersProps {
   setSearchQuery: (q: string) => void;
   statusFilter: string;
   setStatusFilter: (f: string) => void;
-  sortBy: 'recent' | 'stage';
-  setSortBy: (s: 'recent' | 'stage') => void;
+  stageFilter: string;
+  setStageFilter: (s: string) => void;
+  availableStages: string[];
 }
 
 export function ChatFilters({
@@ -15,8 +16,9 @@ export function ChatFilters({
   setSearchQuery,
   statusFilter,
   setStatusFilter,
-  sortBy,
-  setSortBy
+  stageFilter,
+  setStageFilter,
+  availableStages
 }: ChatFiltersProps) {
   return (
     <>
@@ -53,18 +55,20 @@ export function ChatFilters({
           ))}
         </div>
 
-        <select
-          value={sortBy}
-          onChange={(e) => {
-            const val = e.target.value as 'recent' | 'stage';
-            setSortBy(val);
-            localStorage.setItem('chatSortBy', val);
-          }}
-          className="text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md px-1.5 py-1 border-none focus:ring-0 cursor-pointer outline-none ml-2 shrink-0 shadow-sm"
-        >
-          <option value="recent">Recent</option>
-          <option value="stage">Stage</option>
-        </select>
+        {availableStages.length > 0 && (
+          <select
+            value={stageFilter}
+            onChange={(e) => {
+              setStageFilter(e.target.value);
+            }}
+            className="text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md px-1.5 py-1 border-none focus:ring-0 cursor-pointer outline-none ml-2 shrink-0 shadow-sm max-w-[120px] truncate"
+          >
+            <option value="all">Stage: All</option>
+            {availableStages.map(stage => (
+               <option key={stage} value={stage}>{stage}</option>
+            ))}
+          </select>
+        )}
       </div>
     </>
   );

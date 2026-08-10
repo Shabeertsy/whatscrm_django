@@ -33,8 +33,9 @@ export const ChatList = memo(function ChatList({
     setSearchQuery,
     statusFilter,
     setStatusFilter,
-    sortBy,
-    setSortBy,
+    stageFilter,
+    setStageFilter,
+    availableStages,
     filteredChats
   } = useChatFilters(chats);
 
@@ -199,8 +200,9 @@ export const ChatList = memo(function ChatList({
           setSearchQuery={setSearchQuery}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
+          stageFilter={stageFilter}
+          setStageFilter={setStageFilter}
+          availableStages={availableStages}
         />
 
         {/* Select Mode Bar & Bulk Actions */}
