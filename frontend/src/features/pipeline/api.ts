@@ -58,8 +58,9 @@ export const activatePipeline = async (id: string): Promise<Pipeline> => {
 
 // ─── Stage APIs ─────────────────────────────────────────────────────────────
 
-export const getStages = async (pipelineId: string): Promise<PipelineStage[]> => {
-  const res = await apiClient.get('/contacts/pipeline/stages/', { params: { pipeline: pipelineId } });
+export const getStages = async (pipelineId?: string): Promise<PipelineStage[]> => {
+  const params = pipelineId ? { pipeline: pipelineId } : {};
+  const res = await apiClient.get('/contacts/pipeline/stages/', { params });
   return res.data;
 };
 

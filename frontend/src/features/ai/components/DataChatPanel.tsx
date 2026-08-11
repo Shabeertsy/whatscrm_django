@@ -46,6 +46,30 @@ function renderText(text: string) {
   });
 }
 
+function calculateTopPosition(
+  anchorY: number,
+  panelHeight: number,
+  padding: number,
+  windowHeight: number
+): number {
+  const actualHeight = Math.min(panelHeight, windowHeight - 120);
+  let top = anchorY - actualHeight - 12;
+
+  if (top < padding) {
+    top = anchorY + 52 + 12;
+
+    if (top + actualHeight + padding > windowHeight) {
+      top = windowHeight - actualHeight - padding;
+    }
+
+    if (top < padding) {
+      top = padding;
+    }
+  }
+
+  return top;
+}
+
 interface DataChatPanelProps {
   onClose: () => void;
   anchorPos?: { x: number; y: number };
@@ -125,11 +149,8 @@ export function DataChatPanel({ onClose, anchorPos }: DataChatPanelProps) {
     const panelWidth = 380;
     const padding = 16;
 
-    if (anchorPos.y - panelHeight - padding > 0) {
-      panelStyle.top = `${anchorPos.y - panelHeight - 12}px`;
-    } else {
-      panelStyle.top = `${anchorPos.y + 52 + 12}px`;
-    }
+    const top = calculateTopPosition(anchorPos.y, panelHeight, padding, window.innerHeight);
+    panelStyle.top = `${top}px`;
 
     let left = anchorPos.x - panelWidth + 52;
     if (left < padding) left = padding;

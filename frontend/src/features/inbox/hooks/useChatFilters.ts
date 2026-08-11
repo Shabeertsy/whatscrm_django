@@ -1,22 +1,22 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import type { Conversation } from '../../../api/messaging';
-
-
+import { getStages, PipelineStage } from '../../pipeline/api';
 
 export function useChatFilters(chats: Conversation[]) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
+  const [allStages, setAllStages] = useState<PipelineStage[]>([]);
+
+  useEffect(() => {
+    // Fetch all stages for the active pipeline
+    getStages().then(stages => setAllStages(stages)).catch(err => console.error("Failed to load stages:", err));
+  }, []);
 
   const availableStages = useMemo(() => {
-    const stages = new Set<string>();
-    chats.forEach(c => {
-      if (c.contact?.stage_name) {
-        stages.add(c.contact.stage_name);
-      }
-    });
-    return Array.from(stages).sort();
-  }, [chats]);
+    // Return all stage titles from the active pipeline
+    return allStages.map(s => s.title);
+  }, [allStages]);
 
   const filteredChats = useMemo(() => {
     let result = chats.filter((c) => {
