@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
+import csv
+import io
 
 from apps.core.permissions import RequirePermission, Permission
 
@@ -26,6 +28,8 @@ from .serializers import (
     ContactSerializer, ContactTagSerializer,
     PipelineSerializer, PipelineStageSerializer, PipelineDealSerializer
 )
+
+from .utils import process_csv_import
 
 from django.db.models import Q
 from django.db import transaction
@@ -109,8 +113,11 @@ class ContactListCreateView(APIView):
             
         status_filter = request.query_params.get('status', '').strip()
         if status_filter:
-
             qs = qs.filter(status=status_filter)
+
+        source_filter = request.query_params.get('source', '').strip()
+        if source_filter:
+            qs = qs.filter(source=source_filter)
 
         paginator = ContactPagination()
         paginated_qs = paginator.paginate_queryset(qs, request, view=self)
@@ -221,6 +228,7 @@ class WAContactsImportView(APIView):
                 phone=wa_contact.phone,
                 wa_id=wa_id,
                 status='Active',
+                source='whatsapp',
             )
             wa_contact.crm_contact = crm
             wa_contact.is_saved = True
@@ -235,8 +243,27 @@ class WAContactsImportView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-# ─── Pipeline CRUD ────────────────────────────────────────────────────────────
+class CSVImportView(APIView):
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CONTACTS
 
+    def post(self, request):
+        csv_file = request.FILES.get('file')
+        if not csv_file:
+            return Response({'detail': 'No file provided.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not csv_file.name.lower().endswith('.csv'):
+            return Response({'detail': 'Only CSV files are supported.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        success, result, status_code = process_csv_import(csv_file, request.user)
+        
+        if not success:
+            return Response({'detail': result}, status=status_code)
+            
+        return Response(result, status=status_code)
+
+
+# ─── Pipeline CRUD ─────────────────
 class PipelineListCreateView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_PIPELINE
@@ -347,7 +374,7 @@ class PipelineActivateView(APIView):
         return Response(PipelineSerializer(pipeline).data)
 
 
-# ─── Stage APIs (scoped to pipeline) ─────────────────────────────────────────
+# ─── Stage APIs (scoped to pipeline) ──────
 
 class PipelineStageListCreateView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
@@ -470,8 +497,8 @@ class PipelineStageSwapView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-# ─── Deal APIs (scoped to pipeline) ──────────────────────────────────────────
 
+# ─── Deal APIs (scoped to pipeline) ───────────────────────
 class PipelineDealListCreateView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_PIPELINE

@@ -3,6 +3,7 @@ from .views import (
     ContactListCreateView, ContactDetailView,
     ContactTagListCreateView, ContactTagDetailView,
     WAContactsListView, WAContactsImportView,
+    CSVImportView,
     PipelineListCreateView, PipelineDetailView, PipelineActivateView,
     PipelineStageListCreateView, PipelineStageDetailView, PipelineStageSwapView,
     PipelineDealListCreateView, PipelineDealDetailView,
@@ -15,6 +16,7 @@ urlpatterns = [
     path('tags/<uuid:pk>/', ContactTagDetailView.as_view(), name='tag_detail'),
     path('wa-contacts/', WAContactsListView.as_view(), name='wa_contacts_list'),
     path('wa-import/', WAContactsImportView.as_view(), name='wa_contacts_import'),
+    path('csv-import/', CSVImportView.as_view(), name='csv_import'),
 
     # Pipeline
     path('pipelines/', PipelineListCreateView.as_view(), name='pipeline_list'),

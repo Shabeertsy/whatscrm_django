@@ -27,11 +27,18 @@ class Contact(BaseModel, SoftDeleteModel):
         ('Inactive', 'Inactive'),
     ]
 
+    SOURCE_CHOICES = [
+        ('manual', 'Manual'),
+        ('whatsapp', 'WhatsApp'),
+        ('csv', 'CSV'),
+    ]
+
     name = models.CharField(max_length=255)
     phone = models.CharField(max_length=50)
     email = models.EmailField(blank=True, default='')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Active')
     notes = models.TextField(blank=True, default='')
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES, default='manual')
 
     # Link to WhatsApp contact (populated when imported from chat)
     wa_id = models.CharField(max_length=30, blank=True, default='')

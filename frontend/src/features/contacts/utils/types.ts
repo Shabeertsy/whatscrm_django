@@ -12,6 +12,7 @@ export interface Contact {
   email: string;
   status: string;
   notes: string;
+  source?: 'manual' | 'whatsapp' | 'csv';
   tags: CTag[];
   created_at: string;
   wa_id?: string;

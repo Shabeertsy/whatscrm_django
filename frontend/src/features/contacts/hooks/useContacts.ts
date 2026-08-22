@@ -5,7 +5,7 @@ import { showToast } from '../../../utils/toast';
 
 
 
-export function useContacts(search: string, filterTag: string, filterStatus: string) {
+export function useContacts(search: string, filterTag: string, filterStatus: string, filterSource: string = '') {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [tags, setTags] = useState<CTag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -14,13 +14,15 @@ export function useContacts(search: string, filterTag: string, filterStatus: str
   const pageSize = 10;
 
   // Reset page when filters change
-  useEffect(() => { setPage(1); }, [search, filterTag, filterStatus]);
+  useEffect(() => { setPage(1); }, [search, filterTag, filterStatus, filterSource]);
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const params: Record<string, any> = { search, tag: filterTag, status: filterStatus, page };
+      if (filterSource) params.source = filterSource;
       const [cRes, tRes] = await Promise.all([
-        contactsApi.getContacts({ search, tag: filterTag, status: filterStatus, page }),
+        contactsApi.getContacts(params),
         contactsApi.getTags(),
       ]);
       setContacts(cRes.data.results || []);
@@ -28,9 +30,9 @@ export function useContacts(search: string, filterTag: string, filterStatus: str
       setTags(tRes.data);
     } catch {}
     setLoading(false);
-  }, [search, filterTag, filterStatus, page]);
+  }, [search, filterTag, filterStatus, filterSource, page]);
 
-  useEffect(() => { loadData(); }, [search, filterTag, filterStatus, page]);
+  useEffect(() => { loadData(); }, [search, filterTag, filterStatus, filterSource, page]);
 
   const refreshTags = () => contactsApi.getTags().then(r => setTags(r.data));
 

@@ -33,4 +33,13 @@ export const contactsApi = {
 
   importWAContacts: (wa_ids: string[]) =>
     apiClient.post('/contacts/wa-import/', { wa_ids }),
+
+  // CSV import
+  importContactsFromCSV: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return apiClient.post('/contacts/csv-import/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
 };
