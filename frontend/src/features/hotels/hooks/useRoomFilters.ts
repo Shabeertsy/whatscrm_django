@@ -27,7 +27,7 @@ export function useRoomFilters() {
         roomTypes: [],
         amenities: [],
         priceMin: 0,
-        priceMax: 15000,
+        priceMax: 50000,
         hideUnavailable: false,
         adults: 1,
         children: 0,
@@ -53,7 +53,7 @@ export function useRoomFilters() {
             roomTypes: [],
             amenities: [],
             priceMin: 0,
-            priceMax: 15000,
+            priceMax: 50000,
             hideUnavailable: false,
         }));
     };

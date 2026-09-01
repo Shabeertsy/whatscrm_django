@@ -58,7 +58,7 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
       if (filters.roomTypes.length > 0) params.room_type = filters.roomTypes.join(',');
       if (filters.amenities.length > 0) params.amenities = filters.amenities.join(',');
       if (filters.priceMin > 0) params.min_price = filters.priceMin;
-      if (filters.priceMax < 20000) params.max_price = filters.priceMax;
+      if (filters.priceMax < 50000) params.max_price = filters.priceMax;
 
       const user = authStore.getState().user;
       const isSuperuser = user?.is_superuser || user?.role === 'Owner';

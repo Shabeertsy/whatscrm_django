@@ -60,18 +60,18 @@ export function HotelFilters({
           <div 
             className="absolute h-full bg-[#007e3a] rounded-full"
             style={{ 
-              left: `${(localPriceMin / 20000) * 100}%`, 
-              right: `${100 - (localPriceMax / 20000) * 100}%` 
+              left: `${(localPriceMin / 50000) * 100}%`, 
+              right: `${100 - (localPriceMax / 50000) * 100}%` 
             }}
           />
           <input 
-            type="range" min="0" max="20000" step="100" 
+            type="range" min="0" max="50000" step="100" 
             value={localPriceMin}
             onChange={e => setLocalPriceMin(Math.min(Number(e.target.value), localPriceMax - 100))}
             className="absolute inset-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#007e3a] [&::-webkit-slider-thumb]:cursor-grab"
           />
           <input 
-            type="range" min="0" max="20000" step="100" 
+            type="range" min="0" max="50000" step="100" 
             value={localPriceMax}
             onChange={e => setLocalPriceMax(Math.max(Number(e.target.value), localPriceMin + 100))}
             className="absolute inset-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#007e3a] [&::-webkit-slider-thumb]:cursor-grab"
