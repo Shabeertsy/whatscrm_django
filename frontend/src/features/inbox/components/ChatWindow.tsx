@@ -105,10 +105,12 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
       
       // Scroll to bottom if:
       // 1. It's a new conversation being loaded
-      // 2. We were already near the bottom (new incoming message)
-      // 3. User just sent a message (new message at the end, and we assume they want to see it)
+      // 2. Initial messages just finished loading (length went from 0 to > 0)
+      // 3. We were already near the bottom (new incoming message)
+      // 4. User just sent a message (new message at the end, and we assume they want to see it)
       if (
         isNewConversation || 
+        (prevMessagesLength.current === 0 && messages.length > 0) ||
         (messages.length > prevMessagesLength.current && wasNearBottom) ||
         (messages.length === 0) 
       ) {
