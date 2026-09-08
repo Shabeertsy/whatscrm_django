@@ -22,6 +22,7 @@ from apps.core.permissions import RequirePermission, Permission
 from apps.core.scoping import scope_by_location, scope_by_owner
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework.pagination import LimitOffsetPagination
 
 from apps.whatsapp.models import WhatsappInstance
 from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem
@@ -129,8 +130,14 @@ class ConversationListAPIView(APIView):
                  qs.filter(contact__phone__icontains=search)
 
         qs = qs.order_by('-last_message_at')
-        serializer = ConversationListSerializer(qs, many=True)
-        return Response(serializer.data)
+        
+        paginator = LimitOffsetPagination()
+        if not request.query_params.get('limit'):
+            paginator.default_limit = 30
+            
+        paginated_qs = paginator.paginate_queryset(qs, request, view=self)
+        serializer = ConversationListSerializer(paginated_qs, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
 class ConversationDetailAPIView(APIView):
@@ -140,12 +147,6 @@ class ConversationDetailAPIView(APIView):
     def get(self, request, pk):
         qs = Conversation.objects.select_related(
             'contact', 'contact__crm_contact', 'instance', 'assigned_agent'
-        ).prefetch_related(
-            'messages',
-            'messages__sent_by',
-            'messages__replied_to',
-            'messages__replied_to__sent_by',
-            'messages__replied_to__conversation__contact__crm_contact'
         )
 
         # owner and location isolation
@@ -177,6 +178,36 @@ class ConversationDetailAPIView(APIView):
                 
         conv.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class ConversationMessagesAPIView(APIView):
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
+
+    def get(self, request, pk):
+        qs = Conversation.objects.all()
+
+        # owner and location isolation
+        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
+        qs = scope_by_location(qs, request.user, location_field='contact__location')
+        
+        conv = get_object_or_404(qs, pk=pk)
+        
+        messages_qs = conv.messages.select_related(
+            'sent_by',
+            'replied_to',
+            'replied_to__sent_by',
+            'replied_to__conversation__contact__crm_contact'
+        ).order_by('-timestamp')
+        
+        paginator = LimitOffsetPagination()
+        # Default limit if not provided
+        if not request.query_params.get('limit'):
+            paginator.default_limit = 50
+            
+        paginated_messages = paginator.paginate_queryset(messages_qs, request, view=self)
+        serializer = MessageSerializer(paginated_messages, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
 
 

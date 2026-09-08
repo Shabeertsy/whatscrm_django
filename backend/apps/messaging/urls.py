@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ContactViewSet,
     ConversationListAPIView, ConversationDetailAPIView,
+    ConversationMessagesAPIView,
     ConversationSendMessageAPIView, ConversationMarkReadAPIView,
     StartConversationAPIView,
     GlobalActiveFlowsAPIView, GlobalCancelFlowAPIView,
@@ -23,6 +24,7 @@ urlpatterns = [
     path('conversations/', ConversationListAPIView.as_view(), name='conversation-list'),
     path('conversations/start/', StartConversationAPIView.as_view(), name='conversation-start'),
     path('conversations/<int:pk>/', ConversationDetailAPIView.as_view(), name='conversation-detail'),
+    path('conversations/<int:pk>/messages/', ConversationMessagesAPIView.as_view(), name='conversation-messages'),
     path('conversations/<int:pk>/send/', ConversationSendMessageAPIView.as_view(), name='conversation-send-message'),
     path('conversations/<int:pk>/mark-read/', ConversationMarkReadAPIView.as_view(), name='conversation-mark-read'),
 

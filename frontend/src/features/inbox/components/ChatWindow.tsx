@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, memo } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
-import { messagingStore } from "../../../store/messagingStore";
-import { User2, ChevronDown, Bot } from "lucide-react";
+import { useMessagingStore, messagingStore } from "../../../store/messagingStore";
+import { User2, ChevronDown, Bot, Loader2 } from "lucide-react";
 import { useRouter } from "../../../router";
 
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
@@ -26,11 +26,46 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
   const [showScrollButton, setShowScrollButton] = useState(false);
   const { navigate } = useRouter();
 
+  const [store] = useMessagingStore();
+  const { hasMoreMessages, messageOffsets, isLoadingMoreMessages } = store;
+  const hasMore = hasMoreMessages[conversation.id];
+  const offset = messageOffsets[conversation.id] || 0;
+
   const handleScroll = () => {
     if (scrollRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
       // Show button if we are scrolled up by more than 100px from the bottom
       setShowScrollButton(scrollHeight - scrollTop - clientHeight > 100);
+
+      if (scrollTop < 50 && hasMore && !isLoadingMoreMessages) {
+        handleLoadMore();
+      }
+    }
+  };
+
+  const handleLoadMore = async () => {
+    messagingStore.setState({ isLoadingMoreMessages: true });
+    try {
+      const oldScrollHeight = scrollRef.current?.scrollHeight || 0;
+      const limit = 50;
+      
+      const res = await messagingApi.getConversationMessages(conversation.id, limit, offset);
+      const newMessages = [...res.data.results].reverse();
+      const nextHasMore = !!res.data.next;
+      const nextOffset = offset + limit;
+
+      messagingStore.prependMessages(conversation.id, newMessages, nextHasMore, nextOffset);
+
+      // Restore scroll position after DOM updates
+      setTimeout(() => {
+        if (scrollRef.current) {
+          const newScrollHeight = scrollRef.current.scrollHeight;
+          scrollRef.current.scrollTop = newScrollHeight - oldScrollHeight;
+        }
+      }, 0);
+    } catch (err) {
+      console.error('Failed to load older messages', err);
+      messagingStore.setState({ isLoadingMoreMessages: false });
     }
   };
 
@@ -58,12 +93,34 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
     }
   };
 
-  // Auto-scroll to bottom on new messages
+  const prevConvId = useRef(conversation.id);
+  const prevMessagesLength = useRef(messages.length);
+
+  // Auto-scroll logic
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const isNewConversation = prevConvId.current !== conversation.id;
+      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+      const wasNearBottom = scrollHeight - scrollTop - clientHeight < 150;
+      
+      // Scroll to bottom if:
+      // 1. It's a new conversation being loaded
+      // 2. We were already near the bottom (new incoming message)
+      // 3. User just sent a message (new message at the end, and we assume they want to see it)
+      if (
+        isNewConversation || 
+        (messages.length > prevMessagesLength.current && wasNearBottom) ||
+        (messages.length === 0) 
+      ) {
+        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      }
+      
+      if (isNewConversation) {
+        prevConvId.current = conversation.id;
+      }
+      prevMessagesLength.current = messages.length;
     }
-  }, [messages]);
+  }, [messages, conversation.id]);
 
   const handleToggleStatus = async () => {
     const nextStatus: 'open' | 'resolved' = conversation.status === 'resolved' ? 'open' : 'resolved';
@@ -173,15 +230,22 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
             </span>
           </div>
         ) : (
-          messages.map((m) => (
-            <MessageBubble
-              key={m.id}
-              message={m}
-              isOutbound={m.direction === 'outbound'}
-              onReply={onReply}
-              onDelete={setDeleteId}
-            />
-          ))
+          <>
+            {isLoadingMoreMessages && (
+              <div className="flex justify-center py-2">
+                <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
+              </div>
+            )}
+            {messages.map((m) => (
+              <MessageBubble
+                key={m.id}
+                message={m}
+                isOutbound={m.direction === 'outbound'}
+                onReply={onReply}
+                onDelete={setDeleteId}
+              />
+            ))}
+          </>
         )}
       </div>
 

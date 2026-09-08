@@ -194,10 +194,8 @@ class ConversationListSerializer(serializers.ModelSerializer):
 
 
 class ConversationDetailSerializer(ConversationListSerializer):
-    messages = MessageSerializer(many=True, read_only=True)
-
     class Meta(ConversationListSerializer.Meta):
-        fields = ConversationListSerializer.Meta.fields + ['messages']
+        pass
 
 
 class ConversationUpdateSerializer(serializers.ModelSerializer):

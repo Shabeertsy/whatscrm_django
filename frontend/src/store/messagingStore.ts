@@ -5,24 +5,34 @@ import type { Conversation, Message } from '../api/messaging';
 //  State Shape 
 interface MessagingState {
   conversations: Conversation[];
+  hasMoreConversations: boolean;
+  conversationOffset: number;
   activeConversationId: string | null;
   messagesByConvId: Record<string, Message[]>;
+  hasMoreMessages: Record<string, boolean>;
+  messageOffsets: Record<string, number>;
   filter: 'all' | 'open' | 'pending' | 'resolved';
   search: string;
   isLoadingConversations: boolean;
   isLoadingMessages: boolean;
+  isLoadingMoreMessages: boolean;
   isConnected: boolean;   // WebSocket status
   error: string | null;
 }
 
 const initialState: MessagingState = {
   conversations: [],
+  hasMoreConversations: false,
+  conversationOffset: 0,
   activeConversationId: null,
   messagesByConvId: {},
+  hasMoreMessages: {},
+  messageOffsets: {},
   filter: 'all',
   search: '',
   isLoadingConversations: false,
   isLoadingMessages: false,
+  isLoadingMoreMessages: false,
   isConnected: false,
   error: null,
 };
@@ -55,8 +65,22 @@ class MessagingStore {
 
   // ── Actions ─────────────────────────────
 
-  setConversations = (conversations: Conversation[]) =>
-    this.setState({ conversations, isLoadingConversations: false, error: null });
+  setConversations = (conversations: Conversation[], hasMore: boolean = false, offset: number = 0) =>
+    this.setState({ conversations, hasMoreConversations: hasMore, conversationOffset: offset, isLoadingConversations: false, error: null });
+
+  appendConversations = (olderConversations: Conversation[], hasMore: boolean, offset: number) => {
+    this.setState((s) => {
+      // Filter out duplicates just in case
+      const existingIds = new Set(s.conversations.map(c => c.id));
+      const uniqueOlder = olderConversations.filter(c => !existingIds.has(c.id));
+      
+      return {
+        conversations: [...s.conversations, ...uniqueOlder],
+        hasMoreConversations: hasMore,
+        conversationOffset: offset,
+      };
+    });
+  };
 
   setActiveConversation = (id: string | null) => {
     this.setState({ activeConversationId: id });
@@ -70,11 +94,33 @@ class MessagingStore {
   };
 
 
-  setMessages = (conversationId: string, messages: Message[]) => {
+  setMessages = (conversationId: string, messages: Message[], hasMore: boolean, offset: number) => {
     this.setState((s) => ({
       messagesByConvId: { ...s.messagesByConvId, [conversationId]: messages },
+      hasMoreMessages: { ...s.hasMoreMessages, [conversationId]: hasMore },
+      messageOffsets: { ...s.messageOffsets, [conversationId]: offset },
       isLoadingMessages: false,
     }));
+  };
+
+  prependMessages = (conversationId: string, olderMessages: Message[], hasMore: boolean, offset: number) => {
+    this.setState((s) => {
+      const current = s.messagesByConvId[conversationId] || [];
+      // Combine and remove duplicates, older messages should be at the top of the array since they have older timestamps.
+      // But wait, our backend ordered by `-timestamp` which means the newest are first in the paginated response!
+      // So the frontend array needs to be reversed if the UI expects older messages at the top.
+      // Actually, let's see how the frontend renders them. 
+      // If messages.map renders top-down, the oldest must be index 0.
+      return {
+        messagesByConvId: {
+          ...s.messagesByConvId,
+          [conversationId]: [...olderMessages, ...current]
+        },
+        hasMoreMessages: { ...s.hasMoreMessages, [conversationId]: hasMore },
+        messageOffsets: { ...s.messageOffsets, [conversationId]: offset },
+        isLoadingMoreMessages: false,
+      };
+    });
   };
 
   /** Add a single new message (from WebSocket or after sending) */
@@ -134,11 +180,28 @@ class MessagingStore {
 
   /** Update conversation's last_message preview + unread count */
   updateConversationMeta = (conversationId: string, patch: Partial<Conversation>) => {
-    this.setState((s) => ({
-      conversations: s.conversations.map((c) =>
-        c.id === conversationId ? { ...c, ...patch } : c
-      ),
-    }));
+    this.setState((s) => {
+      let needsSort = false;
+      const updatedConversations = s.conversations.map((c) => {
+        if (c.id === conversationId) {
+          if (patch.last_message_at) {
+            needsSort = true;
+          }
+          return { ...c, ...patch };
+        }
+        return c;
+      });
+
+      if (needsSort) {
+        updatedConversations.sort((a, b) => {
+          const timeA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+          const timeB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+          return timeB - timeA;
+        });
+      }
+
+      return { conversations: updatedConversations };
+    });
   };
 
   markRead = (conversationId: string) => {

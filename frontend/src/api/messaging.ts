@@ -65,7 +65,20 @@ export interface Message {
 }
 
 export interface ConversationDetail extends Conversation {
-  messages: Message[];
+}
+
+export interface PaginatedMessages {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Message[];
+}
+
+export interface PaginatedConversations {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: Conversation[];
 }
 
 export interface CustomMessage {
@@ -105,13 +118,18 @@ export interface FlowExecution {
 //  API Functions 
 export const messagingApi = {
   /** List conversations — optionally filter by status */
-  listConversations(params?: { status?: string; search?: string }) {
-    return apiClient.get<Conversation[]>(`${BASE}/conversations/`, { params });
+  listConversations(params?: { status?: string; search?: string; limit?: number; offset?: number }) {
+    return apiClient.get<PaginatedConversations>(`${BASE}/conversations/`, { params });
   },
 
   /** Load full conversation with messages */
   getConversation(id: string) {
     return apiClient.get<ConversationDetail>(`${BASE}/conversations/${id}/`);
+  },
+
+  /** Get paginated messages for a conversation */
+  getConversationMessages(id: string, limit: number = 50, offset: number = 0) {
+    return apiClient.get<PaginatedMessages>(`${BASE}/conversations/${id}/messages/`, { params: { limit, offset } });
   },
 
   /** Send an outbound message */

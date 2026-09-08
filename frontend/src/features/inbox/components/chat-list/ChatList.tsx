@@ -9,6 +9,7 @@ import { ConfirmDialog } from "../../../../components/shared/ConfirmDialog";
 import { useChatFilters } from "../../hooks/useChatFilters";
 import { ChatFilters } from "./ChatFilters";
 import { ContactAvatar } from "./ContactAvatar";
+import { useMessagingStore } from "../../../../store/messagingStore";
 
 
 interface ChatListProps {
@@ -49,6 +50,9 @@ export const ChatList = memo(function ChatList({
   const [loadingCustomMessages, setLoadingCustomMessages] = useState(false);
   const [selectedCustomMsg, setSelectedCustomMsg] = useState<CustomMessage | null>(null);
   const [isSendingCustomMsg, setIsSendingCustomMsg] = useState(false);
+
+  const [store] = useMessagingStore();
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   // Delete Confirm Modal State
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
@@ -118,6 +122,29 @@ export const ChatList = memo(function ChatList({
       showToast("Error", "Failed to load saved custom messages.", "error");
     } finally {
       setLoadingCustomMessages(false);
+    }
+  };
+
+  const handleScroll = async (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 50;
+
+    if (isNearBottom && store.hasMoreConversations && !isLoadingMore) {
+      setIsLoadingMore(true);
+      try {
+        const limit = 30;
+        const offset = store.conversationOffset;
+        // Since we filtered chats locally via searchQuery/statusFilter, loading more might be tricky.
+        // We will pass current search and status filter to the API if needed, 
+        // but for now we'll just fetch the next page of the global list.
+        const res = await messagingApi.listConversations({ limit, offset });
+        const nextHasMore = !!res.data.next;
+        messagingStore.appendConversations(res.data.results, nextHasMore, offset + limit);
+      } catch (err) {
+        console.error("Failed to load more conversations", err);
+      } finally {
+        setIsLoadingMore(false);
+      }
     }
   };
 
@@ -276,7 +303,10 @@ export const ChatList = memo(function ChatList({
       </div>
 
       {/* Chat / Contact List */}
-      <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+      <div 
+        className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800"
+        onScroll={handleScroll}
+      >
         {isLoading ? (
           <div className="p-8 text-center text-xs text-slate-500">
             Loading conversations...
@@ -405,6 +435,12 @@ export const ChatList = memo(function ChatList({
               </button>
             );
           })
+        )}
+        
+        {isLoadingMore && (
+          <div className="p-4 flex justify-center">
+            <Loader2 className="h-5 w-5 text-[#007e3a] animate-spin" />
+          </div>
         )}
       </div>
 

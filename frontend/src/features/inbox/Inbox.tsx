@@ -60,12 +60,17 @@ export function Inbox() {
 
   // Load conversations on mount
   useEffect(() => {
-    messagingStore.setState({ isLoadingConversations: true });
-    messagingApi.listConversations()
+    // Zero-delay: don't show loading if we already have conversations
+    if (store.conversations.length === 0) {
+      messagingStore.setState({ isLoadingConversations: true });
+    }
+    
+    messagingApi.listConversations({ limit: 30, offset: 0 })
       .then(res => {
-        messagingStore.setConversations(res.data);
-        if (res.data.length > 0 && !store.activeConversationId) {
-          messagingStore.setActiveConversation(res.data[0].id);
+        const hasMore = !!res.data.next;
+        messagingStore.setConversations(res.data.results, hasMore, 30);
+        if (res.data.results.length > 0 && !store.activeConversationId) {
+          messagingStore.setActiveConversation(res.data.results[0].id);
         }
       })
       .catch(err => {
@@ -87,9 +92,18 @@ export function Inbox() {
 
     if (!store.messagesByConvId[store.activeConversationId]) {
       messagingStore.setState({ isLoadingMessages: true });
-      messagingApi.getConversation(store.activeConversationId)
-        .then(res => {
-          messagingStore.setMessages(store.activeConversationId!, res.data.messages || []);
+      const activeId = store.activeConversationId;
+      
+      Promise.all([
+        messagingApi.getConversation(activeId),
+        messagingApi.getConversationMessages(activeId, 50, 0)
+      ])
+        .then(([convRes, messagesRes]) => {
+          // Backend returns newest messages first due to -timestamp ordering.
+          // Reverse them so the oldest is rendered at the top and newest at the bottom.
+          const messages = [...messagesRes.data.results].reverse();
+          const hasMore = !!messagesRes.data.next;
+          messagingStore.setMessages(activeId, messages, hasMore, 50);
         })
         .catch(err => {
           console.error("Failed to load messages:", err);
