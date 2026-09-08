@@ -58,8 +58,8 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
   const loadConversations = async () => {
     setShareStep('select_chats');
     try {
-      const res = await messagingApi.listConversations();
-      setShareConversations(res.data);
+      const res = await messagingApi.listConversations({ limit: 100, offset: 0 });
+      setShareConversations(res.data.results);
     } catch(err) {
       console.error("Failed to fetch conversations", err);
     }
