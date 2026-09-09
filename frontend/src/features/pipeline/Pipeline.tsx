@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import PageHeader from "../../components/shared/PageHeader";
 import KanbanBoard from "./KanbanBoard";
-import { Plus } from "lucide-react";
+import { Plus, Loader2 } from "lucide-react";
 import { usePipeline } from "./hooks/usePipeline";
 import { AddDealModal } from "./components/AddDealModal";
 import { CreatePipelineModal } from "./components/CreatePipelineModal";
@@ -31,6 +31,7 @@ export function Pipeline() {
     handleMoveDeal,
     handleSaveDeal,
     handleDeleteDeal,
+    isLoading,
   } = usePipeline();
 
   const [showAddDealModal, setShowAddDealModal] = useState(false);
@@ -77,18 +78,24 @@ export function Pipeline() {
         />
       )}
 
-      {/* Kanban board fills remaining height — horizontal scroll handled inside KanbanBoard */}
-      <div className="flex-1 min-h-0">
-        <KanbanBoard
-          stages={activePipeline?.stages || []}
-          deals={deals}
-          onMoveDeal={handleMoveDeal}
-          onEditDeal={(deal) => setEditingDeal(deal)}
-          onUpdateStage={handleUpdateStage}
-          onSwapStages={handleSwapStages}
-          onDeleteStage={handleDeleteStage}
-        />
-      </div>
+      {isLoading ? (
+        <div className="flex-1 min-h-0 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#007e3a]" />
+        </div>
+      ) : (
+        /* Kanban board fills remaining height — horizontal scroll handled inside KanbanBoard */
+        <div className="flex-1 min-h-0">
+          <KanbanBoard
+            stages={activePipeline?.stages || []}
+            deals={deals}
+            onMoveDeal={handleMoveDeal}
+            onEditDeal={(deal) => setEditingDeal(deal)}
+            onUpdateStage={handleUpdateStage}
+            onSwapStages={handleSwapStages}
+            onDeleteStage={handleDeleteStage}
+          />
+        </div>
+      )}
 
       {(showAddDealModal || editingDeal) && (
         <AddDealModal

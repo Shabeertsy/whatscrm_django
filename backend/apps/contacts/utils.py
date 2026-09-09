@@ -3,6 +3,7 @@ import io
 from .models import Contact
 from .serializers import ContactSerializer
 from apps.core.scoping import scope_by_owner, get_tenant_owner
+from django.core.cache import cache
 
 
 
@@ -77,3 +78,19 @@ def process_csv_import(csv_file, user):
         'error_count': len(errors),
         'errors': errors,
     }, 201
+
+
+
+def get_pipeline_cache_version(owner_id):
+    if not owner_id:
+        return 1
+    return cache.get(f"pipeline_version_{owner_id}", 1)
+
+def increment_pipeline_cache_version(owner_id):
+    if not owner_id:
+        return
+    cache_key = f"pipeline_version_{owner_id}"
+    try:
+        cache.incr(cache_key)
+    except ValueError:
+        cache.set(cache_key, 1, timeout=None)

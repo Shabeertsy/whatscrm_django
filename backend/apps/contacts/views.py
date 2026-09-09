@@ -6,7 +6,9 @@ from rest_framework.pagination import PageNumberPagination
 import csv
 import io
 
+from django.core.cache import cache
 from apps.core.permissions import RequirePermission, Permission
+from .utils import get_pipeline_cache_version
 
 
 from apps.core.scoping import (
@@ -269,6 +271,14 @@ class PipelineListCreateView(APIView):
     required_permission = Permission.ACCESS_PIPELINE
 
     def get(self, request):
+        owner_id = get_tenant_owner(request.user).id
+        cache_version = get_pipeline_cache_version(owner_id)
+        cache_key = f"pipeline_list_{request.user.id}_{cache_version}"
+        
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
         pipelines = scope_by_owner(Pipeline.objects.all(), request.user)
         # Auto-create a default pipeline if user has none
         if not pipelines.exists():
@@ -286,7 +296,10 @@ class PipelineListCreateView(APIView):
                     owner=get_tenant_owner(request.user),
                 )
                 pipelines = scope_by_owner(Pipeline.objects.all(), request.user)
-        return Response(PipelineSerializer(pipelines, many=True).data)
+        
+        data = PipelineSerializer(pipelines, many=True).data
+        cache.set(cache_key, data, timeout=3600)
+        return Response(data)
 
     def post(self, request):
         serializer = PipelineSerializer(data=request.data)
@@ -387,9 +400,18 @@ class PipelineStageListCreateView(APIView):
             return None
 
     def get(self, request):
-        pipeline_id = request.query_params.get('pipeline')
-        if pipeline_id:
-            pipeline = self._get_pipeline(pipeline_id, request.user)
+        pipeline_id_param = request.query_params.get('pipeline')
+        
+        owner_id = get_tenant_owner(request.user).id
+        cache_version = get_pipeline_cache_version(owner_id)
+        cache_key = f"pipeline_stages_{request.user.id}_{pipeline_id_param or 'default'}_{cache_version}"
+
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
+        if pipeline_id_param:
+            pipeline = self._get_pipeline(pipeline_id_param, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
             stages = scope_by_owner(PipelineStage.objects.filter(pipeline=pipeline), request.user)
@@ -399,7 +421,10 @@ class PipelineStageListCreateView(APIView):
             if not pipeline:
                 return Response([], status=status.HTTP_200_OK)
             stages = scope_by_owner(PipelineStage.objects.filter(pipeline=pipeline), request.user)
-        return Response(PipelineStageSerializer(stages, many=True).data)
+            
+        data = PipelineStageSerializer(stages, many=True).data
+        cache.set(cache_key, data, timeout=3600)
+        return Response(data)
 
     def post(self, request):
         pipeline_id = request.data.get('pipeline')
@@ -510,33 +535,43 @@ class PipelineDealListCreateView(APIView):
             return None
 
     def get(self, request):
-        pipeline_id = request.query_params.get('pipeline')
-        timeframe = request.query_params.get('timeframe')
+        pipeline_id_param = request.query_params.get('pipeline')
+        timeframe_param = request.query_params.get('timeframe')
 
-        if pipeline_id:
-            pipeline = self._get_pipeline(pipeline_id, request.user)
+        owner_id = get_tenant_owner(request.user).id
+        cache_version = get_pipeline_cache_version(owner_id)
+        cache_key = f"pipeline_deals_{request.user.id}_{pipeline_id_param or 'default'}_{timeframe_param or 'all'}_{cache_version}"
+
+        cached_data = cache.get(cache_key)
+        if cached_data is not None:
+            return Response(cached_data)
+
+        if pipeline_id_param:
+            pipeline = self._get_pipeline(pipeline_id_param, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
-            deals = scope_by_owner(PipelineDeal.objects.filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').filter(pipeline=pipeline), request.user)
         else:
             pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
                 return Response([], status=status.HTTP_200_OK)
-            deals = scope_by_owner(PipelineDeal.objects.filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').filter(pipeline=pipeline), request.user)
 
-        if timeframe:
+        if timeframe_param:
 
             now = timezone.now()
-            if timeframe == 'daily':
+            if timeframe_param == 'daily':
                 deals = deals.filter(created_at__gte=now - timedelta(days=1))
-            elif timeframe == 'weekly':
+            elif timeframe_param == 'weekly':
                 deals = deals.filter(created_at__gte=now - timedelta(days=7))
-            elif timeframe == 'monthly':
+            elif timeframe_param == 'monthly':
                 deals = deals.filter(created_at__gte=now - timedelta(days=30))
 
         deals = scope_by_location(deals, request.user, location_field='wa_contact__location')
 
-        return Response(PipelineDealSerializer(deals, many=True).data)
+        data = PipelineDealSerializer(deals, many=True).data
+        cache.set(cache_key, data, timeout=3600)
+        return Response(data)
 
     def post(self, request):
         data = request.data.copy()
