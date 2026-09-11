@@ -35,28 +35,53 @@ export function ShareRoomModal({
 }: ShareRoomModalProps) {
   if (!selectedShareRoom) return null;
 
+  const isMultiRoom = Array.isArray(selectedShareRoom);
+  const rooms: any[] = isMultiRoom ? selectedShareRoom : [selectedShareRoom];
+  const firstRoom = rooms[0];
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={closeShare}>
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         {shareStep === 'options' && (
         <div className="p-6">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Share Room</h3>
+            <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+              {isMultiRoom ? `Share ${rooms.length} Rooms` : 'Share Room'}
+            </h3>
             <button onClick={closeShare} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
               <X className="h-5 w-5" />
             </button>
           </div>
-          <p className="text-sm text-slate-500 mb-6">Share this room's details with others.</p>
-          
-          <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-3 mb-2">
-              <Bed className="h-5 w-5 text-[#007e3a]" />
-              <span className="font-semibold text-slate-800 dark:text-slate-200">{selectedShareRoom.name}</span>
+          <p className="text-sm text-slate-500 mb-4">
+            {isMultiRoom
+              ? `Each room's details will be sent as a separate message.`
+              : `Share this room's details with others.`}
+          </p>
+
+          {/* Room Summary Card(s) */}
+          {isMultiRoom ? (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-200 dark:border-slate-700 space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
+              {rooms.map((r: any, idx: number) => (
+                <div key={r.uuid || idx} className="flex items-center gap-2">
+                  <Bed className="h-3.5 w-3.5 text-[#007e3a] flex-shrink-0" />
+                  <div className="min-w-0">
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate block">{r.name}</span>
+                    <span className="text-[11px] text-slate-400 truncate block">{r.owner_username || r.owner_brand_name}</span>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div className="text-sm text-slate-600 dark:text-slate-400">
-              {selectedShareRoom.owner_username || selectedShareRoom.owner_brand_name} • {selectedShareRoom.property_location?.name ? `${selectedShareRoom.property_location.name}, ` : ''}{selectedShareRoom.property_location?.city}
+          ) : (
+            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-3 mb-2">
+                <Bed className="h-5 w-5 text-[#007e3a]" />
+                <span className="font-semibold text-slate-800 dark:text-slate-200">{firstRoom.name}</span>
+              </div>
+              <div className="text-sm text-slate-600 dark:text-slate-400">
+                {firstRoom.owner_username || firstRoom.owner_brand_name} • {firstRoom.property_location?.name ? `${firstRoom.property_location.name}, ` : ''}{firstRoom.property_location?.city}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="mb-6 space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">Include in Message</p>
@@ -79,10 +104,10 @@ export function ShareRoomModal({
                 
                 // 1. Basic Room Details
                 shareItemsList.push({ key: 'basicDetails', label: 'Basic Room Details', subItems: [
-                    { subKey: 'basicDetails_roomName', label: 'Room Name: ' + selectedShareRoom.name },
-                    { subKey: 'basicDetails_roomType', label: 'Room Type: ' + (selectedShareRoom.room_type?.name || 'N/A') },
-                    { subKey: 'basicDetails_occupancy', label: `Max Occupancy: ${selectedShareRoom.max_occupancy} Guests` },
-                    { subKey: 'basicDetails_amenities', label: 'Amenities: ' + (selectedShareRoom.amenities?.map((a: any) => a.name).join(', ') || 'None') }
+                    { subKey: 'basicDetails_roomName', label: 'Room Name: ' + firstRoom.name },
+                    { subKey: 'basicDetails_roomType', label: 'Room Type: ' + (firstRoom.room_type?.name || 'N/A') },
+                    { subKey: 'basicDetails_occupancy', label: `Max Occupancy: ${firstRoom.max_occupancy} Guests` },
+                    { subKey: 'basicDetails_amenities', label: 'Amenities: ' + (firstRoom.amenities?.map((a: any) => a.name).join(', ') || 'None') }
                 ]});
 
                 if (searchFilterItems.length > 0) {
@@ -92,37 +117,37 @@ export function ShareRoomModal({
                 // 2. Property Details (Owner/Brand/Property Type etc)
                 shareItemsList.push(
                   { key: 'propertyDetails', label: 'Property Details', subItems: [
-                      { subKey: 'propertyDetails_name', label: 'Property Name: ' + (selectedShareRoom.owner_brand_name || selectedShareRoom.owner_username || 'N/A') },
-                      { subKey: 'propertyDetails_type', label: 'Property Type: ' + (selectedShareRoom.property_type?.name || 'N/A') }
+                      { subKey: 'propertyDetails_name', label: 'Property Name: ' + (firstRoom.owner_brand_name || firstRoom.owner_username || 'N/A') },
+                      { subKey: 'propertyDetails_type', label: 'Property Type: ' + (firstRoom.property_type?.name || 'N/A') }
                   ]});
                 
                 // 3. Price
-                const nights = selectedShareRoom.price_summary?.nights || 1;
+                const nights = firstRoom.price_summary?.nights || 1;
                 const roomsCount = filters?.rooms || 1;
                 shareItemsList.push(
                   { key: 'price', label: 'Price', subItems: [
-                      { subKey: 'price_amount', label: `Amount: ₹${(selectedShareRoom.price_summary?.grand_total ?? selectedShareRoom.grand_total ?? selectedShareRoom.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})` }
+                      { subKey: 'price_amount', label: `Amount: ₹${(firstRoom.price_summary?.grand_total ?? firstRoom.grand_total ?? firstRoom.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})` }
                   ]});
 
                 // 4. Location
                 shareItemsList.push(
                   { key: 'location', label: 'Location', subItems: [
-                      { subKey: 'location_name', label: `Name: ${selectedShareRoom.property_location?.name || 'N/A'}` },
-                      { subKey: 'location_city', label: `City: ${selectedShareRoom.property_location?.city || 'N/A'}` },
-                      { subKey: 'location_state', label: `State: ${selectedShareRoom.property_location?.state || 'N/A'}` }
+                      { subKey: 'location_name', label: `Name: ${firstRoom.property_location?.name || 'N/A'}` },
+                      { subKey: 'location_city', label: `City: ${firstRoom.property_location?.city || 'N/A'}` },
+                      { subKey: 'location_state', label: `State: ${firstRoom.property_location?.state || 'N/A'}` }
                   ]});
 
                 // 5. Contact Details
                 shareItemsList.push(
                   { key: 'contactDetails', label: 'Contact Details', subItems: [
-                      { subKey: 'contactDetails_phone', label: `Phone: ${selectedShareRoom.owner_phone || 'N/A'}` }
+                      { subKey: 'contactDetails_phone', label: `Phone: ${firstRoom.owner_phone || 'N/A'}` }
                   ]});
 
-                // 6. Room Images
-                const roomImgs = selectedShareRoom.room_images || [];
+                // 6. Room Images (use first room as reference)
+                const roomImgs = firstRoom.room_images || [];
                 shareItemsList.push({ 
                     key: 'images_room', 
-                    label: 'Room Images', 
+                    label: isMultiRoom ? 'Room Images (per room)' : 'Room Images', 
                     subItems: roomImgs.map((img: any, i: number) => ({
                         subKey: `images_room_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
                     })),
@@ -130,7 +155,7 @@ export function ShareRoomModal({
                 });
 
                 // 7. Property Images
-                const propImages = selectedShareRoom.property_details?.property_images || selectedShareRoom.property_images || selectedShareRoom.property?.images || [];
+                const propImages = firstRoom.property_details?.property_images || firstRoom.property_images || firstRoom.property?.images || [];
                 shareItemsList.push({ 
                     key: 'images_property', 
                     label: 'Property Images', 
@@ -141,7 +166,7 @@ export function ShareRoomModal({
                 });
 
                 // 8. Property Videos
-                const propVideos = selectedShareRoom.property_details?.property_videos || selectedShareRoom.property_videos || selectedShareRoom.property?.videos || [];
+                const propVideos = firstRoom.property_details?.property_videos || firstRoom.property_videos || firstRoom.property?.videos || [];
                 shareItemsList.push({ 
                     key: 'videos_property', 
                     label: 'Property Videos', 
@@ -223,8 +248,8 @@ export function ShareRoomModal({
           <div className="flex items-center gap-3">
             <button 
               onClick={() => {
-                const text = generateShareText(selectedShareRoom, shareOptions, filters, amenityOptions, propertyTypeOptions);
-                navigator.clipboard.writeText(text);
+                const allText = rooms.map(r => generateShareText(r, shareOptions, filters, amenityOptions, propertyTypeOptions)).join('\n\n---\n\n');
+                navigator.clipboard.writeText(allText);
                 alert('Message copied to clipboard!');
               }}
               className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"

@@ -33,6 +33,30 @@ export function Hotels() {
 
   const [showFilters, setShowFilters] = useState(false);
   const shareState = useShareRoom(filters, amenityOptions, propertyTypeOptions);
+  const [selectedRoomIds, setSelectedRoomIds] = useState<Set<string>>(new Set());
+
+  const toggleRoomSelection = (uuid: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedRoomIds(prev => {
+      const next = new Set(prev);
+      if (next.has(uuid)) next.delete(uuid);
+      else next.add(uuid);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedRoomIds.size === rooms.length && rooms.length > 0) {
+      setSelectedRoomIds(new Set());
+    } else {
+      setSelectedRoomIds(new Set(rooms.map((r: any) => r.uuid)));
+    }
+  };
+
+  const handleShareSelected = () => {
+    const selected = rooms.filter((r: any) => selectedRoomIds.has(r.uuid));
+    if (selected.length > 0) shareState.setSelectedShareRoom(selected);
+  };
 
   const getStatusInfo = (room: any) => {
     const isAvailable = room.availability ? room.availability.available : room.status === 'available';
@@ -67,6 +91,42 @@ export function Hotels() {
           <SlidersHorizontal className="h-4 w-4" /> Filters
         </button>
       </div>
+
+      {/* Multi-select Share Bar */}
+      {selectedRoomIds.size > 0 && (
+        <div className="flex justify-end">
+          <div className="inline-flex items-center gap-3 bg-white dark:bg-slate-900 border border-[#007e3a]/40 shadow-lg shadow-[#007e3a]/10 rounded-2xl px-4 py-2.5">
+            {/* Count badge */}
+            <div className="flex items-center gap-2">
+              <span className="h-6 w-6 flex items-center justify-center bg-[#007e3a] text-white text-[11px] font-black rounded-full">
+                {selectedRoomIds.size}
+              </span>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                room{selectedRoomIds.size > 1 ? 's' : ''} selected
+              </span>
+            </div>
+            <div className="w-px h-5 bg-slate-200 dark:bg-slate-700" />
+            {/* Share button */}
+            <button
+              onClick={handleShareSelected}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#007e3a] hover:bg-[#00602d] text-white rounded-xl text-xs font-bold transition-colors"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+              Share
+            </button>
+            {/* Clear */}
+            <button
+              onClick={() => setSelectedRoomIds(new Set())}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-0.5"
+              title="Clear selection"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
 
       {error && (
         <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200">{error}</div>
@@ -103,6 +163,17 @@ export function Hotels() {
                     <th className="px-5 py-3.5">Occupancy</th>
                     <th className="px-5 py-3.5">Price</th>
                     <th className="px-5 py-3.5">Status</th>
+                    <th className="px-3 py-3.5 text-center w-10">
+                      <input
+                        type="checkbox"
+                        checked={rooms.length > 0 && selectedRoomIds.size === rooms.length}
+                        ref={el => { if (el) el.indeterminate = selectedRoomIds.size > 0 && selectedRoomIds.size < rooms.length; }}
+                        onChange={toggleSelectAll}
+                        onClick={e => e.stopPropagation()}
+                        className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer"
+                        title="Select all"
+                      />
+                    </th>
                     <th className="px-5 py-3.5 text-right">Action</th>
                   </tr>
                 </thead>
@@ -113,7 +184,10 @@ export function Hotels() {
                     <EmptyState />
                   ) : (
                     rooms.map((room: any, idx: number) => (
-                      <tr key={room.uuid || idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer"
+                      <tr key={room.uuid || idx}
+                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group cursor-pointer ${
+                          selectedRoomIds.has(room.uuid) ? 'bg-[#007e3a]/5 dark:bg-[#007e3a]/10' : ''
+                        }`}
                         onClick={() => { setSelectedHotel(room); navigate(`/hotels/${room.uuid}`); }}>
                         {/* Room */}
                         <td className="px-5 py-3.5">
@@ -190,6 +264,16 @@ export function Hotels() {
                               </span>
                             );
                           })()}
+                        </td>
+                        {/* Select */}
+                        <td className="px-3 py-3.5 text-center" onClick={e => toggleRoomSelection(room.uuid, e)}>
+                          <input
+                            type="checkbox"
+                            checked={selectedRoomIds.has(room.uuid)}
+                            onChange={() => {}}
+                            onClick={e => toggleRoomSelection(room.uuid, e)}
+                            className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer"
+                          />
                         </td>
                         {/* Action */}
                         <td className="px-5 py-3.5 text-right">
