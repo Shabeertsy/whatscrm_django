@@ -7,6 +7,9 @@ export interface RoomFilters {
     propertyTypes: string[];
     roomTypes: string[];
     amenities: string[];
+    roomViews: string[];
+    bedroomTypes: string[];
+    tags: string[];
     priceMin: number;
     priceMax: number;
     hideUnavailable: boolean;
@@ -26,6 +29,9 @@ export function useRoomFilters() {
         propertyTypes: [],
         roomTypes: [],
         amenities: [],
+        roomViews: [],
+        bedroomTypes: [],
+        tags: [],
         priceMin: 0,
         priceMax: 50000,
         hideUnavailable: false,
@@ -38,7 +44,7 @@ export function useRoomFilters() {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
 
-    const toggleArrayFilter = (key: 'propertyTypes' | 'roomTypes' | 'amenities', value: string) => {
+    const toggleArrayFilter = (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags', value: string) => {
         setFilters(prev => {
             const arr = prev[key] as string[];
             const newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value];
@@ -52,6 +58,9 @@ export function useRoomFilters() {
             propertyTypes: [],
             roomTypes: [],
             amenities: [],
+            roomViews: [],
+            bedroomTypes: [],
+            tags: [],
             priceMin: 0,
             priceMax: 50000,
             hideUnavailable: false,

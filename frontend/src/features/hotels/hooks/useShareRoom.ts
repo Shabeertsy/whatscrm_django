@@ -94,19 +94,7 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
             mediaToInclude.push(...propVideos.filter((_: any, i: number) => shareOptions[`videos_property_${i}`]).map((vid: any) => ({ ...vid, msg_type: 'video' })));
           }
 
-          const textRes = await messagingApi.sendMessage(chatId, { 
-            body: text, 
-            msg_type: 'text', 
-            related_room_uuid: room.uuid 
-          });
-          import('../../../store/messagingStore').then(({ messagingStore }) => {
-              messagingStore.pushMessage(chatId, textRes.data);
-              messagingStore.updateConversationMeta(chatId, {
-                last_message: { body: textRes.data.body, direction: 'outbound', msg_type: 'text', media_url: '', related_room_uuid: room.uuid },
-                last_message_at: textRes.data.timestamp
-              });
-          });
-
+          // First send media
           for (const media of mediaToInclude) {
             const url = media.url || media.image || media.video;
             if (url) {
@@ -126,6 +114,20 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
               });
             }
           }
+
+          // Then send text
+          const textRes = await messagingApi.sendMessage(chatId, { 
+            body: text, 
+            msg_type: 'text', 
+            related_room_uuid: room.uuid 
+          });
+          import('../../../store/messagingStore').then(({ messagingStore }) => {
+              messagingStore.pushMessage(chatId, textRes.data);
+              messagingStore.updateConversationMeta(chatId, {
+                last_message: { body: textRes.data.body, direction: 'outbound', msg_type: 'text', media_url: '', related_room_uuid: room.uuid },
+                last_message_at: textRes.data.timestamp
+              });
+          });
         }
       }
       

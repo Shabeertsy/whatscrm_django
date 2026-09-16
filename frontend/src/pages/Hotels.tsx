@@ -28,7 +28,8 @@ export function Hotels() {
   const [page, setPage] = useState(1);
   const { 
     rooms, loading, error, totalPages, resultCount, 
-    propertyTypeOptions, roomTypeOptions, amenityOptions, fetchRooms 
+    propertyTypeOptions, roomTypeOptions, amenityOptions,
+    roomViewOptions, bedroomTypeOptions, tagOptions, fetchRooms 
   } = useHotels(filters, setPage, page);
 
   const [showFilters, setShowFilters] = useState(false);
@@ -145,6 +146,9 @@ export function Hotels() {
           propertyTypeOptions={propertyTypeOptions}
           roomTypeOptions={roomTypeOptions}
           amenityOptions={amenityOptions}
+          roomViewOptions={roomViewOptions}
+          bedroomTypeOptions={bedroomTypeOptions}
+          tagOptions={tagOptions}
           showFilters={showFilters}
           setPage={setPage}
         />

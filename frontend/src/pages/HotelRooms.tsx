@@ -93,7 +93,7 @@ export function HotelRooms() {
         <button onClick={() => navigate(fromChat ? '/messaging' : '/hotels')} className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-slate-900 transition">
           <ArrowLeft className="h-4 w-4 mr-1" /> {fromChat ? 'Back to Chats' : 'Back to Rooms'}
         </button>
-        <div className="bg-red-50 text-red-600 p-4 rounded-lg text-sm border border-red-200">{error || 'Room not found.'}</div>
+        <div className="bg-red-50 text-red-600 p-4 rounded-md text-sm border border-red-200">{error || 'Room not found.'}</div>
       </div>
     );
   }
@@ -102,6 +102,9 @@ export function HotelRooms() {
   const summary = room.price_summary || {};
   const breakdown: any[] = room.price_breakdown || [];
   const amenities: any[] = room.amenities || [];
+  const roomViews: any[] = room.room_views || [];
+  const bedroomTypes: any[] = Array.isArray(room.bedroom_types) ? room.bedroom_types : (room.bedroom_type ? [room.bedroom_type] : []);
+  const tags: any[] = room.property_tags || room.tags || [];
 
   return (
     <div className="space-y-6">
@@ -112,14 +115,14 @@ export function HotelRooms() {
         </button>
         <button
           onClick={() => shareState.setSelectedShareRoom(room)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-[#007e3a]/10 hover:bg-[#007e3a]/20 text-[#007e3a] rounded-lg text-sm font-bold transition-colors"
+          className="flex items-center gap-2 px-3 py-1.5 bg-[#007e3a]/10 hover:bg-[#007e3a]/20 text-[#007e3a] rounded-md text-sm font-bold transition-colors"
         >
           <Share2 className="h-4 w-4" /> Share
         </button>
       </div>
 
       {/* Search / Filter Bar */}
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-md shadow-sm">
         <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-200 dark:divide-slate-700">
           {/* Check In */}
           <div className="px-5 py-3.5 flex-1">
@@ -139,7 +142,7 @@ export function HotelRooms() {
             <div className="text-[13px] font-semibold text-slate-700 dark:text-slate-200">{adults + children} Persons</div>
             <div className="text-[10px] text-slate-400">{adults} Adult · {children} Child · {roomsCount} Room</div>
             {showGuestDropdown && (
-              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-xl p-4 w-[220px] z-50" onClick={e => e.stopPropagation()}>
+              <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-md p-4 w-[220px] z-50" onClick={e => e.stopPropagation()}>
                 {[
                   { label: 'Adults', val: adults, min: 1, set: setAdults },
                   { label: 'Children', val: children, min: 0, set: setChildren },
@@ -148,13 +151,13 @@ export function HotelRooms() {
                   <div key={label} className="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
                     <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
                     <div className="flex items-center gap-3">
-                      <button onClick={() => set(v => Math.max(min, v - 1))} className="w-7 h-7 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded-lg hover:bg-green-50 transition-colors font-bold">−</button>
+                      <button onClick={() => set(v => Math.max(min, v - 1))} className="w-7 h-7 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded-md hover:bg-green-50 transition-colors font-bold">−</button>
                       <span className="w-5 text-center font-bold text-[13px] text-slate-900 dark:text-white">{val}</span>
-                      <button onClick={() => set(v => v + 1)} className="w-7 h-7 flex items-center justify-center bg-[#007e3a] text-white rounded-lg hover:bg-[#00602d] transition-colors font-bold">+</button>
+                      <button onClick={() => set(v => v + 1)} className="w-7 h-7 flex items-center justify-center bg-[#007e3a] text-white rounded-md hover:bg-[#00602d] transition-colors font-bold">+</button>
                     </div>
                   </div>
                 ))}
-                <button onClick={() => { setShowGuestDropdown(false); }} className="w-full mt-3 bg-[#007e3a] text-white py-2 rounded-lg text-sm font-semibold hover:bg-[#00602d] transition-colors">Apply</button>
+                <button onClick={() => { setShowGuestDropdown(false); }} className="w-full mt-3 bg-[#007e3a] text-white py-2 rounded-md text-sm font-semibold hover:bg-[#00602d] transition-colors">Apply</button>
               </div>
             )}
           </div>
@@ -192,7 +195,7 @@ export function HotelRooms() {
           </div>
         </div>
         {/* Price Summary */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm text-right min-w-[200px]">
+        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm text-right min-w-[200px]">
           <div className="text-3xl font-black text-slate-900 dark:text-white">
             ₹{(summary.grand_total ?? room.grand_total ?? room.price)?.toLocaleString()}
           </div>
@@ -212,7 +215,7 @@ export function HotelRooms() {
 
           {/* Image Gallery */}
           {images.length > 0 ? (
-            <div className="relative rounded-2xl overflow-hidden bg-slate-100 dark:bg-slate-800" style={{ height: 300 }}>
+            <div className="relative rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800" style={{ height: 300 }}>
               <img src={images[imgIdx]?.url || images[imgIdx]?.image} alt={room.name}
                 className="w-full h-full object-cover transition-all duration-500" />
               {images.length > 1 && (
@@ -236,7 +239,7 @@ export function HotelRooms() {
                     <div className="absolute bottom-0 left-0 right-0 p-2 flex gap-2 overflow-x-auto bg-gradient-to-t from-black/40 to-transparent">
                       {images.map((img: any, i: number) => (
                         <button key={i} onClick={() => setImgIdx(i)}
-                          className={`h-12 w-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition ${i === imgIdx ? 'border-white' : 'border-transparent opacity-60'}`}>
+                          className={`h-12 w-16 flex-shrink-0 rounded-md overflow-hidden border-2 transition ${i === imgIdx ? 'border-white' : 'border-transparent opacity-60'}`}>
                           <img src={img.url || img.image} alt="" className="h-full w-full object-cover" />
                         </button>
                       ))}
@@ -246,7 +249,7 @@ export function HotelRooms() {
               )}
             </div>
           ) : (
-            <div className="rounded-2xl bg-slate-100 dark:bg-slate-800 h-48 flex items-center justify-center">
+            <div className="rounded-md bg-slate-100 dark:bg-slate-800 h-48 flex items-center justify-center">
               <Bed className="h-12 w-12 text-slate-300" />
             </div>
           )}
@@ -259,7 +262,7 @@ export function HotelRooms() {
               { label: 'Room Number', val: room.room_number ? `#${room.room_number}` : '—', icon: <Bed className="h-4 w-4" /> },
               { label: 'Base Price', val: `₹${parseFloat((room.price_breakdown?.[0]?.base_price ?? room.base_price) || 0).toLocaleString()}`, icon: <Tag className="h-4 w-4" /> },
             ].map(({ label, val, icon }) => (
-              <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-4 shadow-sm">
+              <div key={label} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-4 shadow-sm">
                 <div className="flex items-center gap-1.5 text-[#007e3a] mb-2">{icon}</div>
                 <div className="font-bold text-slate-900 dark:text-white text-sm">{val}</div>
                 <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">{label}</div>
@@ -269,7 +272,7 @@ export function HotelRooms() {
 
           {/* Description */}
           {room.description && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-2 flex items-center gap-2">
                 <Info className="h-4 w-4 text-[#007e3a]" /> Description
               </h3>
@@ -277,26 +280,11 @@ export function HotelRooms() {
             </div>
           )}
 
-          {/* Amenities */}
-          {amenities.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <Star className="h-4 w-4 text-[#007e3a]" /> Amenities
-              </h3>
-              <div className="flex flex-wrap gap-2">
-                {amenities.map((a: any) => (
-                  <span key={a.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-300">
-                    <i className={`fa ${a.icon} text-[#007e3a]`} style={{ fontSize: 11 }} />
-                    {a.name}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+
 
           {/* Price Breakdown */}
           {breakdown.length > 0 && (
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-[#007e3a]" /> Price Breakdown
               </h3>
@@ -330,12 +318,80 @@ export function HotelRooms() {
               </div>
             </div>
           )}
+
+          {/* Room Features (Consolidated) */}
+          {(amenities.length > 0 || roomViews.length > 0 || bedroomTypes.length > 0 || tags.length > 0) && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm space-y-6">
+              
+              {amenities.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Star className="h-4 w-4 text-[#007e3a]" /> Amenities
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {amenities.map((a: any) => (
+                      <span key={a.uuid || a.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {a.icon && <i className={`fa ${a.icon} text-[#007e3a]`} style={{ fontSize: 11 }} />}
+                        {a.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {roomViews.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Star className="h-4 w-4 text-[#007e3a]" /> Room Views
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {roomViews.map((a: any) => (
+                      <span key={a.uuid || a.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {a.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {bedroomTypes.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Bed className="h-4 w-4 text-[#007e3a]" /> Bedroom Types
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {bedroomTypes.map((a: any) => (
+                      <span key={a.uuid || a.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {a.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {tags.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                    <Tag className="h-4 w-4 text-[#007e3a]" /> Tags
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((a: any) => (
+                      <span key={a.uuid || a.id} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700/50 rounded-md text-xs font-medium text-slate-700 dark:text-slate-300">
+                        {a.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+            </div>
+          )}
         </div>
 
         {/* Right: Sidebar */}
         <div className="space-y-5">
           {/* Property Info */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm space-y-4">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
               <Building2 className="h-4 w-4 text-[#007e3a]" /> Property Info
             </h3>
@@ -366,7 +422,7 @@ export function HotelRooms() {
           </div>
 
           {/* Pricing Summary */}
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm">
             <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center justify-between">
               <span className="flex items-center gap-2">
                 <Tag className="h-4 w-4 text-[#007e3a]" /> Pricing Summary
@@ -415,7 +471,7 @@ export function HotelRooms() {
 
           {/* Extra Charges Info */}
           {(parseFloat(room.price_breakdown?.[0]?.extra_adult_price ?? room.extra_adult_price) > 0 || parseFloat(room.price_breakdown?.[0]?.child_price ?? room.child_price) > 0) && (
-            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl p-4">
+            <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md p-4">
               <h3 className="text-xs font-bold text-amber-700 dark:text-amber-400 mb-2 uppercase tracking-wider">Extra Charges</h3>
               <div className="space-y-1.5 text-xs text-amber-700 dark:text-amber-300">
                 {parseFloat(room.price_breakdown?.[0]?.extra_adult_price ?? room.extra_adult_price) > 0 && (

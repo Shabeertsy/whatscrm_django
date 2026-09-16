@@ -14,6 +14,9 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
   const [propertyTypeOptions, setPropertyTypeOptions] = useState<any[]>([]);
   const [roomTypeOptions, setRoomTypeOptions] = useState<any[]>([]);
   const [amenityOptions, setAmenityOptions] = useState<any[]>([]);
+  const [roomViewOptions, setRoomViewOptions] = useState<any[]>([]);
+  const [bedroomTypeOptions, setBedroomTypeOptions] = useState<any[]>([]);
+  const [tagOptions, setTagOptions] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchConfigs = async () => {
@@ -25,6 +28,9 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
         if (roomRes.data) {
           setRoomTypeOptions(roomRes.data.room_types || []);
           setAmenityOptions(roomRes.data.amenities || []);
+          setRoomViewOptions(roomRes.data.room_views || []);
+          setBedroomTypeOptions(roomRes.data.bedroom_types || []);
+          setTagOptions(roomRes.data.property_tags || roomRes.data.tags || []);
         }
         if (propRes.data) {
           setPropertyTypeOptions(propRes.data.property_types || []);
@@ -57,6 +63,9 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
       if (filters.propertyTypes.length > 0) params.property_type = filters.propertyTypes.join(',');
       if (filters.roomTypes.length > 0) params.room_type = filters.roomTypes.join(',');
       if (filters.amenities.length > 0) params.amenities = filters.amenities.join(',');
+      if (filters.roomViews.length > 0) params.room_views = filters.roomViews.join(',');
+      if (filters.bedroomTypes.length > 0) params.bedroom_type = filters.bedroomTypes.join(',');
+      if (filters.tags.length > 0) params.tags = filters.tags.join(',');
       if (filters.priceMin > 0) params.min_price = filters.priceMin;
       if (filters.priceMax < 50000) params.max_price = filters.priceMax;
 
@@ -80,7 +89,11 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
   }, [page, filters, setPageCallback]);
   useEffect(() => {
     fetchRooms();
-  }, [page, filters.propertyTypes, filters.roomTypes, filters.amenities, filters.priceMin, filters.priceMax, filters.hideUnavailable]);
+  }, [
+    page, filters.propertyTypes, filters.roomTypes, filters.amenities,
+    filters.roomViews, filters.bedroomTypes, filters.tags,
+    filters.priceMin, filters.priceMax, filters.hideUnavailable
+  ]);
 
   useEffect(() => {
     const t = setTimeout(() => { if (filters.search !== '') fetchRooms(true); }, 500);
@@ -89,6 +102,7 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
   return {
     rooms, loading, error, totalPages, resultCount,
     propertyTypeOptions, roomTypeOptions, amenityOptions,
+    roomViewOptions, bedroomTypeOptions, tagOptions,
     fetchRooms
   };
 }
