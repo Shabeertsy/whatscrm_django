@@ -142,17 +142,10 @@ class RoomConfigProxyView(APIView):
         base = get_proxy_url(request.user)
         url = f"{base}/crm/room-config/"
         
-        cache_key = 'room_config_api_' + hashlib.md5(url.encode()).hexdigest()
-        cached_data = cache.get(cache_key)
-        
-        if cached_data:
-            return Response(cached_data)
-        
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req) as response:
                 data = json.loads(response.read().decode())
-                cache.set(cache_key, data, timeout=3600)
                 return Response(data)
        
         except Exception as e:
@@ -167,17 +160,10 @@ class PropertyConfigProxyView(APIView):
         base = get_proxy_url(request.user)
         url = f"{base}/crm/property-config/"
         
-        cache_key = 'property_config_api_' + hashlib.md5(url.encode()).hexdigest()
-        cached_data = cache.get(cache_key)
-        
-        if cached_data:
-            return Response(cached_data)
-        
         try:
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
             with urllib.request.urlopen(req) as response:
                 data = json.loads(response.read().decode())
-                cache.set(cache_key, data, timeout=3600)
                 return Response(data)
         except Exception as e:
             return Response({"error": str(e)}, status=500)
