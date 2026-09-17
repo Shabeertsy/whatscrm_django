@@ -13,7 +13,7 @@ export function useShareRoom(filters?: any, amenityOptions?: any[], propertyType
   const buildInitialOptions = (room: any): Record<string, boolean> => {
     const initial: Record<string, boolean> = {
       basicDetails: true,
-      basicDetails_roomName: true,
+      basicDetails_roomName: false,
       basicDetails_roomType: true,
       basicDetails_occupancy: true,
       basicDetails_amenities: true,
