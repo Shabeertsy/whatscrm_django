@@ -1,5 +1,5 @@
 export function generateShareText(
-  room: any, 
+  room: any,
   options: Record<string, boolean>,
   filters?: any,
   amenityOptions?: any[],
@@ -42,13 +42,19 @@ export function generateShareText(
     if (options.propertyDetails_type) text += `*Property Type:* ${room.property_type?.name || 'N/A'}\n`;
     if (options.propertyDetails_name || options.propertyDetails_type) text += '\n';
   }
-  
+
   if (options.price && options.price_amount) {
     const nights = room.price_summary?.nights || 1;
     const roomsCount = filters?.rooms || 1;
-    text += `*Price:* ₹${(room.price_summary?.grand_total ?? room.grand_total ?? room.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})\n\n`;
+    text += `*Price:* ₹${(room.price_summary?.grand_total ?? room.grand_total ?? room.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})\n`;
+
+    if (room.rate_plans && room.rate_plans.length > 0) {
+      const plans = room.rate_plans.map((rp: any) => `${rp.meal_plan?.name || rp.meal_plan?.code}: ₹${(rp.base_price || 0).toLocaleString()} extra`).join('\n  • ');
+      text += `*Meal Plans Available:*\n  • ${plans}\n`;
+    }
+    text += `\n`;
   }
-  
+
   if (options.location) {
     const locName = options.location_name ? (room.property_location?.name || 'N/A') : '';
     const city = options.location_city ? (room.property_location?.city || 'N/A') : '';
@@ -57,7 +63,7 @@ export function generateShareText(
       text += `*Location:* ${[locName, city, state].filter(Boolean).join(', ')}\n\n`;
     }
   }
-  
+
   if (options.contactDetails) {
     if (options.contactDetails_phone) text += `*Phone:* ${room.owner_phone || 'N/A'}\n\n`;
   }
