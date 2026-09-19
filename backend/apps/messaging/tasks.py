@@ -310,5 +310,32 @@ def process_inbound_message(self, conversation_id: int):
 
     except Exception as exc:
         logger.exception(f"[Task] Unhandled error for conv {conversation_id}: {exc}")
-        raise self.retry(exc=exc)
+        
+        if self.request.retries >= self.max_retries:
+            try:
+                conv = Conversation.objects.filter(id=conversation_id).first()
+                if conv:
+                    from apps.automation.models import FlowExecution, ExecutionStatus
+                    
+                    # Mark any running execution as FAILED so it doesn't get stuck
+                    running_execution = FlowExecution.objects.filter(
+                        contact=conv.contact, 
+                        status__in=[ExecutionStatus.RUNNING, ExecutionStatus.WAITING]
+                    ).first()
+                    
+                    if running_execution:
+                        running_execution.status = ExecutionStatus.FAILED
+                        running_execution.save(update_fields=['status'])
+                        logger.info(f"[Task] Conv {conversation_id}: FlowExecution {running_execution.id} marked as FAILED after max retries.")
+                    
+                    # Send a fallback message to the user
+                    from apps.messaging.utils import send_and_save_message
+                    send_and_save_message(
+                        conv,
+                        body_text="We're sorry, but an unexpected error occurred while processing your request. Please try again later.",
+                        msg_type="text"
+                    )
+            except Exception as inner_exc:
+                logger.error(f"[Task] Failed to handle max retries fallback: {inner_exc}")
 
+        raise self.retry(exc=exc)
