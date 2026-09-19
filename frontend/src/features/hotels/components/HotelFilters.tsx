@@ -7,7 +7,7 @@ import { RoomFilters } from '../hooks/useRoomFilters';
 interface HotelFiltersProps {
   filters: RoomFilters;
   updateFilter: (key: keyof RoomFilters, value: any) => void;
-  toggleArrayFilter: (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags', value: string) => void;
+  toggleArrayFilter: (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags' | 'mealPlans', value: string) => void;
   clearFilters: () => void;
   propertyTypeOptions: any[];
   roomTypeOptions: any[];
@@ -15,6 +15,7 @@ interface HotelFiltersProps {
   roomViewOptions: any[];
   bedroomTypeOptions: any[];
   tagOptions: any[];
+  mealPlanOptions: any[];
   showFilters: boolean;
   setPage: (page: number) => void;
 }
@@ -24,7 +25,7 @@ interface HotelFiltersProps {
 export function HotelFilters({
   filters, updateFilter, toggleArrayFilter, clearFilters,
   propertyTypeOptions, roomTypeOptions, amenityOptions,
-  roomViewOptions, bedroomTypeOptions, tagOptions,
+  roomViewOptions, bedroomTypeOptions, tagOptions, mealPlanOptions,
   showFilters, setPage
 }: HotelFiltersProps) {
   const [localPriceMin, setLocalPriceMin] = useState(filters.priceMin);
@@ -35,6 +36,7 @@ export function HotelFilters({
   const [showAllRoomViews, setShowAllRoomViews] = useState(false);
   const [showAllBedroomTypes, setShowAllBedroomTypes] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
+  const [showAllMealPlans, setShowAllMealPlans] = useState(false);
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     price: true,
@@ -44,6 +46,7 @@ export function HotelFilters({
     roomViews: true,
     bedroomTypes: true,
     tags: true,
+    mealPlans: true,
   });
   const toggleSection = (key: string) => setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -306,6 +309,41 @@ export function HotelFilters({
                   <button onClick={() => setShowAllTags(!showAllTags)}
                     className="text-xs font-semibold text-[#007e3a] hover:text-[#00602d] transition-colors mt-2 text-left w-full">
                     {showAllTags ? '- Show Less' : `+ Show ${tagOptions.length - 6} More`}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+          <hr className="border-slate-100 dark:border-slate-800" />
+        </>
+      )}
+
+      {mealPlanOptions.length > 0 && (
+        <>
+          <div>
+            <button onClick={() => toggleSection('mealPlans')} className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider mb-3 hover:text-[#007e3a] transition-colors">
+              <span className="flex items-center gap-2"><Tag className="h-3.5 w-3.5 text-[#007e3a]" /> Meal Plans</span>
+              {expandedSections.mealPlans ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {expandedSections.mealPlans && (
+              <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                {(showAllMealPlans ? mealPlanOptions : mealPlanOptions.slice(0, 6)).map(a => {
+                  const idVal = a.uuid || a.id;
+                  return (
+                    <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
+                      <input type="checkbox" checked={filters.mealPlans.includes(idVal)} 
+                        onChange={() => { toggleArrayFilter('mealPlans', idVal); setPage(1); }}
+                        className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
+                      <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                        {a.name}
+                      </span>
+                    </label>
+                  );
+                })}
+                {mealPlanOptions.length > 6 && (
+                  <button onClick={() => setShowAllMealPlans(!showAllMealPlans)}
+                    className="text-xs font-semibold text-[#007e3a] hover:text-[#00602d] transition-colors mt-2 text-left w-full">
+                    {showAllMealPlans ? '- Show Less' : `+ Show ${mealPlanOptions.length - 6} More`}
                   </button>
                 )}
               </div>

@@ -6,7 +6,7 @@ from .views import (
     ConversationMessagesAPIView,
     ConversationSendMessageAPIView, ConversationMarkReadAPIView,
     StartConversationAPIView,
-    GlobalActiveFlowsAPIView, GlobalCancelFlowAPIView,
+    GlobalActiveFlowsAPIView, GlobalCancelFlowAPIView, GlobalCancelAllFlowsAPIView,
     MessageDeleteAPIView, WebhookView, MediaUploadAPIView,
     CustomMessageViewSet, MediaLibraryViewSet,
 )
@@ -30,6 +30,7 @@ urlpatterns = [
 
     # Active Flows
     path('active-flows/', GlobalActiveFlowsAPIView.as_view(), name='global-active-flows'),
+    path('active-flows/cancel-all/', GlobalCancelAllFlowsAPIView.as_view(), name='global-cancel-all-flows'),
     path('active-flows/<uuid:exec_id>/cancel/', GlobalCancelFlowAPIView.as_view(), name='global-cancel-flow'),
 
     # Messages

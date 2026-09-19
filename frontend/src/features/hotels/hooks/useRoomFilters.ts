@@ -16,6 +16,7 @@ export interface RoomFilters {
     adults: number;
     children: number;
     rooms: number;
+    mealPlans: string[];
 }
 
 export function useRoomFilters() {
@@ -38,13 +39,14 @@ export function useRoomFilters() {
         adults: 1,
         children: 0,
         rooms: 1,
+        mealPlans: [],
     });
 
     const updateFilter = (key: keyof RoomFilters, value: any) => {
         setFilters(prev => ({ ...prev, [key]: value }));
     };
 
-    const toggleArrayFilter = (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags', value: string) => {
+    const toggleArrayFilter = (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags' | 'mealPlans', value: string) => {
         setFilters(prev => {
             const arr = prev[key] as string[];
             const newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value];
@@ -61,6 +63,7 @@ export function useRoomFilters() {
             roomViews: [],
             bedroomTypes: [],
             tags: [],
+            mealPlans: [],
             priceMin: 0,
             priceMax: 50000,
             hideUnavailable: false,

@@ -29,7 +29,7 @@ export function Hotels() {
   const { 
     rooms, loading, error, totalPages, resultCount, 
     propertyTypeOptions, roomTypeOptions, amenityOptions,
-    roomViewOptions, bedroomTypeOptions, tagOptions, fetchRooms 
+    roomViewOptions, bedroomTypeOptions, tagOptions, mealPlanOptions, fetchRooms 
   } = useHotels(filters, setPage, page);
 
   const [showFilters, setShowFilters] = useState(false);
@@ -149,6 +149,7 @@ export function Hotels() {
           roomViewOptions={roomViewOptions}
           bedroomTypeOptions={bedroomTypeOptions}
           tagOptions={tagOptions}
+          mealPlanOptions={mealPlanOptions}
           showFilters={showFilters}
           setPage={setPage}
         />
@@ -165,6 +166,7 @@ export function Hotels() {
                     <th className="px-5 py-3.5">Location</th>
                     <th className="px-5 py-3.5">Phone</th>
                     <th className="px-5 py-3.5">Occupancy</th>
+                    <th className="px-5 py-3.5">Meal Plan</th>
                     <th className="px-5 py-3.5">Price</th>
                     <th className="px-5 py-3.5">Status</th>
                     <th className="px-3 py-3.5 text-center w-10">
@@ -243,6 +245,20 @@ export function Hotels() {
                             <span className="text-xs">{room.base_occupancy}–{room.max_occupancy}</span>
                           </div>
                           {room.room_number && <span className="text-[10px] text-slate-400">Room #{room.room_number}</span>}
+                        </td>
+                        {/* Meal Plan */}
+                        <td className="px-5 py-3.5">
+                          {room.rate_plans && room.rate_plans.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {room.rate_plans.map((rp: any, i: number) => (
+                                <span key={i} className="inline-flex items-center text-[10px] font-semibold bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full border border-amber-200">
+                                  {rp.meal_plan?.code || rp.meal_plan?.name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-slate-400 font-medium">None</span>
+                          )}
                         </td>
                         {/* Price */}
                         <td className="px-5 py-3.5">

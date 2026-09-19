@@ -599,6 +599,22 @@ class AutomationEngine(BaseChatbotEngine):
         retry_key = f"__retries_{node.node_id}"
 
         if not is_valid:
+            # If the user gives a large input instead of the expected format, 
+            # assume it's a description meant for the AI. If next node is AI, advance to it.
+            if len(original_input) > 60 or len(original_input.split()) > 10:
+                ai_control_edge = node.outgoing_edges.filter(target_node__node_type__in=["ai_control", NodeType.AI_CONTROL]).first()
+                if ai_control_edge:
+                    logger.info(
+                        "[AutomationEngine] Conv %s provided long input during collect_input. Advancing to AI Control node.", 
+                        self.conv.id
+                    )
+                    self._log_step(execution, node, StepStatus.COMPLETED)
+                    execution.status = ExecutionStatus.RUNNING
+                    execution.current_node = ai_control_edge.target_node
+                    execution.save(update_fields=["status", "current_node"])
+                    self._traverse_flow(execution, node, ctx, reply, start_at=ai_control_edge.target_node)
+                    return reply if not reply.is_empty else None
+
             retry_count = execution.variables.get(retry_key, 0) + 1
             execution.variables[retry_key] = retry_count
             execution.save(update_fields=["variables"])
@@ -735,6 +751,22 @@ class AutomationEngine(BaseChatbotEngine):
             else:
                 execution.complete()
         else:
+            # If the user gives a large input instead of selecting a menu option, 
+            # assume it's a description meant for the AI. If next node is AI, advance to it.
+            if len(inbound_text) > 60 or len(inbound_text.split()) > 10:
+                ai_control_edge = node.outgoing_edges.filter(target_node__node_type__in=["ai_control", NodeType.AI_CONTROL]).first()
+                if ai_control_edge:
+                    logger.info(
+                        "[AutomationEngine] Conv %s provided long input during menu. Advancing to AI Control node.", 
+                        self.conv.id
+                    )
+                    self._log_step(execution, node, StepStatus.COMPLETED)
+                    execution.status = ExecutionStatus.RUNNING
+                    execution.current_node = ai_control_edge.target_node
+                    execution.save(update_fields=["status", "current_node"])
+                    self._traverse_flow(execution, node, ctx, reply, start_at=ai_control_edge.target_node)
+                    return reply if not reply.is_empty else None
+
             logger.info("[AutomationEngine] Conv %s invalid menu reply.", self.conv.id)
             invalid_msg = (
                 node.config.get("invalidOptionMessage")

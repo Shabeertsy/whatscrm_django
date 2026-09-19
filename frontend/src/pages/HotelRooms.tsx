@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Bed, MapPin, Users, ChevronLeft, ChevronRight,
-  Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal, Share2
+  Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal, Share2, Utensils
 } from 'lucide-react';
 import { hotelsApi } from '../api/hotels';
 import { useHotelStore } from '../store/hotelStore';
@@ -35,6 +35,7 @@ export function HotelRooms() {
   const [children, setChildren] = useState(0);
   const [roomsCount, setRoomsCount] = useState(1);
   const [appliedRoomsCount, setAppliedRoomsCount] = useState(1);
+  const [mealPlanId, setMealPlanId] = useState<string>('');
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
   const guestRef = useRef<HTMLDivElement>(null);
 
@@ -58,6 +59,7 @@ export function HotelRooms() {
       const params: Record<string, any> = { adults, children, rooms_needed: roomsCount };
       if (checkIn) params.check_in = checkIn;
       if (checkOut) params.check_out = checkOut;
+      if (mealPlanId) params.meal_plan_id = mealPlanId;
 
       // Use detail endpoint to get accurate pricing after rate check
       const res = await hotelsApi.getCrmRoomDetail(id, params);
@@ -161,6 +163,24 @@ export function HotelRooms() {
               </div>
             )}
           </div>
+          {/* Meal Plan */}
+          {room?.rate_plans?.length > 0 && (
+            <div className="px-5 py-3.5 flex-1 border-t md:border-t-0 md:border-l border-slate-200 dark:border-slate-700">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Meal Plan</label>
+              <select
+                value={mealPlanId}
+                onChange={e => setMealPlanId(e.target.value)}
+                className="text-[13px] font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:outline-none w-full cursor-pointer appearance-none"
+              >
+                <option value="">Default (None)</option>
+                {room.rate_plans.map((rp: any) => (
+                  <option key={rp.meal_plan?.id} value={rp.meal_plan?.id}>
+                    {rp.meal_plan?.code || rp.meal_plan?.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           {/* Search Button */}
           <button onClick={fetchRoom} className="bg-[#007e3a] hover:bg-[#00602d] text-white font-bold text-sm px-8 py-4 md:rounded-r-xl transition-colors flex items-center gap-2 justify-center">
             <SlidersHorizontal className="h-4 w-4" /> Check Rates
@@ -322,7 +342,7 @@ export function HotelRooms() {
           {/* Room Features (Consolidated) */}
           {(amenities.length > 0 || roomViews.length > 0 || bedroomTypes.length > 0 || tags.length > 0) && (
             <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm space-y-6">
-              
+
               {amenities.length > 0 && (
                 <div>
                   <h3 className="text-sm font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
@@ -383,7 +403,7 @@ export function HotelRooms() {
                   </div>
                 </div>
               )}
-              
+
             </div>
           )}
         </div>
@@ -435,14 +455,18 @@ export function HotelRooms() {
             </h3>
             <div className="space-y-2.5 text-sm">
               {[
-                { 
-                  label: 'Avg. per night', 
+                {
+                  label: 'Avg. per night',
                   val: (() => {
                     const included = [];
                     if (parseFloat(room?.markup_amount ?? 0) > 0) included.push('markup');
                     if (parseFloat(room?.extra_adult_charge ?? 0) > 0) included.push('extra adults');
                     if (parseFloat(room?.child_charge ?? 0) > 0) included.push('children');
-                    
+                    if (mealPlanId) {
+                      const selectedPlan = room?.rate_plans?.find((rp: any) => rp.meal_plan?.id.toString() === mealPlanId);
+                      if (selectedPlan) included.push(selectedPlan.meal_plan?.code || 'meal plan');
+                    }
+
                     return included.length > 0 ? (
                       <div className="flex flex-col items-end leading-tight">
                         <span>₹{summary.avg_per_night?.toLocaleString() ?? '—'}</span>
@@ -480,6 +504,33 @@ export function HotelRooms() {
                 {parseFloat(room.price_breakdown?.[0]?.child_price ?? room.child_price) > 0 && (
                   <div className="flex justify-between"><span>Child</span><span className="font-bold">₹{parseFloat(room.price_breakdown?.[0]?.child_price ?? room.child_price).toLocaleString()}</span></div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Meal Plans Info */}
+          {room.rate_plans && room.rate_plans.length > 0 && (
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-md p-5 shadow-sm space-y-4">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Utensils className="h-4 w-4 text-[#007e3a]" /> Price with Meal Plans
+              </h3>
+              <div className="space-y-2">
+                {room.rate_plans.map((rp: any, i: number) => {
+                  const isSelected = mealPlanId === rp.meal_plan?.id?.toString();
+                  return (
+                    <div key={i} className={`flex justify-between items-center p-2.5 rounded-lg border ${isSelected ? 'border-[#007e3a] bg-[#007e3a]/5' : 'border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50'}`}>
+                      <div className="flex flex-col">
+                        <span className={`text-xs font-bold ${isSelected ? 'text-[#007e3a]' : 'text-slate-800 dark:text-slate-200'}`}>
+                          {rp.meal_plan?.name}
+                        </span>
+                        <span className="text-[10px] text-slate-500 uppercase tracking-wider">{rp.meal_plan?.code}</span>
+                      </div>
+                      <span className={`text-xs font-extrabold ${isSelected ? 'text-[#007e3a]' : 'text-slate-600 dark:text-slate-400'}`}>
+                        ₹{rp.base_price?.toLocaleString()}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

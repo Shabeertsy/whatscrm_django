@@ -10,7 +10,9 @@ export function ActiveFlowsDropdown() {
   const [flows, setFlows] = useState<FlowExecution[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [stoppingId, setStoppingId] = useState<string | null>(null);
+  const [isStoppingAll, setIsStoppingAll] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ executionId: string, flowName: string, contactName: string } | null>(null);
+  const [confirmStopAll, setConfirmStopAll] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
@@ -72,6 +74,21 @@ export function ActiveFlowsDropdown() {
     }
   };
 
+  const handleConfirmStopAll = async () => {
+    setIsStoppingAll(true);
+    try {
+      const res = await messagingApi.cancelAllFlows();
+      const count = res.data.count;
+      showToast('Flows Stopped', `Successfully stopped ${count} flow${count !== 1 ? 's' : ''}.`, 'success');
+      fetchFlows(false);
+    } catch (err) {
+      showToast('Error', 'Failed to stop some flows.', 'error');
+    } finally {
+      setIsStoppingAll(false);
+      setConfirmStopAll(false);
+    }
+  };
+
   const navigateToConversation = (convId: string | null) => {
     if (convId) {
       navigate(`/inbox?conversationId=${convId}`);
@@ -104,7 +121,19 @@ export function ActiveFlowsDropdown() {
               <Workflow className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               Active Automations
             </h3>
-            {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+            <div className="flex items-center gap-2">
+              {isLoading && <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-400" />}
+              {flows.length > 0 && (
+                <button 
+                  onClick={() => setConfirmStopAll(true)}
+                  disabled={isStoppingAll}
+                  className="text-[11px] font-bold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 dark:text-red-400 dark:bg-red-900/30 dark:hover:bg-red-900/50 px-2 py-1 rounded transition-colors disabled:opacity-50 flex items-center gap-1 border border-red-100 dark:border-red-900/30"
+                >
+                  {isStoppingAll ? <Loader2 className="w-3 h-3 animate-spin" /> : <StopCircle className="w-3 h-3" />}
+                  Stop All
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="overflow-y-auto flex-1 p-2">
@@ -160,7 +189,7 @@ export function ActiveFlowsDropdown() {
         </div>
       )}
 
-      {/* Confirmation Dialog */}
+      {/* Confirmation Dialogs */}
       <ConfirmDialog
         isOpen={!!confirmDialog}
         title="Stop Flow"
@@ -170,6 +199,17 @@ export function ActiveFlowsDropdown() {
         onConfirm={handleConfirmStop}
         onCancel={() => setConfirmDialog(null)}
         isLoading={!!stoppingId}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmStopAll}
+        title="Stop All Flows"
+        description={`Are you sure you want to stop all ${flows.length} active automation flow${flows.length !== 1 ? 's' : ''}?`}
+        confirmLabel="Stop All"
+        cancelLabel="Cancel"
+        onConfirm={handleConfirmStopAll}
+        onCancel={() => setConfirmStopAll(false)}
+        isLoading={isStoppingAll}
       />
     </div>
   );

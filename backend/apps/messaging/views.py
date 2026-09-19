@@ -237,6 +237,18 @@ class GlobalCancelFlowAPIView(APIView):
         return Response({"status": "cancelled"})
 
 
+class GlobalCancelAllFlowsAPIView(APIView):
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_AUTOMATIONS
+
+    def post(self, request):
+        count = FlowExecution.objects.filter(
+            flow__owner=request.user,
+            status__in=[ExecutionStatus.RUNNING, ExecutionStatus.WAITING]
+        ).update(status=ExecutionStatus.CANCELLED)
+        return Response({"status": "cancelled", "count": count})
+
+
 
 class ConversationSendMessageAPIView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
