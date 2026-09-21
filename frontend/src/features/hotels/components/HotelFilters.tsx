@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Building2, Bed, Star, ChevronDown, ChevronUp } from 'lucide-react';
+import { Tag, Building2, Bed, Star, ChevronDown, ChevronUp, MapPin } from 'lucide-react';
 import { RoomFilters } from '../hooks/useRoomFilters';
 
 
@@ -7,7 +7,7 @@ import { RoomFilters } from '../hooks/useRoomFilters';
 interface HotelFiltersProps {
   filters: RoomFilters;
   updateFilter: (key: keyof RoomFilters, value: any) => void;
-  toggleArrayFilter: (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags' | 'mealPlans', value: string) => void;
+  toggleArrayFilter: (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags' | 'mealPlans' | 'areas', value: string) => void;
   clearFilters: () => void;
   propertyTypeOptions: any[];
   roomTypeOptions: any[];
@@ -16,6 +16,7 @@ interface HotelFiltersProps {
   bedroomTypeOptions: any[];
   tagOptions: any[];
   mealPlanOptions: any[];
+  areaOptions: any[];
   showFilters: boolean;
   setPage: (page: number) => void;
 }
@@ -25,7 +26,7 @@ interface HotelFiltersProps {
 export function HotelFilters({
   filters, updateFilter, toggleArrayFilter, clearFilters,
   propertyTypeOptions, roomTypeOptions, amenityOptions,
-  roomViewOptions, bedroomTypeOptions, tagOptions, mealPlanOptions,
+  roomViewOptions, bedroomTypeOptions, tagOptions, mealPlanOptions, areaOptions,
   showFilters, setPage
 }: HotelFiltersProps) {
   const [localPriceMin, setLocalPriceMin] = useState(filters.priceMin);
@@ -47,8 +48,16 @@ export function HotelFilters({
     bedroomTypes: true,
     tags: true,
     mealPlans: true,
+    areas: true,
   });
   const toggleSection = (key: string) => setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
+
+  const areasByDistrict = areaOptions?.reduce((acc: any, area: any) => {
+    const districtName = area.district?.name || 'Other';
+    if (!acc[districtName]) acc[districtName] = [];
+    acc[districtName].push(area);
+    return acc;
+  }, {}) || {};
 
   useEffect(() => {
     setLocalPriceMin(filters.priceMin);
@@ -121,6 +130,40 @@ export function HotelFilters({
         )}
       </div>
       <hr className="border-slate-100 dark:border-slate-800" />
+
+      {Object.keys(areasByDistrict).length > 0 && (
+        <>
+          <div>
+            <button onClick={() => toggleSection('areas')} className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider mb-3 hover:text-[#007e3a] transition-colors">
+              <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#007e3a]" /> Areas</span>
+              {expandedSections.areas ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {expandedSections.areas && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                {Object.entries(areasByDistrict).map(([district, areas]: [string, any]) => (
+                  <div key={district} className="space-y-2">
+                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{district}</h4>
+                    {areas.map((a: any) => {
+                      const idVal = a.uuid;
+                      return (
+                        <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
+                          <input type="checkbox" checked={filters.areas?.includes(idVal)} 
+                            onChange={() => { toggleArrayFilter('areas', idVal); setPage(1); }}
+                            className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
+                          <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                            {a.name}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <hr className="border-slate-100 dark:border-slate-800" />
+        </>
+      )}
 
       <div>
         <button onClick={() => toggleSection('propertyTypes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider mb-3 hover:text-[#007e3a] transition-colors">
@@ -328,14 +371,14 @@ export function HotelFilters({
             {expandedSections.mealPlans && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
                 {(showAllMealPlans ? mealPlanOptions : mealPlanOptions.slice(0, 6)).map(a => {
-                  const idVal = a.uuid || a.id;
+                  const idVal = a.key || a.uuid || a.id;
                   return (
                     <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
                       <input type="checkbox" checked={filters.mealPlans.includes(idVal)} 
                         onChange={() => { toggleArrayFilter('mealPlans', idVal); setPage(1); }}
                         className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                       <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                        {a.name}
+                        {a.label || a.name}
                       </span>
                     </label>
                   );
