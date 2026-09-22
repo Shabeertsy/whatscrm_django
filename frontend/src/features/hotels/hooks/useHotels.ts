@@ -77,8 +77,32 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
 
       const user = authStore.getState().user;
       const isSuperuser = user?.is_superuser || user?.role === 'Owner';
-      if (!isSuperuser && user?.location_name) {
+      if (!isSuperuser) {
+        if (user?.location_area_uuid) {
+          // Lock strictly to their assigned area
+          params.areas = user.location_area_uuid;
+        } else if (user?.location_district_slug) {
+          // Find all area UUIDs in their assigned district
+          const districtAreaUuids = areaOptions
+            .filter((a) => a.district?.slug === user.location_district_slug)
+            .map((a) => a.uuid);
+          
+          if (districtAreaUuids.length > 0) {
+            if (filters.areas.length > 0) {
+              // If they selected specific areas in the UI, only keep the ones that are in their district
+              const allowedSelections = filters.areas.filter(uuid => districtAreaUuids.includes(uuid));
+              // If they selected areas outside their district, it will filter down to nothing or the allowed ones
+              params.areas = allowedSelections.length > 0 ? allowedSelections.join(',') : 'none'; // 'none' to force empty results
+            } else {
+              // Otherwise, show all areas in their district
+              params.areas = districtAreaUuids.join(',');
+            }
+          } else {
+            params.search = params.search ? `${params.search} ${user.location_name}` : user.location_name;
+          }
+        } else if (user?.location_name) {
           params.search = params.search ? `${params.search} ${user.location_name}` : user.location_name;
+        }
       }
 
       const response = await hotelsApi.getCrmRooms(params);
@@ -92,7 +116,7 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
     } finally {
       setLoading(false);
     }
-  }, [page, filters, setPageCallback]);
+  }, [page, filters, setPageCallback, areaOptions]);
   useEffect(() => {
     fetchRooms();
   }, [

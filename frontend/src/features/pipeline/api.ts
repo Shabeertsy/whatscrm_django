@@ -24,6 +24,7 @@ export interface Deal {
   pipeline: string;
   stage: string;
   wa_contact?: string | null;
+  manual_contact?: string | null;
   contact_name?: string;
   contact_phone?: string;
   note?: string | null;
@@ -103,6 +104,7 @@ export const createDeal = async (data: {
   pipeline?: string;
   stage?: string;
   wa_contact?: string | null;
+  manual_contact?: string | null;
   note?: string | null;
 }): Promise<Deal> => {
   const res = await apiClient.post('/contacts/pipeline/deals/', data);

@@ -5,6 +5,8 @@ export interface Location {
   name: string;
   description?: string | null;
   is_active: boolean;
+  area_uuid?: string;
+  district_slug?: string;
   created_at: string;
   updated_at: string;
 }
@@ -13,6 +15,8 @@ export interface LocationPayload {
   name: string;
   description?: string;
   is_active?: boolean;
+  area_uuid?: string;
+  district_slug?: string;
 }
 
 export interface Department {
@@ -76,6 +80,8 @@ export interface User {
   department_name?: string | null;
   location?: string | null;
   location_name?: string | null;
+  location_area_uuid?: string | null;
+  location_district_slug?: string | null;
   owner?: string | null;
   permissions?: Partial<PermissionMap>;
   is_active: boolean;

@@ -38,6 +38,7 @@ export function HotelFilters({
   const [showAllBedroomTypes, setShowAllBedroomTypes] = useState(false);
   const [showAllTags, setShowAllTags] = useState(false);
   const [showAllMealPlans, setShowAllMealPlans] = useState(false);
+  const [expandedDistricts, setExpandedDistricts] = useState<Record<string, boolean>>({});
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     price: true,
@@ -130,40 +131,6 @@ export function HotelFilters({
         )}
       </div>
       <hr className="border-slate-100 dark:border-slate-800" />
-
-      {Object.keys(areasByDistrict).length > 0 && (
-        <>
-          <div>
-            <button onClick={() => toggleSection('areas')} className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider mb-3 hover:text-[#007e3a] transition-colors">
-              <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#007e3a]" /> Areas</span>
-              {expandedSections.areas ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
-            </button>
-            {expandedSections.areas && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
-                {Object.entries(areasByDistrict).map(([district, areas]: [string, any]) => (
-                  <div key={district} className="space-y-2">
-                    <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{district}</h4>
-                    {areas.map((a: any) => {
-                      const idVal = a.uuid;
-                      return (
-                        <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                          <input type="checkbox" checked={filters.areas?.includes(idVal)} 
-                            onChange={() => { toggleArrayFilter('areas', idVal); setPage(1); }}
-                            className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
-                          <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                            {a.name}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-          <hr className="border-slate-100 dark:border-slate-800" />
-        </>
-      )}
 
       <div>
         <button onClick={() => toggleSection('propertyTypes')} className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider mb-3 hover:text-[#007e3a] transition-colors">
@@ -389,6 +356,53 @@ export function HotelFilters({
                     {showAllMealPlans ? '- Show Less' : `+ Show ${mealPlanOptions.length - 6} More`}
                   </button>
                 )}
+              </div>
+            )}
+          </div>
+          <hr className="border-slate-100 dark:border-slate-800" />
+        </>
+      )}
+
+      {Object.keys(areasByDistrict).length > 0 && (
+        <>
+          <div>
+            <button onClick={() => toggleSection('areas')} className="w-full flex items-center justify-between text-xs font-bold text-slate-700 dark:text-white uppercase tracking-wider mb-3 hover:text-[#007e3a] transition-colors">
+              <span className="flex items-center gap-2"><MapPin className="h-3.5 w-3.5 text-[#007e3a]" /> Areas</span>
+              {expandedSections.areas ? <ChevronUp className="h-3.5 w-3.5 text-slate-400" /> : <ChevronDown className="h-3.5 w-3.5 text-slate-400" />}
+            </button>
+            {expandedSections.areas && (
+              <div className="space-y-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                {Object.entries(areasByDistrict).map(([district, areas]: [string, any]) => {
+                  const isExpanded = expandedDistricts[district] !== false;
+                  return (
+                    <div key={district} className="space-y-2">
+                      <button 
+                        onClick={() => setExpandedDistricts(prev => ({ ...prev, [district]: !isExpanded }))}
+                        className="w-full flex items-center justify-between text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 uppercase tracking-wider transition-colors"
+                      >
+                        {district}
+                        {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                      </button>
+                      {isExpanded && (
+                        <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
+                          {areas.map((a: any) => {
+                            const idVal = a.uuid;
+                            return (
+                              <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
+                                <input type="checkbox" checked={filters.areas?.includes(idVal)} 
+                                  onChange={() => { toggleArrayFilter('areas', idVal); setPage(1); }}
+                                  className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
+                                <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                                  {a.name}
+                                </span>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

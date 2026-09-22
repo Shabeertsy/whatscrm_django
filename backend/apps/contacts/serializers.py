@@ -93,7 +93,7 @@ class PipelineDealSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PipelineDeal
-        fields = ['id', 'name', 'value', 'pipeline', 'stage', 'wa_contact', 'contact_name', 'contact_phone', 'note', 'created_at']
+        fields = ['id', 'name', 'value', 'pipeline', 'stage', 'wa_contact', 'manual_contact', 'contact_name', 'contact_phone', 'note', 'created_at']
         read_only_fields = ['id', 'created_at', 'contact_name', 'contact_phone']
 
     def get_contact_name(self, obj):
@@ -101,7 +101,7 @@ class PipelineDealSerializer(serializers.ModelSerializer):
             if getattr(obj.wa_contact, 'crm_contact', None):
                 return obj.wa_contact.crm_contact.name
             return obj.wa_contact.name or ''
-        return ''
+        return obj.manual_contact or ''
 
     def get_contact_phone(self, obj):
         if obj.wa_contact:

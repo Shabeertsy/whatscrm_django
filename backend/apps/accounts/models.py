@@ -11,6 +11,11 @@ class Location(BaseModel):
     name = models.CharField(max_length=100, unique=True)
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
+
+    ## from server
+    area_uuid = models.CharField(max_length=100, blank=True, default='')
+    district_slug = models.CharField(max_length=100, blank=True, default='')
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -21,6 +26,7 @@ class Location(BaseModel):
 
     def __str__(self):
         return self.name
+
 
 
 class Department(BaseModel):

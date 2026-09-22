@@ -10,7 +10,7 @@ User = get_user_model()
 class LocationSerializer(serializers.ModelSerializer):
     class Meta:
         model = Location
-        fields = ('id', 'name', 'description', 'is_active', 'created_at', 'updated_at')
+        fields = ('id', 'name', 'description', 'is_active', 'area_uuid', 'district_slug', 'created_at', 'updated_at')
         read_only_fields = ('id', 'created_at', 'updated_at')
 
 
@@ -67,6 +67,8 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
             'user_type': user.user_type,
             'department': str(user.department_id) if user.department_id else None,
             'location': str(user.location_id) if user.location_id else None,
+            'location_area_uuid': user.location.area_uuid if user.location and user.location.area_uuid else None,
+            'location_district_slug': user.location.district_slug if user.location and user.location.district_slug else None,
             'owner': str(user.owner_id) if user.owner_id else None,
             'permissions': permissions,
         }
@@ -78,11 +80,13 @@ class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False, allow_blank=True, allow_null=True)
     department_name = serializers.CharField(source='department.name', read_only=True)
     location_name = serializers.CharField(source='location.name', read_only=True, default=None)
+    location_area_uuid = serializers.CharField(source='location.area_uuid', read_only=True, default=None)
+    location_district_slug = serializers.CharField(source='location.district_slug', read_only=True, default=None)
     permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'phone_number', 'user_type', 'department', 'department_name', 'location', 'location_name', 'owner', 'permissions', 'password', 'is_active', 'is_superuser', 'created_at', 'updated_at')
+        fields = ('id', 'email', 'username', 'first_name', 'last_name', 'phone_number', 'user_type', 'department', 'department_name', 'location', 'location_name', 'location_area_uuid', 'location_district_slug', 'owner', 'permissions', 'password', 'is_active', 'is_superuser', 'created_at', 'updated_at')
         read_only_fields = ('id', 'is_superuser', 'created_at', 'updated_at')
 
     def get_permissions(self, obj):

@@ -140,6 +140,7 @@ class PipelineDeal(BaseModel):
         on_delete=models.CASCADE,
         related_name='pipeline_deals'
     )
+    manual_contact = models.CharField(max_length=255, blank=True, default='')
     note = models.TextField(blank=True, default='')
 
     class Meta:

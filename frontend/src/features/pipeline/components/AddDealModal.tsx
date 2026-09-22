@@ -3,9 +3,9 @@ import { X, Copy, Phone } from "lucide-react";
 
 interface Props {
   contacts: any[];
-  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; note?: string | null };
+  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null };
   onClose: () => void;
-  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; note?: string | null }) => Promise<boolean>;
+  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null }) => Promise<boolean>;
   onDelete?: () => void;
 }
 
@@ -14,6 +14,7 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
     name: initialData?.name || "",
     value: initialData?.value || 0,
     wa_contact: initialData?.wa_contact || "",
+    manual_contact: initialData?.manual_contact || "",
     note: initialData?.note || ""
   });
 
@@ -23,6 +24,7 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
       name: form.name,
       value: Number(form.value),
       wa_contact: form.wa_contact || undefined,
+      manual_contact: form.manual_contact || undefined,
       note: form.note || undefined,
     });
     if (ok) onClose();
@@ -62,7 +64,7 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"> Contact</label>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"> Contact (WhatsApp)</label>
             <select
               value={form.wa_contact}
               onChange={e => setForm({ ...form, wa_contact: e.target.value })}
@@ -75,7 +77,7 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
               ))}
             </select>
           </div>
-          
+
           {selectedContact && selectedContact.phone && (
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
@@ -103,6 +105,19 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
               </div>
             </div>
           )}
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+              Manual Contact <span className="text-slate-400 font-normal">(Optional — name or phone)</span>
+            </label>
+            <input
+              type="text"
+              value={form.manual_contact}
+              onChange={e => setForm({ ...form, manual_contact: e.target.value })}
+              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+            />
+          </div>
+
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Note (Optional)</label>
             <textarea
@@ -116,8 +131,8 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
         <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
           <div>
             {initialData && onDelete && (
-              <button 
-                onClick={onDelete} 
+              <button
+                onClick={onDelete}
                 className="px-4 py-2 text-sm font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
               >
                 Delete

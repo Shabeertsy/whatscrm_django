@@ -11,8 +11,16 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from '../../../../components/shared/ConfirmDialog';
 import { accountsApi, Location, LocationPayload } from '../../../../api/accounts';
+import { apiClient } from '../../../../api/client';
 import toast from 'react-hot-toast';
 import { LocationModal } from '../modals/LocationModal';
+
+interface AreaOption {
+  uuid: string;
+  name: string;
+  slug: string;
+  district: { id: number; name: string; slug: string; state: string };
+}
 
 export function LocationsTab() {
   const [locations, setLocations] = useState<Location[]>([]);
@@ -23,6 +31,24 @@ export function LocationsTab() {
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [areaMap, setAreaMap] = useState<Record<string, AreaOption>>({});
+  const [districtMap, setDistrictMap] = useState<Record<string, AreaOption['district']>>({});
+  const [activeTab, setActiveTab] = useState<string>('');
+
+  // Fetch areas from room-config once — used to display area/district names on cards
+  useEffect(() => {
+    apiClient.get('/core/room-config/').then((res) => {
+      const areas: AreaOption[] = res.data?.areas || [];
+      const aMap: Record<string, AreaOption> = {};
+      const dMap: Record<string, AreaOption['district']> = {};
+      areas.forEach((a) => {
+        aMap[a.uuid] = a;
+        dMap[a.district.slug] = a.district;
+      });
+      setAreaMap(aMap);
+      setDistrictMap(dMap);
+    }).catch(() => { });
+  }, []);
 
   const fetchLocations = async () => {
     setLoading(true);
@@ -50,6 +76,37 @@ export function LocationsTab() {
         (loc.description && loc.description.toLowerCase().includes(q))
     );
   }, [locations, searchQuery]);
+
+  const groupedLocations = useMemo(() => {
+    const groups: Record<string, Location[]> = {};
+    const unassigned: Location[] = [];
+
+    filteredLocations.forEach((loc) => {
+      if (loc.district_slug && districtMap[loc.district_slug]) {
+        const districtName = `${districtMap[loc.district_slug].name}, ${districtMap[loc.district_slug].state}`;
+        if (!groups[districtName]) groups[districtName] = [];
+        groups[districtName].push(loc);
+      } else {
+        unassigned.push(loc);
+      }
+    });
+
+    const allGroups = Object.entries(groups)
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([name, locs]) => ({ name, locs, isUnassigned: false }));
+
+    if (unassigned.length > 0) {
+      allGroups.push({ name: 'Other / Unassigned', locs: unassigned, isUnassigned: true });
+    }
+
+    return allGroups;
+  }, [filteredLocations, districtMap]);
+
+  useEffect(() => {
+    if (groupedLocations.length > 0 && !groupedLocations.find((g) => g.name === activeTab)) {
+      setActiveTab(groupedLocations[0].name);
+    }
+  }, [groupedLocations, activeTab]);
 
   const handleSave = async (payload: LocationPayload) => {
     try {
@@ -100,14 +157,12 @@ export function LocationsTab() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200/80 dark:border-slate-800">
         <div>
           <h2 className="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
-            Company Locations
+            Locations
             <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/20">
               {locations.length}
             </span>
           </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Manage company offices and physical locations.
-          </p>
+
         </div>
         <button
           onClick={() => { setEditTarget(null); setModalOpen(true); }}
@@ -160,74 +215,113 @@ export function LocationsTab() {
           )}
         </div>
       ) : (
-        <div className="grid gap-3">
-          {filteredLocations.map((loc) => (
-            <div
-              key={loc.id}
-              className="bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
-            >
-              <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                <div className={`h-11 w-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${
-                  loc.is_active
-                    ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                    : 'bg-slate-100 text-slate-400 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
-                }`}>
-                  <MapPin className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2.5">
-                    <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate">{loc.name}</h3>
-                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                      loc.is_active
-                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
-                        : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
-                    }`}>
-                      {loc.is_active && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      {loc.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                  {loc.description ? (
-                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">{loc.description}</p>
-                  ) : (
-                    <p className="text-xs text-slate-400 italic">No description provided</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-1.5 flex-shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+        <div className="space-y-4">
+          {/* Tabs header */}
+          {groupedLocations.length > 1 && (
+            <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar">
+              {groupedLocations.map((group) => (
                 <button
-                  onClick={() => handleToggle(loc.id, loc.is_active)}
-                  disabled={togglingId === loc.id}
-                  title={loc.is_active ? 'Deactivate Location' : 'Activate Location'}
-                  className="p-2 text-slate-400 hover:text-[#007e3a] transition"
+                  key={group.name}
+                  onClick={() => setActiveTab(group.name)}
+                  className={`px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
+                    activeTab === group.name
+                      ? 'border-[#007e3a] text-[#007e3a] dark:text-emerald-400 dark:border-emerald-500'
+                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+                  }`}
                 >
-                  {togglingId === loc.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin text-[#007e3a]" />
-                  ) : loc.is_active ? (
-                    <ToggleRight className="h-5 w-5 text-[#007e3a] dark:text-emerald-400" />
-                  ) : (
-                    <ToggleLeft className="h-5 w-5" />
-                  )}
+                  {group.name}
+                  <span className={`ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] ${
+                    activeTab === group.name
+                      ? 'bg-[#007e3a]/10 text-[#007e3a] dark:bg-emerald-500/20 dark:text-emerald-400'
+                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
+                    {group.locs.length}
+                  </span>
                 </button>
-
-                <button
-                  onClick={() => { setEditTarget(loc); setModalOpen(true); }}
-                  title="Edit Location"
-                  className="p-2 text-slate-400 hover:text-blue-600 transition"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-
-                <button
-                  onClick={() => setDeleteTargetId(loc.id)}
-                  title="Delete Location"
-                  className="p-2 text-slate-400 hover:text-red-600 transition"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
+              ))}
             </div>
-          ))}
+          )}
+
+          {/* Active Tab Content */}
+          <div className="grid gap-3 pt-2">
+            {groupedLocations
+              .find((g) => g.name === activeTab || groupedLocations.length === 1)
+              ?.locs.map((loc) => (
+                <div
+                  key={loc.id}
+                  className="bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                >
+                  <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                    <div className={`h-11 w-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${loc.is_active
+                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800 border border-slate-200 dark:border-slate-700'
+                      }`}>
+                      <MapPin className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 space-y-1">
+                      <div className="flex items-center gap-2.5">
+                        <h3 className="font-bold text-slate-900 dark:text-white text-sm truncate">{loc.name}</h3>
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${loc.is_active
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                            : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 border border-slate-200 dark:border-slate-700'
+                          }`}>
+                          {loc.is_active && <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />}
+                          {loc.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      {/* Show linked area or district */}
+                      {loc.area_uuid && areaMap[loc.area_uuid] ? (
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium">
+                          📍 {areaMap[loc.area_uuid].name}
+                        </p>
+                      ) : loc.district_slug && districtMap[loc.district_slug] ? (
+                        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+                          📍 All Areas
+                        </p>
+                      ) : null}
+                      {loc.description ? (
+                        <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed truncate">{loc.description}</p>
+                      ) : (
+                        <p className="text-xs text-slate-400 italic">No description provided</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-shrink-0 justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                    <button
+                      onClick={() => handleToggle(loc.id, loc.is_active)}
+                      disabled={togglingId === loc.id}
+                      title={loc.is_active ? 'Deactivate Location' : 'Activate Location'}
+                      className="p-2 text-slate-400 hover:text-[#007e3a] transition"
+                    >
+                      {togglingId === loc.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin text-[#007e3a]" />
+                      ) : loc.is_active ? (
+                        <ToggleRight className="h-5 w-5 text-[#007e3a] dark:text-emerald-400" />
+                      ) : (
+                        <ToggleLeft className="h-5 w-5" />
+                      )}
+                    </button>
+
+                    <button
+                      onClick={() => { setEditTarget(loc); setModalOpen(true); }}
+                      title="Edit Location"
+                      className="p-2 text-slate-400 hover:text-blue-600 transition"
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </button>
+
+                    <button
+                      onClick={() => setDeleteTargetId(loc.id)}
+                      title="Delete Location"
+                      className="p-2 text-slate-400 hover:text-red-600 transition"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
