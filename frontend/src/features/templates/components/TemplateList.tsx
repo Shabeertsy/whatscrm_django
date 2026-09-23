@@ -1,5 +1,5 @@
 import React from 'react';
-import { Loader2, FileText, Copy, Edit2, Trash2, Globe, MessageSquare, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Loader2, FileText, Copy, Edit2, Trash2, Globe, MessageSquare, CheckCircle2, XCircle, Clock, Image, Video } from 'lucide-react';
 
 interface TemplateListProps {
   templates: any[];
@@ -33,7 +33,10 @@ export function TemplateList({ templates, loading, onEdit, onDuplicate, onDelete
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-4 gap-5">
       {templates.map((tmpl) => {
-        const header = tmpl.components?.find((c: any) => c.type === 'HEADER')?.text;
+        const headerComp = tmpl.components?.find((c: any) => c.type === 'HEADER');
+        const header = headerComp?.text;
+        const headerFormat = (headerComp?.format || '').toUpperCase(); // IMAGE | VIDEO | DOCUMENT | TEXT
+        const isMediaHeader = ['IMAGE', 'VIDEO', 'DOCUMENT'].includes(headerFormat);
         const body = tmpl.components?.find((c: any) => c.type === 'BODY')?.text;
         const footer = tmpl.components?.find((c: any) => c.type === 'FOOTER')?.text;
 
@@ -75,6 +78,15 @@ export function TemplateList({ templates, loading, onEdit, onDuplicate, onDelete
                         {tmpl.template_type}
                       </span>
                     )}
+                    {/* Header format badge */}
+                    {headerFormat && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40">
+                        {headerFormat === 'IMAGE' && <Image className="h-2.5 w-2.5" />}
+                        {headerFormat === 'VIDEO' && <Video className="h-2.5 w-2.5" />}
+                        {headerFormat === 'DOCUMENT' && <FileText className="h-2.5 w-2.5" />}
+                        {headerFormat}
+                      </span>
+                    )}
                     <span className="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200/60 dark:border-slate-700">
                       <Globe className="h-3 w-3 text-slate-400" />
                       {tmpl.language}
@@ -105,7 +117,17 @@ export function TemplateList({ templates, loading, onEdit, onDuplicate, onDelete
 
               {/* Template Chat Bubble Preview */}
               <div className="bg-[#f0f4f1] dark:bg-slate-800/80 rounded-xl p-3.5 text-xs text-slate-800 dark:text-slate-200 my-3 border border-emerald-900/5 dark:border-slate-700/60 shadow-inner relative font-sans">
-                {header && <p className="font-bold text-slate-900 dark:text-white mb-1.5 text-[13px] border-b border-slate-200/60 dark:border-slate-700 pb-1">{header}</p>}
+                {/* Media header placeholder */}
+                {isMediaHeader && (
+                  <div className="flex items-center justify-center gap-2 rounded-lg mb-2 py-3 text-[11px] font-semibold bg-emerald-50 dark:bg-emerald-950/30 text-[#007e3a] dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/30">
+                    {headerFormat === 'IMAGE' && <Image className="h-4 w-4" />}
+                    {headerFormat === 'VIDEO' && <Video className="h-4 w-4" />}
+                    {headerFormat === 'DOCUMENT' && <FileText className="h-4 w-4" />}
+                    {headerFormat} Header
+                  </div>
+                )}
+                {/* Text header */}
+                {header && !isMediaHeader && <p className="font-bold text-slate-900 dark:text-white mb-1.5 text-[13px] border-b border-slate-200/60 dark:border-slate-700 pb-1">{header}</p>}
                 <p className="whitespace-pre-wrap leading-relaxed text-slate-700 dark:text-slate-300 font-normal">
                   {body || <span className="italic text-slate-400">No body text content</span>}
                 </p>

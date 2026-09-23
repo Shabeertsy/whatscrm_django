@@ -11,6 +11,9 @@ export interface Campaign {
   contacts?: string[];
   frequency?: "once" | "daily" | "weekly" | "monthly" | "custom";
   custom_days_gap?: number | null;
+  media?: string | null;
+  media_url?: string | null;
+  media_type?: string | null;
   sent: number;
   delivered: number;
   read: number;

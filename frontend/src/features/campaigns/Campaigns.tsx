@@ -131,7 +131,7 @@ export function Campaigns() {
         />
         <button
           onClick={openCreateModal}
-          className="flex items-center gap-2 bg-gradient-to-r from-[#007e3a] to-[#00a84e] hover:from-[#00602d] hover:to-[#008f42] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 shrink-0"
+          className="flex items-center gap-2 bg-[#007e3a] hover:bg-[#006b31] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 shrink-0"
         >
           <Plus className="h-5 w-5" />
           <span>Launch Campaign</span>

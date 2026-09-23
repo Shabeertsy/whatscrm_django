@@ -22,13 +22,16 @@ class CampaignDeliverySerializer(serializers.ModelSerializer):
         read_only_fields = fields
 
 class CampaignSerializer(serializers.ModelSerializer):
+    media_url = serializers.CharField(source='media.file_url', read_only=True)
+    media_type = serializers.CharField(source='media.media_type', read_only=True)
+
     class Meta:
         model = Campaign
         fields = [
             'id', 'name', 'status', 'template_name', 'start_date', 'end_date',
             'frequency', 'custom_days_gap',
             'sent', 'delivered', 'read', 'replied', 'target_type', 'contacts',
-            'tags', 'owner', 'created_at', 'updated_at',
+            'tags', 'media', 'media_url', 'media_type', 'owner', 'created_at', 'updated_at',
             'last_run_at', 'next_run_at',
         ]
         read_only_fields = ['id', 'sent', 'delivered', 'read', 'replied', 'owner', 'created_at', 'updated_at', 'last_run_at', 'next_run_at']

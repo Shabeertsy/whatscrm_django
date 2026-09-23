@@ -311,7 +311,7 @@ def upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type
 
 
 
-def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id="", filename="", storage_path="", template_name="", template_language="en"):
+def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text="", msg_type="text", media_url="", reply_to_wa_id="", filename="", storage_path="", template_name="", template_language="en", template_media_type=""):
     """
     Sends an outbound message using the Meta WhatsApp Cloud API.
     Supports text, image, video, document, and audio.
@@ -366,6 +366,28 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
             "name": template_name,
             "language": {"code": template_language}
         }
+        
+        if media_url:
+            # Map internal media_type to WhatsApp component parameter type
+            media_format = "image"
+            if template_media_type == "video" or ".mp4" in media_url.lower() or ".mov" in media_url.lower():
+                media_format = "video"
+            elif template_media_type == "document" or ".pdf" in media_url.lower() or ".doc" in media_url.lower():
+                media_format = "document"
+
+            data["template"]["components"] = [
+                {
+                    "type": "header",
+                    "parameters": [
+                        {
+                            "type": media_format,
+                            media_format: {
+                                "link": media_url
+                            }
+                        }
+                    ]
+                }
+            ]
 
     if reply_to_wa_id:
         data["context"] = {"message_id": reply_to_wa_id}
@@ -609,6 +631,7 @@ def send_and_save_message(
     filename: str = "",
     template_name: str = "",
     template_language: str = "en",
+    template_media_type: str = "",
     sent_by=None,
     related_room_uuid=None,
 ):
@@ -642,6 +665,7 @@ def send_and_save_message(
                 storage_path=storage_path,
                 template_name=template_name,
                 template_language=template_language,
+                template_media_type=template_media_type,
             )
             if wa_resp.get("messages"):
                 wa_message_id = wa_resp["messages"][0]["id"]

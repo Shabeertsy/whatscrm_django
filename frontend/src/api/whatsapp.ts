@@ -38,4 +38,16 @@ export const whatsappApi = {
 
   deleteTemplate: (id: string) =>
     apiClient.delete(`/whatsapp/templates/${id}/`),
+
+  uploadTemplateMedia: (instanceId: string, file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return apiClient.post<{ header_handle: string }>(
+      `/whatsapp/instances/${instanceId}/upload-template-media/`,
+      formData,
+      {
+        headers: { "Content-Type": "multipart/form-data" },
+      }
+    );
+  },
 };

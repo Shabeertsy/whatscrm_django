@@ -249,12 +249,21 @@ class CampaignRunner:
                         msg_body = f"[Template: {category}]\n{text}"
                     break
 
+        # Check for attached media
+        media_url = ""
+        template_media_type = ""
+        if self.campaign.media:
+            media_url = self.campaign.media.file_url
+            template_media_type = self.campaign.media.media_type
+
         return send_and_save_message(
             conversation=conv,
             msg_type="template",
             body=msg_body,
             template_name=template_name,
             template_language=template_language,
+            media_url=media_url,
+            template_media_type=template_media_type,
             sent_by=self.campaign.owner,
         )
 

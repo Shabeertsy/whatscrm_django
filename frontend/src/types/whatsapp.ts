@@ -3,6 +3,7 @@ export interface WhatsappInstance {
   display_name: string;
   phone_number_id: string;
   whatsapp_business_account_id: string;
+  app_id?: string;
   access_token?: string; 
   webhook_verify_token: string;
   is_active: boolean;
@@ -14,6 +15,7 @@ export interface WhatsappInstancePayload {
   display_name: string;
   phone_number_id: string;
   whatsapp_business_account_id: string;
+  app_id?: string;
   access_token: string;
   webhook_verify_token?: string;
 }

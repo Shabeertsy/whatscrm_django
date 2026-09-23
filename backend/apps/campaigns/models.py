@@ -50,6 +50,13 @@ class Campaign(BaseModel, SoftDeleteModel):
     contacts = models.ManyToManyField('contacts.Contact', blank=True, related_name='campaigns')
     tags = models.ManyToManyField(ContactTag, blank=True, related_name='campaigns')
     
+    media = models.ForeignKey(
+        'messaging.MediaLibraryItem',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='campaigns'
+    )
+    
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,

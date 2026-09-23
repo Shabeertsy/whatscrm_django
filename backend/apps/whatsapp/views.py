@@ -1,18 +1,18 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser
 from apps.core.permissions import RequirePermission, Permission
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from apps.core.scoping import scope_by_owner, get_tenant_owner
+from .utils import get_meta_template_url, upload_media_to_meta_for_template
 
 from .models import WhatsappInstance, WhatsappTemplate
 from .serializers import WhatsappInstanceSerializer, WhatsappInstanceListSerializer, WhatsappTemplateSerializer
 import requests
 import logging
 from django.utils import timezone
-from rest_framework.views import APIView
-from .utils import get_meta_template_url
-from apps.core.scoping import scope_by_owner
-from apps.core.scoping import get_tenant_owner
 
 
 
@@ -215,3 +215,30 @@ class WhatsappTemplateDetailAPIView(APIView):
         template.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+class TemplateMediaUploadAPIView(APIView):
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_TEMPLATES
+    parser_classes = [MultiPartParser]
+
+    def post(self, request, instance_id):
+        try:
+            instance = scope_by_owner(WhatsappInstance.objects.all(), request.user, owner_field='user').get(id=instance_id)
+        except WhatsappInstance.DoesNotExist:
+            return Response({"error": "Instance not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        if not instance.app_id:
+            return Response({"error": "Meta App ID is required on the Instance to upload media."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        file_obj = request.FILES.get('file')
+        if not file_obj:
+            return Response({"error": "No file uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            header_handle = upload_media_to_meta_for_template(
+                app_id=instance.app_id,
+                access_token=instance.access_token,
+                file_obj=file_obj
+            )
+            return Response({"header_handle": header_handle}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

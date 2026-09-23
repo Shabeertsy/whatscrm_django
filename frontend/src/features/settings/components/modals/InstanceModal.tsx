@@ -7,6 +7,7 @@ const EMPTY_FORM: WhatsappInstancePayload = {
   display_name: '',
   phone_number_id: '',
   whatsapp_business_account_id: '',
+  app_id: '',
   access_token: '',
   webhook_verify_token: '',
 };
@@ -27,6 +28,7 @@ export function InstanceModal({
           display_name: initial.display_name,
           phone_number_id: initial.phone_number_id,
           whatsapp_business_account_id: initial.whatsapp_business_account_id,
+          app_id: initial.app_id ?? '',
           access_token: initial.access_token ?? '',
           webhook_verify_token: initial.webhook_verify_token ?? '',
         }
@@ -99,6 +101,14 @@ export function InstanceModal({
             onChange={set('whatsapp_business_account_id')}
             placeholder="Business Account ID"
             required
+          />
+          <FormField
+            label="Meta App ID"
+            name="app_id"
+            value={form.app_id ?? ''}
+            onChange={set('app_id')}
+            placeholder="App ID from Meta Developer Dashboard"
+            hint="Required for uploading media (templates with media headers)"
           />
           <FormField
             label="Access Token"

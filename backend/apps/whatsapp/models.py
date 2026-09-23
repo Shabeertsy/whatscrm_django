@@ -24,6 +24,13 @@ class WhatsappInstance(BaseModel):
         verbose_name="WABA ID",
         help_text="WhatsApp Business Account ID",
     )
+    app_id = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Meta App ID",
+        help_text="Meta App ID required for Resumable Upload API",
+    )
     access_token = models.TextField(
         help_text="Permanent or temporary access token from Meta",
     )

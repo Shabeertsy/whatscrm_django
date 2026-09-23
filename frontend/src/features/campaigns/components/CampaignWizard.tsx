@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { whatsappApi } from "../../../api/whatsapp";
 import { contactsApi } from "../../../api/contacts";
+import { messagingApi, MediaLibraryItem } from "../../../api/messaging";
 import { Campaign } from "../api";
 import toast from "react-hot-toast";
 
@@ -17,6 +18,7 @@ export interface CampaignDataPayload {
   contacts?: string[];
   frequency?: "once" | "daily" | "weekly" | "monthly" | "custom";
   custom_days_gap?: number | null;
+  media?: string | null;
 }
 
 interface CampaignWizardProps {
@@ -39,6 +41,9 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
   // ─── ALL useState hooks first ───────────────────────────────────────────────
   const [name, setName] = useState("");
   const [template, setTemplate] = useState("");
+  const [media, setMedia] = useState<string | "">("");
+  const [mediaList, setMediaList] = useState<MediaLibraryItem[]>([]);
+  const [loadingMedia, setLoadingMedia] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [targetType, setTargetType] = useState<"all" | "specific" | "csv">("all");
@@ -64,6 +69,32 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
 
 
   // ─── useMemo ──────────────
+
+  // Detect if selected template has a media HEADER and what format it expects
+  const templateHeaderFormat = useMemo(() => {
+    if (!template) return null;
+    const tpl = templatesList.find((t: any) => t.name === template);
+    if (!tpl || !Array.isArray(tpl.components)) return null;
+    const headerComp = tpl.components.find((c: any) => c.type === "HEADER");
+    if (!headerComp) return null;
+    const fmt = (headerComp.format || "").toUpperCase();
+    return ["IMAGE", "VIDEO", "DOCUMENT"].includes(fmt) ? fmt : null;
+  }, [template, templatesList]);
+
+  // Filtered media list based on what the template header expects
+  const filteredMediaList = useMemo(() => {
+    if (!templateHeaderFormat) return mediaList;
+    const typeMap: Record<string, string[]> = {
+      IMAGE: ["image"],
+      VIDEO: ["video"],
+      DOCUMENT: ["document", "pdf"],
+    };
+    const allowed = typeMap[templateHeaderFormat] || [];
+    return mediaList.filter((m) =>
+      allowed.some((t) => (m.media_type || "").toLowerCase().includes(t))
+    );
+  }, [mediaList, templateHeaderFormat]);
+
   const availableStages = useMemo(() => {
     const stagesMap = new Map<string, { name: string; color: string }>();
     contactsList.forEach(c => {
@@ -134,6 +165,18 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
     }
   }, []);
 
+  const loadMedia = useCallback(async () => {
+    setLoadingMedia(true);
+    try {
+      const res = await messagingApi.listMediaLibrary();
+      setMediaList(Array.isArray(res.data) ? res.data : (res.data as any).results || []);
+    } catch (e) {
+      console.error("Failed to load media list for campaign wizard", e);
+    } finally {
+      setLoadingMedia(false);
+    }
+  }, []);
+
   const parseCSV = useCallback((text: string): CSVRow[] => {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
@@ -191,6 +234,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
       if (initialData) {
         setName(initialData.name || "");
         setTemplate(initialData.template_name || "");
+        setMedia((initialData as any).media || "");
         setStartDate(formatForInput(initialData.start_date));
         setEndDate(formatForInput(initialData.end_date));
         setTargetType(initialData.target_type || "all");
@@ -200,6 +244,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
       } else {
         setName("");
         setTemplate("");
+        setMedia("");
         setStartDate("");
         setEndDate("");
         setTargetType("all");
@@ -212,6 +257,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
       resetCSVState();
       loadTemplates();
       loadContacts();
+      loadMedia();
     }
   }, [isOpen, initialData]);
 
@@ -272,19 +318,20 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
     if (!name.trim()) return;
     setIsSubmitting(true);
     try {
-      await onLaunch(
-        {
-          name: name.trim(),
-          template_name: template,
-          start_date: startDate ? new Date(startDate).toISOString() : null,
-          end_date: endDate ? new Date(endDate).toISOString() : null,
-          target_type: targetType === "csv" ? "specific" : targetType,
-          contacts: (targetType === "specific" || targetType === "csv") ? selectedContacts : [],
-          frequency: frequency,
-          custom_days_gap: frequency === "custom" && customDaysGap !== "" ? Number(customDaysGap) : null,
-        },
-        initialData?.id
-      );
+      const finalTargetType = targetType === "csv" ? "specific" : targetType;
+      const contactsArr = (targetType === "specific" || targetType === "csv") ? selectedContacts : [];
+      const payload = {
+        name: name.trim(),
+        template_name: template,
+        start_date: startDate ? new Date(startDate).toISOString() : null,
+        end_date: endDate ? new Date(endDate).toISOString() : null,
+        target_type: finalTargetType,
+        contacts: contactsArr,
+        frequency,
+        custom_days_gap: frequency === "custom" ? Number(customDaysGap) : null,
+        media: media || null,
+      };
+      await onLaunch(payload as any, initialData?.id);
       onClose();
     } finally {
       setIsSubmitting(false);
@@ -355,7 +402,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                     ) : (
                       <select
                         value={template}
-                        onChange={(e) => setTemplate(e.target.value)}
+                        onChange={(e) => { setTemplate(e.target.value); setMedia(""); }}
                         className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] transition disabled:opacity-60 cursor-pointer"
                         disabled={isSubmitting || templatesList.length === 0}
                       >
@@ -371,6 +418,94 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                       </select>
                     )}
                   </div>
+                  {/* Smart Media Field — only shown when template needs a media header */}
+                  {templateHeaderFormat && (
+                    <div className="mt-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400">
+                          Attach {templateHeaderFormat === "IMAGE" ? "Image" : templateHeaderFormat === "VIDEO" ? "Video" : "Document"} for Template Header
+                          <span className="text-red-500 ml-0.5">*</span>
+                        </label>
+                        <span
+                          className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wide bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800/40 border"
+                        >
+                          {templateHeaderFormat}
+                        </span>
+                      </div>
+                      {loadingMedia ? (
+                        <div className="flex items-center gap-2 p-3 text-xs text-slate-500 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
+                          <Loader2 className="h-4 w-4 animate-spin text-[#007e3a]" /> Loading media...
+                        </div>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 max-h-[180px] overflow-y-auto custom-scrollbar p-1">
+                            {filteredMediaList.map((m) => (
+                              <div
+                                key={m.id}
+                                onClick={() => !isSubmitting && setMedia(m.id)}
+                                className={`relative group rounded-xl border flex flex-col cursor-pointer overflow-hidden transition-all duration-200 ${
+                                  media === m.id
+                                    ? "border-[#007e3a] ring-2 ring-[#007e3a]/20 bg-emerald-50/50 dark:bg-emerald-900/20"
+                                    : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-slate-300 dark:hover:border-slate-600 hover:shadow-sm"
+                                } ${isSubmitting ? 'opacity-60 cursor-not-allowed' : ''}`}
+                              >
+                                {/* Thumbnail Area */}
+                                <div className="h-14 bg-slate-100 dark:bg-slate-800/80 flex items-center justify-center shrink-0 overflow-hidden relative">
+                                  {(m.media_type === "image" || m.mime_type?.startsWith("image/")) ? (
+                                    <img src={m.file_url} alt={m.name} className="w-full h-full object-cover" />
+                                  ) : (m.media_type === "video" || m.mime_type?.startsWith("video/")) ? (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                                      <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                    </div>
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                                      <svg className="w-5 h-5 mb-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Selection Checkmark */}
+                                  {media === m.id && (
+                                    <div className="absolute top-1 right-1 bg-[#007e3a] text-white rounded-full p-0.5 shadow-sm">
+                                      <CheckCircle2 className="w-3 h-3" />
+                                    </div>
+                                  )}
+                                </div>
+                                
+                                {/* Info Area */}
+                                <div className="p-1.5 border-t border-slate-100 dark:border-slate-700/50 flex-1 flex flex-col justify-center">
+                                  <p className="text-[9px] font-semibold text-slate-700 dark:text-slate-300 truncate" title={m.name}>
+                                    {m.name}
+                                  </p>
+                                  <p className="text-[8px] text-slate-400 uppercase tracking-wider mt-0.5">
+                                    {m.media_type}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          {!media && (
+                            <p className="flex items-center gap-1 mt-1.5 text-[10px] text-amber-600 dark:text-amber-400">
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              This template's header requires an {templateHeaderFormat.toLowerCase()}. Please select one from your media library.
+                            </p>
+                          )}
+                          {filteredMediaList.length === 0 && !loadingMedia && (
+                            <p className="flex items-center gap-1 mt-1.5 text-[10px] text-red-500 dark:text-red-400">
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              No {templateHeaderFormat.toLowerCase()} files found in your media library. Upload one first.
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {/* If template has no media header, show a subtle info note */}
+                  {!templateHeaderFormat && template && !loadingTemplates && (
+                    <div className="flex items-center gap-1.5 mt-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800/50 text-[10px] text-slate-500 dark:text-slate-400">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      This template uses a text-only header — no media needed.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -729,7 +864,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
             <button
               type="submit"
               disabled={isSubmitting || ((targetType === "specific" || targetType === "csv") && selectedContacts.length === 0)}
-              className="px-7 py-2.5 bg-gradient-to-r from-[#007e3a] to-[#00a84e] hover:from-[#00602d] hover:to-[#008f42] text-white rounded-2xl text-xs font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center min-w-[140px]"
+              className="px-7 py-2.5 bg-[#007e3a] hover:bg-[#006b31] text-white rounded-2xl text-xs font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center min-w-[140px]"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin text-white" />
