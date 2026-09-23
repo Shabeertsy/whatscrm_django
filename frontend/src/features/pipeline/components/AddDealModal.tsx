@@ -152,14 +152,13 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         title="Delete Deal"
-        message="Are you sure you want to delete this deal?"
-        confirmText="Delete Deal"
+        description="Are you sure you want to delete this deal?"
+        confirmLabel="Delete Deal"
         onConfirm={() => {
           setShowDeleteConfirm(false);
           if (onDelete) onDelete();
         }}
         onCancel={() => setShowDeleteConfirm(false)}
-        variant="danger"
       />
     </div>
   );
