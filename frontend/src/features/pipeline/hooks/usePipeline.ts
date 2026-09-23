@@ -8,6 +8,28 @@ import {
 import { apiClient } from "../../../api/client";
 import toast from "react-hot-toast";
 
+
+
+const getErrorMsg = (err: any, fallback: string) => {
+  if (err?.response?.data) {
+    if (typeof err.response.data === 'string') return err.response.data;
+    if (err.response.data.detail) return err.response.data.detail;
+    if (typeof err.response.data === 'object') {
+      const messages = Object.entries(err.response.data)
+        .map(([key, value]) => {
+          const valStr = Array.isArray(value) ? value.join(' ') : String(value);
+          // Capitalize key nicely
+          const niceKey = key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ');
+          return `${niceKey}: ${valStr}`;
+        });
+      if (messages.length > 0) return messages.join(', ');
+    }
+  }
+  return err?.message || fallback;
+};
+
+
+
 export function usePipeline() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [activePipeline, setActivePipeline] = useState<Pipeline | null>(null);
@@ -130,8 +152,8 @@ export function usePipeline() {
       setPipelines(prev => [...prev, pipeline]);
       toast.success(`Pipeline "${pipeline.name}" created!`);
       return true;
-    } catch {
-      toast.error("Failed to create pipeline");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to create pipeline"));
       return false;
     }
   };
@@ -146,8 +168,8 @@ export function usePipeline() {
       }
       toast.success(`Pipeline updated!`);
       return true;
-    } catch {
-      toast.error("Failed to update pipeline");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to update pipeline"));
       return false;
     }
   };
@@ -166,8 +188,8 @@ export function usePipeline() {
         prev.map(p => p.id === activePipeline.id ? { ...p, stages: updatedStages } : p)
       );
       toast.success("Stage created!");
-    } catch {
-      toast.error("Failed to create stage");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to create stage"));
     }
   };
 
@@ -189,8 +211,8 @@ export function usePipeline() {
           return { ...p, stages: updatedStages };
         })
       );
-    } catch {
-      toast.error("Failed to update stage");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to update stage"));
     }
   };
 
@@ -207,8 +229,8 @@ export function usePipeline() {
       setPipelines(prev => prev.map(p =>
         p.id === activePipeline.id ? { ...p, stages: apply(p.stages) } : p
       ));
-    } catch {
-      toast.error("Failed to reorder stages");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to reorder stages"));
     }
   };
 
@@ -224,8 +246,8 @@ export function usePipeline() {
         prev.map(p => p.id === activePipeline.id ? { ...p, stages: renormalizedStages } : p)
       );
       toast.success("Stage deleted!");
-    } catch {
-      toast.error("Failed to delete stage");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to delete stage"));
     }
   };
 
@@ -234,8 +256,8 @@ export function usePipeline() {
     setDeals(prev => prev.map(d => (d.id === id ? { ...d, stage: nextStage } : d)));
     try {
       await updateDeal(id, { stage: nextStage });
-    } catch {
-      toast.error("Failed to move deal");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to move deal"));
       setDeals(prevDeals);
     }
   };
@@ -255,21 +277,20 @@ export function usePipeline() {
         toast.success("Deal created!");
       }
       return true;
-    } catch {
-      toast.error("Failed to save deal");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to save deal"));
       return false;
     }
   };
 
   const handleDeleteDeal = async (id: string): Promise<boolean> => {
-    if (!confirm("Are you sure you want to delete this deal?")) return false;
     try {
       await deleteDeal(id);
       setDeals(prev => prev.filter(d => d.id !== id));
       toast.success("Deal deleted!");
       return true;
-    } catch {
-      toast.error("Failed to delete deal");
+    } catch (err: any) {
+      toast.error(getErrorMsg(err, "Failed to delete deal"));
       return false;
     }
   };

@@ -54,7 +54,9 @@ export function HotelFilters({
   const toggleSection = (key: string) => setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
 
   const areasByDistrict = areaOptions?.reduce((acc: any, area: any) => {
-    const districtName = area.district?.name || 'Other';
+    const rawName = area.district?.name || 'Other';
+    const districtName = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase();
+
     if (!acc[districtName]) acc[districtName] = [];
     acc[districtName].push(area);
     return acc;
@@ -92,21 +94,21 @@ export function HotelFilters({
           <div className="animate-in fade-in slide-in-from-top-1 duration-200">
             <div className="relative h-1.5 mb-6 mx-1 mt-2">
               <div className="absolute inset-0 bg-slate-100 dark:bg-slate-800 rounded-full" />
-              <div 
+              <div
                 className="absolute h-full bg-[#007e3a] rounded-full"
-                style={{ 
-                  left: `${(localPriceMin / 50000) * 100}%`, 
-                  right: `${100 - (localPriceMax / 50000) * 100}%` 
+                style={{
+                  left: `${(localPriceMin / 50000) * 100}%`,
+                  right: `${100 - (localPriceMax / 50000) * 100}%`
                 }}
               />
-              <input 
-                type="range" min="0" max="50000" step="100" 
+              <input
+                type="range" min="0" max="50000" step="100"
                 value={localPriceMin}
                 onChange={e => setLocalPriceMin(Math.min(Number(e.target.value), localPriceMax - 100))}
                 className="absolute inset-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#007e3a] [&::-webkit-slider-thumb]:cursor-grab"
               />
-              <input 
-                type="range" min="0" max="50000" step="100" 
+              <input
+                type="range" min="0" max="50000" step="100"
                 value={localPriceMax}
                 onChange={e => setLocalPriceMax(Math.max(Number(e.target.value), localPriceMin + 100))}
                 className="absolute inset-0 w-full appearance-none bg-transparent pointer-events-none [&::-webkit-slider-thumb]:pointer-events-auto [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-[#007e3a] [&::-webkit-slider-thumb]:cursor-grab"
@@ -144,7 +146,7 @@ export function HotelFilters({
               const nameVal = t.property_type_name || t.name;
               return (
                 <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input type="checkbox" checked={filters.propertyTypes.includes(idVal)} 
+                  <input type="checkbox" checked={filters.propertyTypes.includes(idVal)}
                     onChange={() => { toggleArrayFilter('propertyTypes', idVal); setPage(1); }}
                     className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                   <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{nameVal}</span>
@@ -173,7 +175,7 @@ export function HotelFilters({
               const idVal = t.uuid || t.id;
               return (
                 <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input type="checkbox" checked={filters.roomTypes.includes(idVal)} 
+                  <input type="checkbox" checked={filters.roomTypes.includes(idVal)}
                     onChange={() => { toggleArrayFilter('roomTypes', idVal); setPage(1); }}
                     className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                   <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">{t.name}</span>
@@ -202,7 +204,7 @@ export function HotelFilters({
               const idVal = a.uuid || a.id;
               return (
                 <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                  <input type="checkbox" checked={filters.amenities.includes(idVal)} 
+                  <input type="checkbox" checked={filters.amenities.includes(idVal)}
                     onChange={() => { toggleArrayFilter('amenities', idVal); setPage(1); }}
                     className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                   <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
@@ -236,7 +238,7 @@ export function HotelFilters({
                   const idVal = a.uuid || a.id;
                   return (
                     <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                      <input type="checkbox" checked={filters.roomViews.includes(idVal)} 
+                      <input type="checkbox" checked={filters.roomViews.includes(idVal)}
                         onChange={() => { toggleArrayFilter('roomViews', idVal); setPage(1); }}
                         className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                       <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
@@ -271,7 +273,7 @@ export function HotelFilters({
                   const idVal = a.uuid || a.id;
                   return (
                     <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                      <input type="checkbox" checked={filters.bedroomTypes.includes(idVal)} 
+                      <input type="checkbox" checked={filters.bedroomTypes.includes(idVal)}
                         onChange={() => { toggleArrayFilter('bedroomTypes', idVal); setPage(1); }}
                         className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                       <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
@@ -306,7 +308,7 @@ export function HotelFilters({
                   const idVal = a.uuid || a.id;
                   return (
                     <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                      <input type="checkbox" checked={filters.tags.includes(idVal)} 
+                      <input type="checkbox" checked={filters.tags.includes(idVal)}
                         onChange={() => { toggleArrayFilter('tags', idVal); setPage(1); }}
                         className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                       <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
@@ -341,7 +343,7 @@ export function HotelFilters({
                   const idVal = a.key || a.uuid || a.id;
                   return (
                     <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                      <input type="checkbox" checked={filters.mealPlans.includes(idVal)} 
+                      <input type="checkbox" checked={filters.mealPlans.includes(idVal)}
                         onChange={() => { toggleArrayFilter('mealPlans', idVal); setPage(1); }}
                         className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                       <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
@@ -376,7 +378,7 @@ export function HotelFilters({
                   const isExpanded = expandedDistricts[district] !== false;
                   return (
                     <div key={district} className="space-y-2">
-                      <button 
+                      <button
                         onClick={() => setExpandedDistricts(prev => ({ ...prev, [district]: !isExpanded }))}
                         className="w-full flex items-center justify-between text-[10px] font-bold text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 uppercase tracking-wider transition-colors"
                       >
@@ -389,7 +391,7 @@ export function HotelFilters({
                             const idVal = a.uuid;
                             return (
                               <label key={idVal} className="flex items-center gap-2.5 cursor-pointer group">
-                                <input type="checkbox" checked={filters.areas?.includes(idVal)} 
+                                <input type="checkbox" checked={filters.areas?.includes(idVal)}
                                   onChange={() => { toggleArrayFilter('areas', idVal); setPage(1); }}
                                   className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
                                 <span className="text-sm text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
@@ -411,7 +413,7 @@ export function HotelFilters({
       )}
 
       <label className="flex items-center gap-2.5 cursor-pointer">
-        <input type="checkbox" checked={filters.hideUnavailable} 
+        <input type="checkbox" checked={filters.hideUnavailable}
           onChange={e => { updateFilter('hideUnavailable', e.target.checked); setPage(1); }}
           className="h-3.5 w-3.5 rounded accent-[#007e3a]" />
         <span className="text-sm text-slate-600 dark:text-slate-400">Hide unavailable</span>

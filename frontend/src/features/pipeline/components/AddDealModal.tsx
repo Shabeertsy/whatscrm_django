@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { X, Copy, Phone } from "lucide-react";
+import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 
 interface Props {
   contacts: any[];
@@ -10,13 +11,14 @@ interface Props {
 }
 
 export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelete }: Props) {
-  const [form, setForm] = React.useState({
+  const [form, setForm] = useState({
     name: initialData?.name || "",
     value: initialData?.value || 0,
     wa_contact: initialData?.wa_contact || "",
     manual_contact: initialData?.manual_contact || "",
     note: initialData?.note || ""
   });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSubmit = async () => {
     const ok = await onSubmit({
@@ -132,7 +134,7 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
           <div>
             {initialData && onDelete && (
               <button
-                onClick={onDelete}
+                onClick={() => setShowDeleteConfirm(true)}
                 className="px-4 py-2 text-sm font-semibold text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
               >
                 Delete
@@ -147,6 +149,18 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        title="Delete Deal"
+        message="Are you sure you want to delete this deal?"
+        confirmText="Delete Deal"
+        onConfirm={() => {
+          setShowDeleteConfirm(false);
+          if (onDelete) onDelete();
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+        variant="danger"
+      />
     </div>
   );
 }
