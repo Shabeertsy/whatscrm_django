@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { X, Copy, Phone } from "lucide-react";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 
+
+
 interface Props {
   contacts: any[];
   initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null };
