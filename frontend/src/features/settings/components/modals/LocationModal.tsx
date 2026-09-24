@@ -68,7 +68,7 @@ export function LocationModal({
     const seen = new Set<string>();
     const list: District[] = [];
     areas.forEach((a) => {
-      if (!seen.has(a.district.slug)) {
+      if (a.district && !seen.has(a.district.slug)) {
         seen.add(a.district.slug);
         list.push(a.district);
       }
@@ -78,7 +78,7 @@ export function LocationModal({
 
   // Areas belonging to the selected district
   const filteredAreas = useMemo(
-    () => areas.filter((a) => a.district.slug === selectedDistrictSlug),
+    () => areas.filter((a) => a.district?.slug === selectedDistrictSlug),
     [areas, selectedDistrictSlug]
   );
 
@@ -181,26 +181,32 @@ export function LocationModal({
                 </select>
               </div>
 
-              {/* Area selector — only shown when a district is picked */}
-              {selectedDistrictSlug && filteredAreas.length > 0 && (
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                    Area
-                  </label>
-                  <select
-                    value={form.area_uuid ?? ''}
-                    onChange={(e) => handleAreaChange(e.target.value)}
-                    className={selectClass}
-                  >
-                    <option value="">-- All areas (district-wide) --</option>
-                    {filteredAreas.map((area) => (
-                      <option key={area.uuid} value={area.uuid}>
-                        {area.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* Area selector */}
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 flex justify-between">
+                  <span>Area</span>
+                  {!selectedDistrictSlug && (
+                    <span className="text-slate-400 font-normal">Select a district first</span>
+                  )}
+                </label>
+                <select
+                  value={form.area_uuid ?? ''}
+                  onChange={(e) => handleAreaChange(e.target.value)}
+                  className={`${selectClass} ${!selectedDistrictSlug ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  disabled={!selectedDistrictSlug}
+                >
+                  <option value="">
+                    {!selectedDistrictSlug 
+                      ? '-- Select a District First --' 
+                      : '-- All areas (district-wide) --'}
+                  </option>
+                  {filteredAreas.map((area) => (
+                    <option key={area.uuid} value={area.uuid}>
+                      {area.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 

@@ -7,7 +7,8 @@ import {
   ToggleRight,
   Loader2,
   Pencil,
-  Search
+  Search,
+  ChevronDown
 } from 'lucide-react';
 import { ConfirmDialog } from '../../../../components/shared/ConfirmDialog';
 import { accountsApi, Location, LocationPayload } from '../../../../api/accounts';
@@ -33,7 +34,7 @@ export function LocationsTab() {
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [areaMap, setAreaMap] = useState<Record<string, AreaOption>>({});
   const [districtMap, setDistrictMap] = useState<Record<string, AreaOption['district']>>({});
-  const [activeTab, setActiveTab] = useState<string>('');
+  const [districtFilter, setDistrictFilter] = useState<string>('all');
 
   // Fetch areas from room-config once — used to display area/district names on cards
   useEffect(() => {
@@ -43,7 +44,9 @@ export function LocationsTab() {
       const dMap: Record<string, AreaOption['district']> = {};
       areas.forEach((a) => {
         aMap[a.uuid] = a;
-        dMap[a.district.slug] = a.district;
+        if (a.district) {
+          dMap[a.district.slug] = a.district;
+        }
       });
       setAreaMap(aMap);
       setDistrictMap(dMap);
@@ -77,36 +80,20 @@ export function LocationsTab() {
     );
   }, [locations, searchQuery]);
 
-  const groupedLocations = useMemo(() => {
-    const groups: Record<string, Location[]> = {};
-    const unassigned: Location[] = [];
+  const districtOptions = useMemo(() => {
+    const options = Object.values(districtMap).map(d => ({
+      name: `${d.name}, ${d.state}`,
+      slug: d.slug
+    }));
+    return options.sort((a, b) => a.name.localeCompare(b.name));
+  }, [districtMap]);
 
-    filteredLocations.forEach((loc) => {
-      if (loc.district_slug && districtMap[loc.district_slug]) {
-        const districtName = `${districtMap[loc.district_slug].name}, ${districtMap[loc.district_slug].state}`;
-        if (!groups[districtName]) groups[districtName] = [];
-        groups[districtName].push(loc);
-      } else {
-        unassigned.push(loc);
-      }
-    });
-
-    const allGroups = Object.entries(groups)
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([name, locs]) => ({ name, locs, isUnassigned: false }));
-
-    if (unassigned.length > 0) {
-      allGroups.push({ name: 'Other / Unassigned', locs: unassigned, isUnassigned: true });
-    }
-
-    return allGroups;
-  }, [filteredLocations, districtMap]);
-
-  useEffect(() => {
-    if (groupedLocations.length > 0 && !groupedLocations.find((g) => g.name === activeTab)) {
-      setActiveTab(groupedLocations[0].name);
-    }
-  }, [groupedLocations, activeTab]);
+  const displayedLocations = useMemo(() => {
+    if (districtFilter === 'all') return filteredLocations;
+    if (districtFilter === 'unassigned') return filteredLocations.filter(loc => !loc.district_slug || !districtMap[loc.district_slug]);
+    
+    return filteredLocations.filter(loc => loc.district_slug === districtFilter);
+  }, [filteredLocations, districtFilter, districtMap]);
 
   const handleSave = async (payload: LocationPayload) => {
     try {
@@ -174,15 +161,31 @@ export function LocationsTab() {
       </div>
 
       {locations.length > 0 && (
-        <div className="relative">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search locations by name or description..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/30 focus:border-[#007e3a] transition"
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search locations by name or description..."
+              className="w-full pl-10 pr-4 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/30 focus:border-[#007e3a] transition"
+            />
+          </div>
+          <div className="relative min-w-[200px]">
+            <select
+              value={districtFilter}
+              onChange={(e) => setDistrictFilter(e.target.value)}
+              className="w-full appearance-none pl-4 pr-10 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#007e3a]/30 focus:border-[#007e3a] transition cursor-pointer"
+            >
+              <option value="all">All Districts</option>
+              {districtOptions.map(d => (
+                <option key={d.slug} value={d.slug}>{d.name}</option>
+              ))}
+              <option value="unassigned">Other / Unassigned</option>
+            </select>
+            <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+          </div>
         </div>
       )}
 
@@ -216,37 +219,13 @@ export function LocationsTab() {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Tabs header */}
-          {groupedLocations.length > 1 && (
-            <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800 overflow-x-auto no-scrollbar">
-              {groupedLocations.map((group) => (
-                <button
-                  key={group.name}
-                  onClick={() => setActiveTab(group.name)}
-                  className={`px-4 py-2.5 text-xs font-bold whitespace-nowrap border-b-2 transition-colors ${
-                    activeTab === group.name
-                      ? 'border-[#007e3a] text-[#007e3a] dark:text-emerald-400 dark:border-emerald-500'
-                      : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-                  }`}
-                >
-                  {group.name}
-                  <span className={`ml-1.5 px-1.5 py-0.5 rounded-md text-[10px] ${
-                    activeTab === group.name
-                      ? 'bg-[#007e3a]/10 text-[#007e3a] dark:bg-emerald-500/20 dark:text-emerald-400'
-                      : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                  }`}>
-                    {group.locs.length}
-                  </span>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Active Tab Content */}
           <div className="grid gap-3 pt-2">
-            {groupedLocations
-              .find((g) => g.name === activeTab || groupedLocations.length === 1)
-              ?.locs.map((loc) => (
+            {displayedLocations.length === 0 ? (
+              <div className="text-center py-8 text-xs text-slate-500 dark:text-slate-400">
+                No locations found in the selected district.
+              </div>
+            ) : (
+              displayedLocations.map((loc) => (
                 <div
                   key={loc.id}
                   className="bg-white dark:bg-slate-900/90 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-4.5 flex flex-col sm:flex-row sm:items-center justify-between gap-4"
@@ -320,7 +299,8 @@ export function LocationsTab() {
                     </button>
                   </div>
                 </div>
-              ))}
+              ))
+            )}
           </div>
         </div>
       )}
