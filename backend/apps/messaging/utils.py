@@ -822,3 +822,79 @@ def update_contact_whatsapp_profile(contact, profile_data=None, instance=None):
     if update_fields:
         update_fields.append('updated_at')
         contact.save(update_fields=update_fields)
+
+
+def send_whatsapp_flow_message(
+    instance,
+    to_phone: str,
+    flow_id: str,
+    flow_token: str,
+    header_text: str,
+    body_text: str,
+    button_label: str,
+    first_screen: str = "SEARCH",
+):
+    """
+    Send an interactive WhatsApp Flow message — the CTA button that opens
+    the interactive form inside WhatsApp.
+
+    Args:
+        instance:     WhatsappInstance (has phone_number_id + access_token)
+        to_phone:     Recipient's WA ID (e.g. "911234567890")
+        flow_id:      Meta's Flow ID (WhatsappFlow.meta_flow_id)
+        flow_token:   Unique per-session token (stored in execution.variables)
+        header_text:  Text shown above the button area (optional)
+        body_text:    Main message body (supports {{variable}} from prior nodes)
+        button_label: CTA button text shown to the customer (e.g. "Find a Resort 🏨")
+        first_screen: First screen to open in the Flow (default: "SEARCH")
+    """
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to_phone,
+        "type": "interactive",
+        "interactive": {
+            "type": "flow",
+            "body": {"text": body_text or "Please fill out the form below."},
+            "action": {
+                "name": "flow",
+                "parameters": {
+                    "flow_message_version": "3",
+                    "flow_token": flow_token,
+                    "flow_id": flow_id,
+                    "flow_cta": button_label,
+                    "flow_action": "navigate",
+                    "flow_action_payload": {
+                        "screen": first_screen,
+                        "data": {},
+                    },
+                },
+            },
+        },
+    }
+
+    # Add header only if provided (optional field)
+    if header_text:
+        payload["interactive"]["header"] = {"type": "text", "text": header_text}
+
+    api_version = getattr(settings, "META_GRAPH_API_VERSION", "v20.0")
+    url = f"https://graph.facebook.com/{api_version}/{instance.phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {instance.access_token}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        res = requests.post(url, json=payload, headers=headers, timeout=15)
+        res.raise_for_status()
+        logger.info(
+            "[Messaging] Flow message sent to %s (flow_id=%s, token=%s)",
+            to_phone, flow_id, flow_token[:8],
+        )
+        return res
+    except requests.RequestException as exc:
+        logger.error(
+            "[Messaging] Failed to send Flow message to %s: %s", to_phone, exc
+        )
+        raise
+

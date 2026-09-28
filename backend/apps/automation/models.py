@@ -10,17 +10,18 @@ from apps.core.models import BaseModel, SoftDeleteModel
 
 # Constants
 class NodeType(models.TextChoices):
-    TRIGGER       = "trigger",       "Trigger"
-    ACTION        = "action",        "Send Message"
-    WAIT          = "wait",          "Wait / Delay"
-    CONDITION     = "condition",     "Condition Split"
-    MENU          = "menu",          "Menu Options"
-    END_CHAT      = "end_chat",      "End Chat"
-    COLLECT_INPUT = "collect_input", "Collect Input"
-    SAVE_CONTACT  = "save_contact",  "Save Contact"
-    AI_CONTROL    = "ai_control",    "AI Control"
-    HTTP_REQUEST  = "http_request",  "HTTP Request"
-    SAVE_LOCATION = "save_location", "Save Location"
+    TRIGGER        = "trigger",        "Trigger"
+    ACTION         = "action",         "Send Message"
+    WAIT           = "wait",           "Wait / Delay"
+    CONDITION      = "condition",      "Condition Split"
+    MENU           = "menu",           "Menu Options"
+    END_CHAT       = "end_chat",       "End Chat"
+    COLLECT_INPUT  = "collect_input",  "Collect Input"
+    SAVE_CONTACT   = "save_contact",   "Save Contact"
+    AI_CONTROL     = "ai_control",     "AI Control"
+    HTTP_REQUEST   = "http_request",   "HTTP Request"
+    SAVE_LOCATION  = "save_location",  "Save Location"
+    WHATSAPP_FLOW  = "whatsapp_flow",  "Send WhatsApp Flow"
 
 
 class TriggerType(models.TextChoices):
@@ -134,17 +135,18 @@ class FlowNode(BaseModel):
 
     # Required config keys per node type
     _REQUIRED_CONFIG_KEYS: dict[str, list[str]] = {
-        "trigger":       [],
-        "action":        ["message"],
-        "wait":          ["delayValue", "delayUnit"],
-        "condition":     ["conditions"],
-        "menu":          ["message", "options"],
-        "end_chat":      ["closingMessage"],
-        "collect_input": ["prompt", "variableName"],
-        "save_contact":  ["fieldToUpdate", "fieldValue"],
-        "save_location": ["locationId"],
-        "ai_control":    ["aiAction"],
-        "http_request":  ["httpMethod", "url"],
+        "trigger":        [],
+        "action":         ["message"],
+        "wait":           ["delayValue", "delayUnit"],
+        "condition":      ["conditions"],
+        "menu":           ["message", "options"],
+        "end_chat":       ["closingMessage"],
+        "collect_input":  ["prompt", "variableName"],
+        "save_contact":   ["fieldToUpdate", "fieldValue"],
+        "save_location":  ["locationId"],
+        "ai_control":     ["aiAction"],
+        "http_request":   ["httpMethod", "url"],
+        "whatsapp_flow":  ["flowId", "ctaLabel"],
     }
 
     def clean(self):

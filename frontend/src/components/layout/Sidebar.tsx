@@ -20,7 +20,8 @@ import {
   FileText,
   MessageSquareText,
   FolderOpen,
-  Megaphone
+  Megaphone,
+  Layers
 } from "lucide-react";
 import { useRouter } from "../../router";
 import { useAuthStore } from "../../store/authStore";
@@ -47,6 +48,7 @@ export function Sidebar() {
 
     { id: "/ai-agent", label: "AI Agent", icon: Bot, permitted: permissions.canAccessAiAgent },
     { id: "/automations", label: "Automations", icon: GitFork, permitted: permissions.canAccessAutomations },
+    { id: "/flows", label: "WhatsApp Flows", icon: Layers, permitted: permissions.canAccessAutomations },
   ];
 
   const navItems = allNavItems.filter((item) => item.permitted);

@@ -11,7 +11,7 @@
 
 import {
   MessageSquare, Image as ImageIcon, Menu, SplitSquareHorizontal, Clock, XCircle, FileInput, Save,
-  Sparkles, Globe, Zap, LucideIcon, MapPin
+  Sparkles, Globe, Zap, LucideIcon, MapPin, Smartphone
 } from "lucide-react";
 
 
@@ -26,6 +26,7 @@ import SaveContactNode from "../components/nodes/SaveContactNode";
 import AiControlNode from "../components/nodes/AiControlNode";
 import HttpRequestNode from "../components/nodes/HttpRequestNode";
 import SaveLocationNode from "../components/nodes/SaveLocationNode";
+import WhatsappFlowNode from "../components/nodes/WhatsappFlowNode";
 import DeletableEdge from "../components/DeletableEdge";
 
 
@@ -42,7 +43,8 @@ export type CanonicalType =
   | "save_contact"
   | "save_location"
   | "ai_control"
-  | "http_request";
+  | "http_request"
+  | "whatsapp_flow";
 
 export interface NodeRegistryEntry {
   /** ReactFlow component */
@@ -288,6 +290,25 @@ export const NODE_REGISTRY: Record<CanonicalType, NodeRegistryEntry> = {
       headers: "{}",
       requestBody: '{\n  "phone": "{{phone}}"\n}',
       responseVariable: "api_response",
+    }),
+  },
+
+  whatsapp_flow: {
+    component: WhatsappFlowNode,
+    label: "WhatsApp Flow",
+    description: "Send an interactive form",
+    icon: Smartphone,
+    color: "text-teal-500",
+    category: "Messages",
+    aliases: ["whatsapp_flow", "whatsappFlow", "WhatsApp Flow"],
+    defaultWidth: 220,
+    defaultHeight: 120,
+    defaultConfig: (title, desc) => ({
+      version: 1,
+      title,
+      description: desc,
+      flowId: "",
+      ctaLabel: "Open Form",
     }),
   },
 };

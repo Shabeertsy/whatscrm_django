@@ -16,6 +16,7 @@ import Templates from "./pages/Templates";
 import CustomMessages from "./pages/CustomMessages";
 import MediaLibrary from "./pages/MediaLibrary";
 import CampaignDetail from "./features/campaigns/CampaignDetail";
+import Flows from "./pages/Flows";
 
 
 
@@ -48,6 +49,7 @@ export function Router() {
       <Route path="/settings" element={<Settings />} />
       <Route path="/messaging" element={<Inbox />} />
       <Route path="/automations" element={<Automation />} />
+      <Route path="/flows" element={<Flows />} />
       <Route path="/campaigns" element={<Campaigns />} />
       <Route path="/campaigns/:id" element={<CampaignDetail />} />
       <Route path="/templates" element={<Templates />} />

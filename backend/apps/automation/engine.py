@@ -157,6 +157,9 @@ class AutomationEngine(BaseChatbotEngine):
             elif node_type in (NodeType.HTTP_REQUEST, "http_request"):
                 result = self._handle_http_request_node(current_node, execution)
 
+            elif node_type in (NodeType.WHATSAPP_FLOW, "whatsapp_flow"):
+                result = self._handle_whatsapp_flow_node(current_node, execution)
+
             else:
                 logger.warning(
                     "[AutomationEngine] Unhandled node type '%s' — stopping traversal.", node_type
@@ -586,6 +589,126 @@ class AutomationEngine(BaseChatbotEngine):
         return _WAITING
 
 
+    def _handle_whatsapp_flow_node(self, node, execution):
+        """
+        Send a WhatsApp Flow CTA button to the contact, then pause execution.
+        Stores the flow_token in execution.variables so FlowDataExchangeView
+        can find and resume this exact execution when the form is submitted.
+        """
+        import secrets
+
+        flow_id   = node.config.get("flowId", "")
+        cta_label = node.config.get("ctaLabel", "Open Form")
+        header    = node.config.get("headerText", "")
+        body_text = node.config.get("bodyText", "Please fill out the form below.")
+
+        if not flow_id:
+            logger.warning("[AutomationEngine] Conv %s whatsapp_flow node missing flowId.", self.conv.id)
+            self._log_step(execution, node, StepStatus.FAILED)
+            next_node = self._advance_to_next(execution, node)
+            if next_node is None:
+                execution.complete()
+                return _STOP
+            return next_node
+
+        try:
+            from apps.flows.models import WhatsappFlow
+            flow_obj = WhatsappFlow.objects.get(id=flow_id)
+        except WhatsappFlow.DoesNotExist:
+            logger.warning("[AutomationEngine] Conv %s WhatsApp Flow %s not found.", self.conv.id, flow_id)
+            self._log_step(execution, node, StepStatus.FAILED)
+            next_node = self._advance_to_next(execution, node)
+            if next_node is None:
+                execution.complete()
+                return _STOP
+            return next_node
+
+        if not flow_obj.meta_flow_id:
+            logger.warning(
+                "[AutomationEngine] Conv %s Flow '%s' has no meta_flow_id (not yet published).",
+                self.conv.id, flow_obj.name,
+            )
+            self._log_step(execution, node, StepStatus.FAILED)
+            next_node = self._advance_to_next(execution, node)
+            if next_node is None:
+                execution.complete()
+                return _STOP
+            return next_node
+
+        # Generate a unique token for this session
+        flow_token = secrets.token_hex(16)
+
+        # Persist token so FlowDataExchangeView can look up this execution
+        execution.variables["__wa_flow_token"]   = flow_token
+        execution.variables["__wa_flow_node_id"] = node.node_id
+        execution.save(update_fields=["variables"])
+
+        # Interpolate body text with existing variables
+        body_text = self._interpolate_text(body_text, execution.variables)
+        header    = self._interpolate_text(header, execution.variables)
+
+        # Send the interactive Flow CTA button
+        if self.conv.instance and self.conv.instance.is_active:
+            try:
+                from apps.messaging.utils import send_whatsapp_flow_message
+                send_whatsapp_flow_message(
+                    instance     = self.conv.instance,
+                    to_phone     = self.conv.contact.wa_id,
+                    flow_id      = flow_obj.meta_flow_id,
+                    flow_token   = flow_token,
+                    header_text  = header,
+                    body_text    = body_text,
+                    button_label = cta_label,
+                )
+                logger.info(
+                    "[AutomationEngine] Conv %s sent WhatsApp Flow '%s' (token %s).",
+                    self.conv.id, flow_obj.name, flow_token[:8],
+                )
+
+                # Pre-create a FlowSubmission record for tracking
+                from apps.flows.models import FlowSubmission
+                FlowSubmission.objects.create(
+                    flow          = flow_obj,
+                    conversation  = self.conv,
+                    contact_wa_id = self.conv.contact.wa_id,
+                    flow_token    = flow_token,
+                    completed     = False,
+                )
+
+            except Exception as exc:
+                logger.error(
+                    "[AutomationEngine] Conv %s failed to send WhatsApp Flow: %s", self.conv.id, exc
+                )
+
+        execution.status = ExecutionStatus.WAITING
+        execution.save(update_fields=["status"])
+        self._log_step(execution, node, StepStatus.PENDING)
+        return _WAITING
+
+
+    def _resume_whatsapp_flow(self, node, execution, ctx, reply=None):
+        """
+        Called by FlowDataExchangeView after the customer completes the form.
+        All submitted field values are already merged into execution.variables
+        before this is called.
+        Continues traversal from the next node.
+        """
+        if reply is None:
+            reply = ChatbotReply()
+
+        self._log_step(execution, node, StepStatus.COMPLETED)
+        execution.status = ExecutionStatus.RUNNING
+        execution.save(update_fields=["status"])
+
+        next_node = self._advance_to_next(execution, node)
+        if next_node is None:
+            execution.complete()
+        else:
+            self._traverse_flow(execution, node, ctx, reply, start_at=next_node)
+
+        return reply if not reply.is_empty else None
+
+
     def _resume_collect_input(self, node, execution, ctx, reply, inbound_text):
         """Validate the user's reply, store it in execution.variables, and continue."""
         validation_type = node.config.get("validationType", "any")
@@ -696,6 +819,9 @@ class AutomationEngine(BaseChatbotEngine):
 
         if current_node.node_type in (NodeType.COLLECT_INPUT, "collect_input"):
             return self._resume_collect_input(current_node, execution, ctx, reply, inbound_text)
+
+        if current_node.node_type in (NodeType.WHATSAPP_FLOW, "whatsapp_flow"):
+            return self._resume_whatsapp_flow(current_node, execution, ctx, reply)
 
         logger.warning(
             "[AutomationEngine] Conv %s WAITING on unexpected node type '%s'.",

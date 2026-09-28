@@ -62,6 +62,7 @@ INSTALLED_APPS = [
     "apps.whatsapp",
     "apps.contacts",
     "apps.ai",
+    "apps.flows",
 ]
 
 MIDDLEWARE = [
@@ -307,4 +308,10 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": crontab(minute="*/5"),
     },
 }
+
+# WhatsApp Flows — RSA Key for Meta data-exchange decryption
+# Generate: openssl genrsa -out flow_private_key.pem 2048
+# Store full PEM in .env as FLOW_PRIVATE_KEY (use \n for newlines)
+FLOW_PRIVATE_KEY = os.getenv("FLOW_PRIVATE_KEY", "")
+
 

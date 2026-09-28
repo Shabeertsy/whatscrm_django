@@ -14,6 +14,7 @@ import { AiControlPanel } from "./panels/AiControlPanel";
 import { HttpRequestPanel } from "./panels/HttpRequestPanel";
 import { MenuOptionsPanel } from "./panels/MenuOptionsPanel";
 import { SaveLocationPanel } from "./panels/SaveLocationPanel";
+import { WhatsappFlowPanel } from "./panels/WhatsappFlowPanel";
 
 
 
@@ -46,6 +47,7 @@ function resolvePanel(type: string, title: string): React.FC<PanelProps> | null 
   if (type === "ai_control" || type === "aiControl" || t.includes("ai control")) return AiControlPanel;
   if (type === "http_request" || type === "httpRequest" || t.includes("http request")) return HttpRequestPanel;
   if (type === "save_location" || type === "saveLocation" || t.includes("save location")) return SaveLocationPanel;
+  if (type === "whatsapp_flow" || type === "whatsappFlow" || t.includes("whatsapp flow")) return WhatsappFlowPanel;
   if (type === "action") return SendMessagePanel;
 
   return null;
@@ -62,6 +64,8 @@ function getNodeStyle(type: string) {
       return { bg: "bg-blue-600", shadow: "shadow-blue-500/20", label: "Time Delay", icon: Clock };
     case "action":
       return { bg: "bg-emerald-600", shadow: "shadow-emerald-500/20", label: "Send Message", icon: MessageSquare };
+    case "whatsapp_flow":
+      return { bg: "bg-teal-600", shadow: "shadow-teal-500/20", label: "WhatsApp Flow", icon: MessageSquare };
     case "save_location":
       return { bg: "bg-rose-600", shadow: "shadow-rose-500/20", label: "Save Location", icon: MapPin };
     default:
