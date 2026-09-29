@@ -865,8 +865,7 @@ def send_whatsapp_flow_message(
                     "flow_cta": button_label,
                     "flow_action": "navigate",
                     "flow_action_payload": {
-                        "screen": first_screen,
-                        "data": {},
+                        "screen": first_screen
                     },
                 },
             },
