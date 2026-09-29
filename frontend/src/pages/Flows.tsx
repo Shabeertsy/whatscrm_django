@@ -64,8 +64,7 @@ const defaultApiConfig = (): ApiConfig => ({
 
 function buildFlowJson(screens: FlowScreen[]): object {
   return {
-    version: "3.1",
-    data_api_version: "3.0",
+    version: "3.0",
     routing_model: screens.reduce((acc, screen, idx) => {
       acc[screen.id] = idx < screens.length - 1 ? [screens[idx + 1].id] : [];
       return acc;
