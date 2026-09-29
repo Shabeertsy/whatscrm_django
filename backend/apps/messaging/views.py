@@ -698,6 +698,9 @@ class WebhookView(APIView):
             elif interactive_type == 'button_reply':
                 reply_data = interactive_obj.get('button_reply', {})
                 body = reply_data.get('title', reply_data.get('id', ''))
+            elif interactive_type == 'nfm_reply':
+                nfm_reply = interactive_obj.get('nfm_reply', {})
+                body = nfm_reply.get('body', '[Flow Form Submitted]')
             else:
                 body = interactive_obj.get('title', '')
 

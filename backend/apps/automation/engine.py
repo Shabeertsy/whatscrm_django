@@ -681,6 +681,12 @@ class AutomationEngine(BaseChatbotEngine):
                 logger.error(
                     "[AutomationEngine] Conv %s failed to send WhatsApp Flow: %s", self.conv.id, exc
                 )
+                self._log_step(execution, node, StepStatus.FAILED)
+                next_node = self._advance_to_next(execution, node)
+                if next_node is None:
+                    execution.complete()
+                    return _STOP
+                return next_node
 
         execution.status = ExecutionStatus.WAITING
         execution.save(update_fields=["status"])
@@ -823,7 +829,34 @@ class AutomationEngine(BaseChatbotEngine):
             return self._resume_collect_input(current_node, execution, ctx, reply, inbound_text)
 
         if current_node.node_type in (NodeType.WHATSAPP_FLOW, "whatsapp_flow"):
-            return self._resume_whatsapp_flow(current_node, execution, ctx, reply)
+            import json
+            last_inbound = (
+                self.conv.messages.filter(direction="inbound")
+                .order_by("-timestamp").first()
+            )
+            is_nfm_reply = False
+            if last_inbound and last_inbound.raw_data:
+                interactive_obj = last_inbound.raw_data.get("interactive", {})
+                if interactive_obj.get("type") == "nfm_reply":
+                    is_nfm_reply = True
+                    nfm_reply = interactive_obj.get("nfm_reply", {})
+                    response_json_str = nfm_reply.get("response_json", "{}")
+                    try:
+                        resp_data = json.loads(response_json_str)
+                        if isinstance(resp_data, dict):
+                            execution.variables.update(resp_data)
+                            execution.save(update_fields=["variables"])
+                    except Exception as exc:
+                        logger.error("[AutomationEngine] Failed to parse nfm_reply JSON: %s", exc)
+
+            if is_nfm_reply:
+                return self._resume_whatsapp_flow(current_node, execution, ctx, reply)
+
+            logger.info(
+                "[AutomationEngine] Conv %s is WAITING on whatsapp_flow node; text message received. Keeping flow active.",
+                self.conv.id,
+            )
+            return None
 
         logger.warning(
             "[AutomationEngine] Conv %s WAITING on unexpected node type '%s'.",
