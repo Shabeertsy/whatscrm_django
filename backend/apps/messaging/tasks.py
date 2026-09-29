@@ -315,7 +315,6 @@ def process_inbound_message(self, conversation_id: int):
             try:
                 conv = Conversation.objects.filter(id=conversation_id).first()
                 if conv:
-                    from apps.automation.models import FlowExecution, ExecutionStatus
                     
                     # Mark any running execution as FAILED so it doesn't get stuck
                     running_execution = FlowExecution.objects.filter(
