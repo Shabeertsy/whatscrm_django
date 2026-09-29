@@ -200,24 +200,70 @@ class FlowSubmissionListView(APIView):
         return Response(serializer.data)
 
 
+class PreviewApiView(APIView):
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_AUTOMATIONS
+
+    def post(self, request):
+        cfg = request.data
+        url = cfg.get("url", "").strip()
+        if not url:
+            return Response({"error": "url is required"}, status=400)
+
+        id_field    = cfg.get("id_field", "id") or "id"
+        label_field = cfg.get("label_field", "name") or "name"
+        results_key = cfg.get("results_key", "") or ""
+        headers     = cfg.get("headers", {}) or {}
+        filter_param = cfg.get("filter_param", "") or ""
+        filter_value = cfg.get("filter_value", "") or ""  
+
+        params = {}
+        if filter_param and filter_value:
+            params[filter_param] = filter_value
+
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=10)
+            resp.raise_for_status()
+            raw = resp.json()
+        except requests.exceptions.Timeout:
+            return Response({"error": "API timed out after 10 seconds"}, status=408)
+        except requests.exceptions.ConnectionError as exc:
+            return Response({"error": f"Could not connect: {exc}"}, status=502)
+        except Exception as exc:
+            return Response({"error": str(exc)}, status=502)
+
+        # Navigate nested key path
+        items = raw
+        if results_key:
+            for key in results_key.split("."):
+                if isinstance(items, dict):
+                    items = items.get(key, [])
+
+        if not isinstance(items, list):
+            hint = ""
+            if isinstance(items, dict) and items:
+                hint = f" Available keys: {', '.join(items.keys())}."
+            return Response({"error": f"Expected a list but got {type(items).__name__}.{hint} Check your Results Key.", "raw": raw}, status=422)
+
+        options = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            opt_id    = item.get(id_field, "")
+            opt_label = item.get(label_field, str(opt_id))
+            if opt_id:
+                options.append({"id": str(opt_id), "title": str(opt_label)})
+
+        return Response({"count": len(options), "options": options[:50]}) 
+
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Data Exchange Endpoint — called by Meta for every screen interaction
 # ─────────────────────────────────────────────────────────────────────────────
 
 @method_decorator(csrf_exempt, name="dispatch")
 class FlowDataExchangeView(View):
-    """
-    POST /api/flows/wa/data-exchange/
-
-    This is a PUBLIC endpoint (no auth) — Meta calls it directly.
-    It must respond within 10 seconds.
-
-    Responsibilities:
-      1. Decrypt Meta's encrypted payload
-      2. Route to the correct screen handler
-      3. On COMPLETE: save FlowSubmission + resume the AutomationFlow execution
-      4. Re-encrypt and return the next screen response
-    """
 
     def post(self, request, *args, **kwargs):
         raw_body = request.body
@@ -239,7 +285,6 @@ class FlowDataExchangeView(View):
             decrypted, aes_key, iv = decrypt_flow_request(body)
         except Exception as exc:
             logger.error("[FlowDataExchange] Decryption failed: %s", exc)
-            # Return unencrypted error (only during dev/testing)
             return JsonResponse({"error": "decryption_failed"}, status=421)
 
         action_name = decrypted.get("action", "")
@@ -258,11 +303,9 @@ class FlowDataExchangeView(View):
             encrypted = encrypt_flow_response(response_data, aes_key, iv)
             return HttpResponse(encrypted, content_type="text/plain")
 
-        # ── INIT: Customer just opened the flow ──
         if action_name == "INIT":
             response_data = self._handle_init(flow_token, data)
 
-        # ── data_exchange: Customer tapped "Next" on a screen ──
         elif action_name == "data_exchange":
             response_data = self._handle_screen(screen, flow_token, data)
 
@@ -289,37 +332,104 @@ class FlowDataExchangeView(View):
     def _handle_screen(self, screen: str, flow_token: str, data: dict) -> dict:
         """
         Route each screen's submission to its handler.
-        Add more screen handlers here as you build more screens.
+        For screens with dynamic dropdowns, call the configured API.
         """
-        # ── Final screen submitted ──
-        # Convention: any screen named "COMPLETE" or action payload containing "screen":"COMPLETE"
         submitted_screen = data.get("screen", screen)
         if submitted_screen == "COMPLETE" or screen == "COMPLETE":
             return self._handle_complete(flow_token, data)
 
-        # ── Custom per-screen logic (e.g. dynamic results) ──
-        # You can add more elif blocks here for dynamic data exchange
-        # e.g. search screen → query DB and return available rooms
+        next_screen = data.get("next_screen", "SUCCESS")
 
-        # Default: navigate to next screen with the submitted data passed through
+        # ── Load the flow's API config ───────────────────────────────────────
+        flow_obj = self._find_flow_by_token_cached(flow_token)
+        api_config = getattr(flow_obj, "data_api_config", {}) if flow_obj else {}
+
+        # ── Fetch dynamic options for every configured field on next screen ──
+        extra_data = {}
+        for field_name, cfg in api_config.items():
+            # Only fetch for fields that target the next screen
+            target_screen = cfg.get("screen", next_screen)
+            if target_screen != next_screen:
+                continue
+
+            options = self._fetch_dynamic_options(cfg, submitted_data=data)
+            extra_data[field_name] = options  # e.g. "product_field": [{"id":..,"title":..}]
+
         return {
-            "screen": data.get("next_screen", "SUCCESS"),
-            "data": data,
+            "screen": next_screen,
+            "data": {
+                **data,      
+                **extra_data,
+            },
         }
 
+    # ── Dynamic API caller ───────────────────────────────────────────────────
+
+    def _fetch_dynamic_options(self, cfg: dict, submitted_data: dict) -> list:
+    
+        url         = cfg.get("url", "")
+        id_field    = cfg.get("id_field", "id")
+        label_field = cfg.get("label_field", "name")
+        headers     = cfg.get("headers", {})
+        results_key = cfg.get("results_key", "")    
+        filter_param  = cfg.get("filter_param", "") 
+        filter_qkey   = cfg.get("filter_query_key", filter_param)  
+
+        if not url:
+            return []
+
+        params = {}
+        if filter_param and filter_param in submitted_data:
+            params[filter_qkey] = submitted_data[filter_param]
+
+        try:
+            resp = requests.get(url, params=params, headers=headers, timeout=8)
+            resp.raise_for_status()
+            raw = resp.json()
+        except Exception as exc:
+            logger.error("[FlowDataExchange] API fetch failed for %s: %s", url, exc)
+            return []
+
+        # Navigate nested keys
+        items = raw
+        if results_key:
+            for key in results_key.split("."):
+                if isinstance(items, dict):
+                    items = items.get(key, [])
+
+        if not isinstance(items, list):
+            items = []
+
+        options = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            opt_id    = item.get(id_field, "")
+            opt_label = item.get(label_field, str(opt_id))
+            if opt_id:
+                options.append({"id": str(opt_id), "title": str(opt_label)})
+
+        return options
+
+    # ── Cached flow lookup ───────────────────────────────────────────────────
+
+    def _find_flow_by_token_cached(self, flow_token: str):
+        """Look up the WhatsappFlow from a FlowSubmission. Cached per request."""
+        if not hasattr(self, "_cached_flow"):
+            sub = FlowSubmission.objects.select_related("flow").filter(flow_token=flow_token).first()
+            self._cached_flow = sub.flow if sub else None
+        return self._cached_flow
+
     def _handle_complete(self, flow_token: str, screen_data: dict) -> dict:
-        """
-        Final screen submitted. Save the submission and resume the AutomationFlow.
-        """
-        # Find the matching FlowSubmission (created when we sent the CTA button)
-        # or create it now
+        screen_data = self._enrich_with_labels(screen_data, flow_token)
+
+        # Save submission 
         submission = FlowSubmission.objects.filter(flow_token=flow_token).first()
         if submission:
             submission.screen_data = screen_data
             submission.completed   = True
             submission.save(update_fields=["screen_data", "completed", "updated_at"])
         else:
-            # Edge case: no pre-created submission — create one now
             logger.warning("[FlowDataExchange] No pre-created submission for token %s", flow_token[:8])
             FlowSubmission.objects.create(
                 flow=self._find_flow_by_token(flow_token),
@@ -328,13 +438,52 @@ class FlowDataExchangeView(View):
                 completed=True,
             )
 
-        # Resume the paused AutomationFlow execution
         self._resume_automation(flow_token, screen_data)
-
         return {"screen": "SUCCESS", "data": {}}
 
-    # ── Automation resume ────────────────────────────────────────────────────
+    def _enrich_with_labels(self, screen_data: dict, flow_token: str) -> dict:
+        """
+        For every dynamic field in data_api_config, fetch the options and
+        inject a `<field_id>_label` key with the human-readable title.
 
+        Handles:
+          - Single-select (dynamic_dropdown): submitted value is a string ID
+          - Multi-select  (dynamic_checkbox): submitted value is a list of IDs
+        """
+        flow_obj   = self._find_flow_by_token_cached(flow_token)
+        api_config = getattr(flow_obj, "data_api_config", {}) if flow_obj else {}
+
+        if not api_config:
+            return screen_data
+
+        enriched = dict(screen_data) 
+
+        for field_id, cfg in api_config.items():
+            raw_value = screen_data.get(field_id)
+            if raw_value is None:
+                continue 
+
+            # Fetch the options list from the API (same helper used by _handle_screen)
+            options = self._fetch_dynamic_options(cfg, submitted_data=screen_data)
+            lookup = {opt["id"]: opt["title"] for opt in options}
+
+            field_type = cfg.get("field_type", "dynamic_dropdown")
+
+            if field_type == "dynamic_checkbox" and isinstance(raw_value, list):
+                labels = [lookup.get(str(v), str(v)) for v in raw_value]
+                enriched[f"{field_id}_label"] = ", ".join(labels)  
+                enriched[f"{field_id}_labels"] = labels             
+            else:
+                enriched[f"{field_id}_label"] = lookup.get(str(raw_value), str(raw_value))
+
+            logger.info(
+                "[FlowDataExchange] Enriched field %s: %s → %s",
+                field_id, raw_value, enriched.get(f"{field_id}_label"),
+            )
+
+        return enriched
+
+    #  Automation resume 
     def _resume_automation(self, flow_token: str, screen_data: dict):
         """
         Find the WAITING FlowExecution that holds this flow_token and resume it.
@@ -356,7 +505,6 @@ class FlowDataExchangeView(View):
 
             # Merge all submitted form data into execution variables
             execution.variables.update(screen_data)
-            # Clean up the internal token keys
             execution.variables.pop("__wa_flow_token", None)
             execution.variables.pop("__wa_flow_node_id", None)
             execution.save(update_fields=["variables"])

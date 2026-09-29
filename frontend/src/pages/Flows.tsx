@@ -2,17 +2,29 @@ import React, { useEffect, useRef, useState } from "react";
 import PageHeader from "../components/shared/PageHeader";
 import { flowsApi } from "../api/flows";
 import { whatsappApi } from "../api/whatsapp";
+import ConfirmDialog from "../components/shared/ConfirmDialog";
 import {
   Plus, Trash2, Globe, Loader2, Layers, ChevronDown, ChevronUp,
   Monitor, TextCursor, List, CheckSquare, Circle, AlignLeft, GripVertical, X,
   Copy, Check, Code2, AlertCircle, BarChart2
 } from "lucide-react";
 
-// ─── Types ───────────────────────────────────────────────────────────────────
 
-type FieldType = "text_input" | "textarea" | "dropdown" | "radio" | "checkbox";
+
+type FieldType = "text_input" | "textarea" | "dropdown" | "radio" | "checkbox" | "dynamic_dropdown" | "dynamic_checkbox";
 
 interface FieldOption { id: string; label: string; }
+
+/** Config for a dynamic dropdown backed by an external API */
+interface ApiConfig {
+  url: string;          // e.g. "https://api.example.com/products/"
+  id_field: string;     // JSON key to use as option id      (default "id")
+  label_field: string;  // JSON key to use as option title   (default "name")
+  results_key: string;  // Nested key path e.g. "results" or "data.items" (leave blank if top-level array)
+  filter_param: string; // field_id of previous field whose value is sent as query param
+  screen: string;       // which screen id this field belongs to (auto-set)
+  headers: Record<string, string>; // Optional auth headers
+}
 
 interface FlowField {
   id: string;
@@ -21,21 +33,34 @@ interface FlowField {
   placeholder?: string;
   required: boolean;
   options: FieldOption[];
+  apiConfig?: ApiConfig; // Only used for dynamic_dropdown / dynamic_checkbox
 }
 
 interface FlowScreen { id: string; title: string; fields: FlowField[]; }
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
 const FIELD_TYPES: { type: FieldType; icon: React.ReactNode; label: string }[] = [
-  { type: "text_input", icon: <TextCursor className="w-3.5 h-3.5" />, label: "Short Text" },
-  { type: "textarea",   icon: <AlignLeft  className="w-3.5 h-3.5" />, label: "Long Text"  },
-  { type: "dropdown",   icon: <List       className="w-3.5 h-3.5" />, label: "Dropdown"   },
-  { type: "radio",      icon: <Circle     className="w-3.5 h-3.5" />, label: "Single Choice" },
-  { type: "checkbox",   icon: <CheckSquare className="w-3.5 h-3.5" />, label: "Multi Choice" },
+  { type: "text_input",       icon: <TextCursor  className="w-3.5 h-3.5" />, label: "Short Text"         },
+  { type: "textarea",         icon: <AlignLeft   className="w-3.5 h-3.5" />, label: "Long Text"          },
+  { type: "dropdown",         icon: <List        className="w-3.5 h-3.5" />, label: "Dropdown"           },
+  { type: "radio",            icon: <Circle      className="w-3.5 h-3.5" />, label: "Single Choice"      },
+  { type: "checkbox",         icon: <CheckSquare className="w-3.5 h-3.5" />, label: "Multi Choice"       },
+  // { type: "dynamic_dropdown", icon: <List        className="w-3.5 h-3.5" />, label: "API Dropdown"       },
+  // { type: "dynamic_checkbox", icon: <CheckSquare className="w-3.5 h-3.5" />, label: "API Multi-Select"  },
 ];
+
+const defaultApiConfig = (): ApiConfig => ({
+  url: "",
+  id_field: "id",
+  label_field: "name",
+  results_key: "",
+  filter_param: "",
+  screen: "",
+  headers: {},
+});
 
 function buildFlowJson(screens: FlowScreen[]): object {
   return {
@@ -53,17 +78,23 @@ function buildFlowJson(screens: FlowScreen[]): object {
               const base = { name: f.id, label: f.label, required: f.required };
               if (f.type === "text_input") return { type: "TextInput", input_type: "text", ...base };
               if (f.type === "textarea")   return { type: "TextArea",  ...base };
-              if (f.type === "dropdown")   return { type: "Dropdown",          ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
-              if (f.type === "radio")      return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
-              if (f.type === "checkbox")   return { type: "CheckboxGroup",     ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+              if (f.type === "dropdown")        return { type: "Dropdown",          ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+              if (f.type === "radio")            return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+              if (f.type === "checkbox")         return { type: "CheckboxGroup",     ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+              // Dynamic types: data-source is a variable injected by the backend at runtime
+              if (f.type === "dynamic_dropdown") return { type: "Dropdown",      ...base, "data-source": `\${data.${f.id}}` };
+              if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}}` };
               return base;
             }),
             {
               type: "Footer",
               label: isLast ? "Submit" : "Next",
+              // Screens that have dynamic dropdowns need data_exchange so backend can inject data
               on_click_action: isLast
                 ? { type: "complete", payload: {} }
-                : { type: "navigate", next: { type: "screen", name: screens[idx + 1].id }, payload: {} },
+                : hasDynamicFieldOnNextScreen(screens, idx)
+                  ? { name: "data_exchange", payload: { next_screen: screens[idx + 1].id } }
+                  : { type: "navigate", next: { type: "screen", name: screens[idx + 1].id }, payload: {} },
             },
           ],
         },
@@ -72,7 +103,27 @@ function buildFlowJson(screens: FlowScreen[]): object {
   };
 }
 
-// ─── FieldRow ─────────────────────────────────────────────────────────────────
+/** True if the screen AFTER index idx contains at least one API-backed dynamic field. */
+function hasDynamicFieldOnNextScreen(screens: FlowScreen[], idx: number): boolean {
+  if (idx >= screens.length - 1) return false;
+  return screens[idx + 1].fields.some(f => f.type === "dynamic_dropdown" || f.type === "dynamic_checkbox");
+}
+
+/** Extract data_api_config from all screens' API-backed dynamic fields. */
+function buildDataApiConfig(screens: FlowScreen[]): Record<string, object> {
+  const config: Record<string, object> = {};
+  for (const screen of screens) {
+    for (const field of screen.fields) {
+      const isDynamic = field.type === "dynamic_dropdown" || field.type === "dynamic_checkbox";
+      if (isDynamic && field.apiConfig) {
+        config[field.id] = { ...field.apiConfig, screen: screen.id, field_type: field.type };
+      }
+    }
+  }
+  return config;
+}
+
+
 
 function FieldRow({
   field, fieldIndex, onUpdate, onRemove, error,
@@ -142,6 +193,11 @@ function FieldRow({
               </button>
             </div>
           )}
+
+          {/* API config — only for API-backed field types */}
+          {(field.type === "dynamic_dropdown" || field.type === "dynamic_checkbox") && (
+            <ApiConfigPanel field={field} onUpdate={onUpdate} />
+          )}
         </div>
       )}
 
@@ -154,7 +210,139 @@ function FieldRow({
   );
 }
 
-// ─── ScreenCard ───────────────────────────────────────────────────────────────
+function ApiConfigPanel({ field, onUpdate }: { field: FlowField; onUpdate: (f: FlowField) => void }) {
+  const cfg = field.apiConfig ?? defaultApiConfig();
+  const upd = (patch: Partial<ApiConfig>) =>
+    onUpdate({ ...field, apiConfig: { ...cfg, ...patch } });
+
+  const [preview, setPreview] = useState<{ loading: boolean; options: any[]; error: string | null; count: number | null }>({
+    loading: false, options: [], error: null, count: null,
+  });
+
+  const runPreview = async () => {
+    if (!cfg.url.trim()) return;
+    setPreview({ loading: true, options: [], error: null, count: null });
+    try {
+      const res = await flowsApi.previewApi({ ...cfg });
+      setPreview({ loading: false, options: res.data.options ?? [], error: null, count: res.data.count });
+    } catch (err: any) {
+      const msg = err.response?.data?.error || err.message || "Request failed";
+      setPreview({ loading: false, options: [], error: msg, count: null });
+    }
+  };
+
+  return (
+    <div className="space-y-2.5 rounded border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/40 p-3">
+      <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">API Configuration</p>
+
+      <div>
+        <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">URL <span className="text-rose-400">*</span></label>
+        <input
+          className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 font-mono"
+          placeholder="https://api.example.com/items/"
+          value={cfg.url}
+          onChange={e => upd({ url: e.target.value })}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">ID Field</label>
+          <input
+            className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 font-mono"
+            placeholder="id"
+            value={cfg.id_field}
+            onChange={e => upd({ id_field: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Label Field</label>
+          <input
+            className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 font-mono"
+            placeholder="name"
+            value={cfg.label_field}
+            onChange={e => upd({ label_field: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Results Key <span className="text-slate-400 font-normal">(optional)</span></label>
+          <input
+            className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 font-mono"
+            placeholder="results"
+            value={cfg.results_key}
+            onChange={e => upd({ results_key: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Filter Field <span className="text-slate-400 font-normal">(optional)</span></label>
+          <input
+            className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 font-mono"
+            placeholder="field_id"
+            value={cfg.filter_param}
+            onChange={e => upd({ filter_param: e.target.value })}
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">Authorization <span className="text-slate-400 font-normal">(optional)</span></label>
+        <input
+          className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-slate-400 dark:focus:border-slate-500 font-mono"
+          placeholder="Bearer your-token"
+          value={cfg.headers?.["Authorization"] ?? ""}
+          onChange={e => upd({ headers: e.target.value ? { "Authorization": e.target.value } : {} })}
+        />
+      </div>
+
+      {/* Preview button */}
+      <div className="flex items-center justify-between pt-0.5">
+        <button
+          type="button"
+          disabled={!cfg.url.trim() || preview.loading}
+          onClick={runPreview}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-[#007e3a] hover:text-[#007e3a] dark:hover:text-[#00c857] disabled:opacity-40 disabled:cursor-not-allowed transition-colors bg-white dark:bg-slate-900"
+        >
+          {preview.loading
+            ? <><Loader2 className="w-3 h-3 animate-spin" /> Fetching…</>
+            : <><List className="w-3 h-3" /> Preview items</>
+          }
+        </button>
+        {preview.count !== null && !preview.loading && (
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            {preview.count} item{preview.count !== 1 ? "s" : ""} found
+          </span>
+        )}
+      </div>
+
+      {/* Preview error */}
+      {preview.error && (
+        <div className="flex items-start gap-1.5 text-xs text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded p-2">
+          <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
+          <span>{preview.error}</span>
+        </div>
+      )}
+
+      {/* Preview results list */}
+      {preview.options.length > 0 && (
+        <div className="rounded border border-slate-200 dark:border-slate-700 overflow-hidden">
+          <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-700/50">
+            {preview.options.map((opt, i) => (
+              <div key={i} className="flex items-center gap-2 px-2.5 py-1.5 bg-white dark:bg-slate-900 text-xs">
+                <span className="text-slate-400 dark:text-slate-500 font-mono flex-shrink-0 w-16 truncate">{opt.id}</span>
+                <span className="text-slate-700 dark:text-slate-200 truncate">{opt.title}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
 function ScreenCard({
   screen, index, total, onUpdate, onRemove, errors,
@@ -234,7 +422,7 @@ function ScreenCard({
   );
 }
 
-// ─── Flow Card ────────────────────────────────────────────────────────────────
+
 
 function FlowCard({ flow, onDelete, onPublish }: { flow: any; onDelete: () => void; onPublish: () => void }) {
   const isPublished = flow.status === "PUBLISHED";
@@ -275,7 +463,7 @@ function FlowCard({ flow, onDelete, onPublish }: { flow: any; onDelete: () => vo
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+
 
 export default function Flows() {
   const [flows, setFlows]         = useState<any[]>([]);
@@ -286,8 +474,12 @@ export default function Flows() {
   const [showJsonPreview, setShowJsonPreview] = useState(false);
   const [jsonCopied, setJsonCopied]       = useState(false);
   const [errors, setErrors]               = useState<Record<string, string>>({});
-  const [formData, setFormData]           = useState({ name: "", category: "BOOKING", instance: "" });
+  const [formData, setFormData]           = useState({ name: "", category: "APPOINTMENT_BOOKING", instance: "" });
   const [activeScreenIdx, setActiveScreenIdx] = useState(0);
+  const [confirmState, setConfirmState]   = useState<{
+    open: boolean; title: string; description: string;
+    isDestructive?: boolean; onConfirm: () => void;
+  }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
   const defaultScreen = (): FlowScreen => ({ id: `SCREEN_${uid().toUpperCase()}`, title: "", fields: [] });
   const [screens, setScreens] = useState<FlowScreen[]>([defaultScreen()]);
@@ -317,7 +509,7 @@ export default function Flows() {
 
   const openForm = () => {
     setScreens([defaultScreen()]);
-    setFormData(p => ({ ...p, name: "", category: "BOOKING" }));
+    setFormData(p => ({ ...p, name: "", category: "APPOINTMENT_BOOKING" }));
     setErrors({});
     setActiveScreenIdx(0);
     setIsFormOpen(true);
@@ -333,6 +525,7 @@ export default function Flows() {
         if (!field.label.trim()) errs[`field_${field.id}`] = "Label is required.";
         else if (["dropdown","radio","checkbox"].includes(field.type) && field.options.length < 2) errs[`field_${field.id}`] = "Add at least 2 options.";
         else if (["dropdown","radio","checkbox"].includes(field.type) && field.options.some(o => !o.label.trim())) errs[`field_${field.id}`] = "All options need a label.";
+        else if (["dynamic_dropdown","dynamic_checkbox"].includes(field.type) && !field.apiConfig?.url?.trim()) errs[`field_${field.id}`] = "API URL is required for dynamic fields.";
       }
     }
     setErrors(errs);
@@ -344,7 +537,13 @@ export default function Flows() {
     if (!validate()) return;
     setIsSubmitting(true);
     try {
-      await flowsApi.createFlow({ name: formData.name, category: formData.category, instance: formData.instance, flow_json: buildFlowJson(screens) });
+      await flowsApi.createFlow({
+        name: formData.name,
+        category: formData.category,
+        instance: formData.instance,
+        flow_json: buildFlowJson(screens),
+        data_api_config: buildDataApiConfig(screens), // ← API configs for dynamic dropdowns
+      });
       setIsFormOpen(false);
       await fetchData();
     } catch (err: any) {
@@ -352,16 +551,34 @@ export default function Flows() {
     } finally { setIsSubmitting(false); }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this flow?")) return;
-    try { await flowsApi.deleteFlow(id); await fetchData(); }
-    catch (err: any) { alert(`Failed to delete: ${err.response?.data?.error || err.message}`); }
+  const closeConfirm = () => setConfirmState(s => ({ ...s, open: false }));
+
+  const handleDelete = (id: string) => {
+    setConfirmState({
+      open: true,
+      title: "Delete Flow",
+      description: "This flow will be permanently deleted. This action cannot be undone.",
+      isDestructive: true,
+      onConfirm: async () => {
+        closeConfirm();
+        try { await flowsApi.deleteFlow(id); await fetchData(); }
+        catch (err: any) { alert(`Failed to delete: ${err.response?.data?.error || err.message}`); }
+      },
+    });
   };
 
-  const handlePublish = async (id: string) => {
-    if (!confirm("Publish this flow to Meta?")) return;
-    try { await flowsApi.publishFlow(id); await fetchData(); }
-    catch (err: any) { alert(`Failed to publish: ${err.response?.data?.error || err.message}`); }
+  const handlePublish = (id: string) => {
+    setConfirmState({
+      open: true,
+      title: "Publish to Meta",
+      description: "Once published, this flow will go live on WhatsApp and cannot be reverted to draft.",
+      isDestructive: false,
+      onConfirm: async () => {
+        closeConfirm();
+        try { await flowsApi.publishFlow(id); await fetchData(); }
+        catch (err: any) { alert(`Failed to publish: ${err.response?.data?.error || err.message}`); }
+      },
+    });
   };
 
   const addScreen = () => {
@@ -468,7 +685,7 @@ export default function Flows() {
                         onChange={e => setFormData({ ...formData, category: e.target.value })}
                         className="w-full bg-slate-50 dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#007e3a]"
                       >
-                        <option value="BOOKING">Booking</option>
+                        <option value="APPOINTMENT_BOOKING">Booking</option>
                         <option value="LEAD_GENERATION">Lead Generation</option>
                         <option value="CUSTOMER_SUPPORT">Customer Support</option>
                         <option value="SURVEY">Survey</option>
@@ -586,6 +803,16 @@ export default function Flows() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmState.open}
+        title={confirmState.title}
+        description={confirmState.description}
+        isDestructive={confirmState.isDestructive}
+        confirmLabel={confirmState.isDestructive ? "Delete" : "Publish"}
+        onConfirm={confirmState.onConfirm}
+        onCancel={closeConfirm}
+      />
     </div>
   );
 }

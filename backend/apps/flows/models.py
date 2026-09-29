@@ -18,7 +18,7 @@ class WhatsappFlow(BaseModel):
         BLOCKED    = "BLOCKED",    "Blocked"
 
     class FlowCategory(models.TextChoices):
-        BOOKING          = "BOOKING",          "Booking"
+        APPOINTMENT_BOOKING = "APPOINTMENT_BOOKING", "Booking"
         LEAD_GENERATION  = "LEAD_GENERATION",  "Lead Generation"
         CUSTOMER_SUPPORT = "CUSTOMER_SUPPORT", "Customer Support"
         SURVEY           = "SURVEY",           "Survey"
@@ -38,7 +38,7 @@ class WhatsappFlow(BaseModel):
     category = models.CharField(
         max_length=50,
         choices=FlowCategory.choices,
-        default=FlowCategory.BOOKING,
+        default=FlowCategory.APPOINTMENT_BOOKING,
     )
 
     # The full JSON definition
@@ -46,6 +46,19 @@ class WhatsappFlow(BaseModel):
         default=dict,
         blank=True,
         help_text="WhatsApp Flow JSON (screens definition)",
+    )
+
+    # Per-field API config for dynamic dropdowns.
+    # Structure: { "<field_name>": { "url": "...", "id_field": "id", "label_field": "name",
+    #              "headers": {}, "filter_param": "<other_field_name>" } }
+    data_api_config = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text=(
+            "API config for dynamic dropdown fields. "
+            "Keys are field names. Each value: "
+            "{ url, id_field, label_field, headers(opt), filter_param(opt) }"
+        ),
     )
 
     status = models.CharField(

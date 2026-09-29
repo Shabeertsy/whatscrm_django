@@ -10,7 +10,7 @@ class WhatsappFlowSerializer(serializers.ModelSerializer):
         model = WhatsappFlow
         fields = [
             "id", "instance", "name", "description",
-            "meta_flow_id", "category", "flow_json",
+            "meta_flow_id", "category", "flow_json", "data_api_config",
             "status", "endpoint_uri", "preview_url",
             "submission_count", "created_at", "updated_at",
         ]

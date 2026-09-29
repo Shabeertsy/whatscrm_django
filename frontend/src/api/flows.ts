@@ -8,4 +8,5 @@ export const flowsApi = {
   deleteFlow: (id: string) => apiClient.delete(`/flows/${id}/`),
   publishFlow: (id: string) => apiClient.post(`/flows/${id}/publish/`),
   syncFlow: (id: string) => apiClient.post(`/flows/${id}/sync/`),
+  previewApi: (cfg: object) => apiClient.post("/flows/preview-api/", cfg),
 };
