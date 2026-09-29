@@ -78,12 +78,12 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
             return Response({"error": "Flow not yet created on Meta. Save the flow first."}, status=400)
 
         instance_obj = flow.instance
-        url = f"{settings.META_GRAPH_API_BASE_URL}/{flow.meta_flow_id}"
+        url = f"{settings.META_GRAPH_API_BASE_URL}/{flow.meta_flow_id}/publish"
         headers = {
             "Authorization": f"Bearer {instance_obj.access_token}",
             "Content-Type": "application/json",
         }
-        res = requests.post(url, json={"publish": True}, headers=headers)
+        res = requests.post(url, headers=headers)
         if res.status_code == 200:
             flow.status = WhatsappFlow.FlowStatus.PUBLISHED
             flow.save(update_fields=["status", "updated_at"])
