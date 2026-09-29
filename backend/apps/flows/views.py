@@ -323,9 +323,14 @@ class FlowDataExchangeView(View):
         Called when the Flow first opens.
         Pre-populate fields using execution variables if available.
         """
+        flow_obj = self._find_flow_by_token_cached(flow_token)
+        first_screen = "SEARCH"
+        if flow_obj and flow_obj.flow_json and flow_obj.flow_json.get("screens"):
+            first_screen = flow_obj.flow_json["screens"][0].get("id", "SEARCH")
+            
         prefill = self._get_prefill_from_execution(flow_token)
         return {
-            "screen": "SEARCH",  # first screen name in your flow_json
+            "screen": first_screen,
             "data": prefill,
         }
 

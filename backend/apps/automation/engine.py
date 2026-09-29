@@ -650,6 +650,7 @@ class AutomationEngine(BaseChatbotEngine):
         # Send the interactive Flow CTA button
         if self.conv.instance and self.conv.instance.is_active:
             try:
+                first_screen_id = flow_obj.flow_json.get("screens", [{}])[0].get("id", "SEARCH") if flow_obj.flow_json else "SEARCH"
                 from apps.messaging.utils import send_whatsapp_flow_message
                 send_whatsapp_flow_message(
                     instance     = self.conv.instance,
@@ -659,6 +660,7 @@ class AutomationEngine(BaseChatbotEngine):
                     header_text  = header,
                     body_text    = body_text,
                     button_label = cta_label,
+                    first_screen = first_screen_id,
                 )
                 logger.info(
                     "[AutomationEngine] Conv %s sent WhatsApp Flow '%s' (token %s).",
