@@ -64,7 +64,7 @@ const defaultApiConfig = (): ApiConfig => ({
 
 function buildFlowJson(screens: FlowScreen[]): object {
   return {
-    version: "3.1",
+    version: "6.0",
     routing_model: screens.reduce((acc, screen, idx) => {
       acc[screen.id] = idx < screens.length - 1 ? [screens[idx + 1].id] : [];
       return acc;
@@ -78,22 +78,24 @@ function buildFlowJson(screens: FlowScreen[]): object {
         layout: {
           type: "SingleColumnLayout",
           children: [
-            ...screen.fields.map((f) => {
-              const base = { name: f.id, label: f.label, required: f.required };
-              if (f.type === "text_input") return { type: "TextInput", input_type: "text", ...base };
-              if (f.type === "textarea")   return { type: "TextArea",  ...base };
-              if (f.type === "dropdown")        return { type: "Dropdown",          ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
-              if (f.type === "radio")            return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
-              if (f.type === "checkbox")         return { type: "CheckboxGroup",     ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
-              // Dynamic types: data-source is a variable injected by the backend at runtime
-              if (f.type === "dynamic_dropdown") return { type: "Dropdown",      ...base, "data-source": `\${data.${f.id}}` };
-              if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}}` };
-              return base;
-            }),
+            {
+              type: "Form",
+              name: "form",
+              children: screen.fields.map((f) => {
+                const base = { name: f.id, label: f.label, required: f.required };
+                if (f.type === "text_input") return { type: "TextInput", input_type: "text", ...base };
+                if (f.type === "textarea")   return { type: "TextArea",  ...base };
+                if (f.type === "dropdown")        return { type: "Dropdown",          ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+                if (f.type === "radio")            return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+                if (f.type === "checkbox")         return { type: "CheckboxGroup",     ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+                if (f.type === "dynamic_dropdown") return { type: "Dropdown",      ...base, "data-source": `\${data.${f.id}}` };
+                if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}}` };
+                return base;
+              })
+            },
             {
               type: "Footer",
               label: isLast ? "Submit" : "Next",
-              // Screens that have dynamic dropdowns need data_exchange so backend can inject data
               on_click_action: isLast
                 ? { type: "complete", payload: {} }
                 : hasDynamicFieldOnNextScreen(screens, idx)
