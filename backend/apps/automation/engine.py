@@ -661,7 +661,7 @@ class AutomationEngine(BaseChatbotEngine):
                 
                 first_screen_id = "SEARCH"
                 screens = fj.get("screens", [])
-                routing = fj.get("routing", {})
+                routing = fj.get("routing_model") or fj.get("routing", {})
                 
                 if routing and isinstance(routing, dict):
                     all_targets = set()
