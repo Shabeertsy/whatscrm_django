@@ -678,16 +678,37 @@ class AutomationEngine(BaseChatbotEngine):
                     first_screen_id = screens[0].get("id", "SEARCH")
 
                 from apps.messaging.utils import send_whatsapp_flow_message
-                res = send_whatsapp_flow_message(
-                    instance     = self.conv.instance,
-                    to_phone     = self.conv.contact.wa_id,
-                    flow_id      = str(flow_obj.meta_flow_id),
-                    flow_token   = flow_token,
-                    header_text  = header,
-                    body_text    = body_text,
-                    button_label = cta_label,
-                    first_screen = first_screen_id,
-                )
+                
+                try:
+                    res = send_whatsapp_flow_message(
+                        instance     = self.conv.instance,
+                        to_phone     = self.conv.contact.wa_id,
+                        flow_id      = str(flow_obj.meta_flow_id),
+                        flow_token   = flow_token,
+                        header_text  = header,
+                        body_text    = body_text,
+                        button_label = cta_label,
+                        first_screen = first_screen_id,
+                    )
+                except Exception as exc:
+                    err_str = str(exc)
+                    import re
+                    match = re.search(r"Allowed screen name is:\s*([A-Za-z0-9_]+)", err_str)
+                    if match:
+                        correct_screen = match.group(1).strip()
+                        logger.info("[AutomationEngine] Retrying WhatsApp Flow with allowed screen: %s", correct_screen)
+                        res = send_whatsapp_flow_message(
+                            instance     = self.conv.instance,
+                            to_phone     = self.conv.contact.wa_id,
+                            flow_id      = str(flow_obj.meta_flow_id),
+                            flow_token   = flow_token,
+                            header_text  = header,
+                            body_text    = body_text,
+                            button_label = cta_label,
+                            first_screen = correct_screen,
+                        )
+                    else:
+                        raise exc
                 
                 wa_msg_id = ""
                 try:
