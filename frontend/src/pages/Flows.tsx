@@ -575,7 +575,11 @@ export default function Flows() {
       isDestructive: false,
       onConfirm: async () => {
         closeConfirm();
-        try { await flowsApi.publishFlow(id); await fetchData(); }
+        try { 
+            await flowsApi.uploadJson(id);
+            await flowsApi.publishFlow(id); 
+            await fetchData(); 
+        }
         catch (err: any) { alert(`Failed to publish: ${err.response?.data?.error || err.message}`); }
       },
     });
