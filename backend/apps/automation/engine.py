@@ -661,7 +661,20 @@ class AutomationEngine(BaseChatbotEngine):
                 
                 first_screen_id = "SEARCH"
                 screens = fj.get("screens", [])
-                if screens and isinstance(screens, list) and len(screens) > 0:
+                routing = fj.get("routing", {})
+                
+                if routing and isinstance(routing, dict):
+                    all_targets = set()
+                    for targets in routing.values():
+                        if isinstance(targets, list):
+                            all_targets.update(targets)
+                    
+                    starts = [k for k in routing.keys() if k not in all_targets]
+                    if starts:
+                        first_screen_id = starts[0]
+                    else:
+                        first_screen_id = list(routing.keys())[0]
+                elif screens and isinstance(screens, list) and len(screens) > 0:
                     first_screen_id = screens[0].get("id", "SEARCH")
 
                 from apps.messaging.utils import send_whatsapp_flow_message
