@@ -893,8 +893,11 @@ def send_whatsapp_flow_message(
         )
         return res
     except requests.RequestException as exc:
+        err_body = ""
+        if hasattr(exc, "response") and exc.response is not None:
+            err_body = exc.response.text
         logger.error(
-            "[Messaging] Failed to send Flow message to %s: %s", to_phone, exc
+            "[Messaging] Failed to send Flow message to %s: %s | Response: %s",
+            to_phone, exc, err_body
         )
-        raise
-
+        raise Exception(f"{exc} - {err_body}")
