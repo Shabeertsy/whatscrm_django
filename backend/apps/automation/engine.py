@@ -650,18 +650,55 @@ class AutomationEngine(BaseChatbotEngine):
         # Send the interactive Flow CTA button
         if self.conv.instance and self.conv.instance.is_active:
             try:
-                first_screen_id = flow_obj.flow_json.get("screens", [{}])[0].get("id", "SEARCH") if flow_obj.flow_json else "SEARCH"
+                import json
+                fj = flow_obj.flow_json
+                if isinstance(fj, str):
+                    try:
+                        fj = json.loads(fj)
+                    except:
+                        fj = {}
+                fj = fj or {}
+                
+                first_screen_id = "SEARCH"
+                screens = fj.get("screens", [])
+                if screens and isinstance(screens, list) and len(screens) > 0:
+                    first_screen_id = screens[0].get("id", "SEARCH")
+
                 from apps.messaging.utils import send_whatsapp_flow_message
-                send_whatsapp_flow_message(
+                res = send_whatsapp_flow_message(
                     instance     = self.conv.instance,
                     to_phone     = self.conv.contact.wa_id,
-                    flow_id      = flow_obj.meta_flow_id,
+                    flow_id      = str(flow_obj.meta_flow_id),
                     flow_token   = flow_token,
                     header_text  = header,
                     body_text    = body_text,
                     button_label = cta_label,
                     first_screen = first_screen_id,
                 )
+                
+                wa_msg_id = ""
+                try:
+                    res_json = res.json()
+                    wa_msg_id = res_json.get("messages", [{}])[0].get("id", "")
+                except Exception:
+                    pass
+
+                # Save message to DB so it appears in Inbox
+                from apps.messaging.models import Message
+                from django.utils import timezone
+                msg_obj = Message.objects.create(
+                    conversation=self.conv,
+                    wa_message_id=wa_msg_id,
+                    direction='outbound',
+                    msg_type='interactive',
+                    body=body_text or 'Please fill out the form below.',
+                    status='sent',
+                    timestamp=timezone.now(),
+                    sent_by=None
+                )
+                from apps.messaging.utils import broadcast_message_update
+                broadcast_message_update(self.conv, msg_obj)
+
                 logger.info(
                     "[AutomationEngine] Conv %s sent WhatsApp Flow '%s' (token %s).",
                     self.conv.id, flow_obj.name, flow_token[:8],
