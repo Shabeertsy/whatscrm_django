@@ -22,6 +22,7 @@ from apps.whatsapp.models import WhatsappInstance
 from .models import WhatsappFlow, FlowSubmission
 from .serializers import WhatsappFlowSerializer, WhatsappFlowListSerializer, FlowSubmissionSerializer
 from .crypto import decrypt_flow_request, encrypt_flow_response
+from .utils import clean_flow_json
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +123,15 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
             return Response({"error": "Flow not yet on Meta."}, status=400)
 
         instance_obj = flow.instance
-        flow_json_bytes = json.dumps(flow.flow_json).encode("utf-8")
+        
+        # Auto-sanitize the JSON before pushing to Meta
+        cleaned_json, changed = clean_flow_json(flow.flow_json)
+        if changed:
+            flow.flow_json = cleaned_json
+            flow.save(update_fields=["flow_json", "updated_at"])
+            
+        flow_json_bytes = json.dumps(cleaned_json).encode("utf-8")
+
 
         url = f"{settings.META_GRAPH_API_BASE_URL}/{flow.meta_flow_id}/assets"
         headers = {"Authorization": f"Bearer {instance_obj.access_token}"}
