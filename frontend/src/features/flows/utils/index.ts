@@ -113,10 +113,13 @@ export function buildFlowJson(screens: FlowScreen[]): object {
         });
       });
 
+      const hasDynamicFields = screen.fields.some(f => f.type === "dynamic_dropdown" || f.type === "dynamic_checkbox");
+
       const screenConfig: any = {
         id: screen.id,
         title: screen.title,
         terminal: isLast,
+        ...(hasDynamicFields ? { refresh_on_entry: true } : {}),
         layout: {
           type: "SingleColumnLayout",
           children: [

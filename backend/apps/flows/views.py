@@ -346,10 +346,23 @@ class FlowDataExchangeView(View):
             first_screen = flow_obj.flow_json["screens"][0].get("id", "SEARCH")
             
         prefill = self._get_prefill_from_execution(flow_token)
+
+        # ── Fetch dynamic options for the first screen ──
+        api_config = getattr(flow_obj, "data_api_config", {}) if flow_obj else {}
+        extra_data = {}
+        for field_name, cfg in api_config.items():
+            if cfg.get("screen", first_screen) == first_screen:
+                options = self._fetch_dynamic_options(cfg, submitted_data={**data, **prefill})
+                extra_data[field_name] = options
+
         return {
             "screen": first_screen,
-            "data": prefill,
+            "data": {
+                **prefill,
+                **extra_data,
+            },
         }
+
 
     def _handle_screen(self, screen: str, flow_token: str, data: dict) -> dict:
         """
@@ -360,16 +373,16 @@ class FlowDataExchangeView(View):
         if submitted_screen == "COMPLETE" or screen == "COMPLETE":
             return self._handle_complete(flow_token, data)
 
-        next_screen = data.get("next_screen", "SUCCESS")
+        next_screen = data.get("next_screen", submitted_screen)
 
-        # ── Load the flow's API config ───────────────────────────────────────
+
+        # ── Load the flow's API config 
         flow_obj = self._find_flow_by_token_cached(flow_token)
         api_config = getattr(flow_obj, "data_api_config", {}) if flow_obj else {}
 
         # ── Fetch dynamic options for every configured field on next screen ──
         extra_data = {}
         for field_name, cfg in api_config.items():
-            # Only fetch for fields that target the next screen
             target_screen = cfg.get("screen", next_screen)
             if target_screen != next_screen:
                 continue
