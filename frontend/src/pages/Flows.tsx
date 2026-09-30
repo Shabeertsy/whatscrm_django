@@ -95,7 +95,7 @@ function buildFlowJson(screens: FlowScreen[]): object {
               // Footer must NOT be inside Form children — it lives in layout.children
               children: screen.fields.map((f) => {
                 const base = { name: f.id, label: f.label, required: f.required };
-                if (f.type === "text_input") return { type: "TextInput", input_type: "text", ...base };
+                if (f.type === "text_input") return { type: "TextInput", ...base };
                 if (f.type === "textarea")   return { type: "TextArea",  ...base };
                 if (f.type === "dropdown")        return { type: "Dropdown",          ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
                 if (f.type === "radio")            return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
