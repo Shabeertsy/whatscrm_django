@@ -89,9 +89,14 @@ export function buildFlowJson(screens: FlowScreen[]): object {
               type: "object",
               properties: {
                 id: { type: "string" },
-                title: { type: "string" }
+                title: { type: "string" },
+                description: { type: "string" }
               }
-            }
+            },
+            __example__: [
+              { id: "opt1", title: "Option 1", description: "Description 1" },
+              { id: "opt2", title: "Option 2", description: "Description 2" }
+            ]
           };
         }
       });
@@ -101,9 +106,9 @@ export function buildFlowJson(screens: FlowScreen[]): object {
         s.fields.forEach(f => {
           const key = f.name || getSafeKey(f.label) || f.id;
           if (f.type === "checkbox" || f.type === "dynamic_checkbox") {
-            dataSchema[key] = { type: "array", items: { type: "string" } };
+            dataSchema[key] = { type: "array", items: { type: "string" }, __example__: ["opt1"] };
           } else {
-            dataSchema[key] = { type: "string" };
+            dataSchema[key] = { type: "string", __example__: "example text" };
           }
         });
       });
