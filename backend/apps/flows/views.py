@@ -135,7 +135,15 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
         res = requests.post(url, headers=headers, files=files)
 
         if res.status_code == 200:
-            return Response({"status": "uploaded"})
+            data = res.json()
+            if data.get("validation_errors"):
+                logger.error("[FlowViewSet] Meta JSON validation errors: %s", data["validation_errors"])
+                return Response({
+                    "error": "Flow JSON validation failed", 
+                    "detail": data["validation_errors"]
+                }, status=400)
+            return Response({"status": "uploaded", "success": True})
+            
         logger.error("[FlowViewSet] Meta upload failed: %s", res.text)
         return Response({"error": "Meta API error", "detail": res.json()}, status=res.status_code)
 
