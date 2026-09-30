@@ -8,6 +8,6 @@ export const FIELD_TYPES: { type: FieldType; icon: React.ReactNode; label: strin
   { type: "dropdown", icon: <List className="w-3.5 h-3.5" />, label: "Dropdown" },
   { type: "radio", icon: <Circle className="w-3.5 h-3.5" />, label: "Single Choice" },
   { type: "checkbox", icon: <CheckSquare className="w-3.5 h-3.5" />, label: "Multi Choice" },
-  // { type: "dynamic_dropdown", icon: <List        className="w-3.5 h-3.5" />, label: "API Dropdown"       },
-  // { type: "dynamic_checkbox", icon: <CheckSquare className="w-3.5 h-3.5" />, label: "API Multi-Select"  },
+  { type: "dynamic_dropdown", icon: <List className="w-3.5 h-3.5" />, label: "API Dropdown" },
+  { type: "dynamic_checkbox", icon: <CheckSquare className="w-3.5 h-3.5" />, label: "API Multi-Select" },
 ];
