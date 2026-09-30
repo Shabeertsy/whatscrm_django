@@ -54,7 +54,7 @@ export function buildFlowJson(screens: FlowScreen[]): object {
       const isLast = idx === screens.length - 1;
       const nextScreenId = !isLast ? screens[idx + 1].id : "";
 
-      const getSafeKey = (label: string) => 
+      const getSafeKey = (label: string) =>
         label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
 
       const previousScreensPayload = screens.slice(0, idx).reduce((acc, s) => {
@@ -78,7 +78,37 @@ export function buildFlowJson(screens: FlowScreen[]): object {
         ? { name: "complete", payload: combinedPayload }
         : { name: "data_exchange", payload: { screen: nextScreenId, ...combinedPayload } };
 
-      return {
+      const dataSchema: Record<string, any> = {};
+
+      //  Add schema for dynamic fields on CURRENT screen
+      screen.fields.forEach(f => {
+        if (f.type === "dynamic_dropdown" || f.type === "dynamic_checkbox") {
+          dataSchema[f.id] = {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                id: { type: "string" },
+                title: { type: "string" }
+              }
+            }
+          };
+        }
+      });
+
+      //  Add schema for fields from PREVIOUS screens (needed for the payload pass-through)
+      screens.slice(0, idx).forEach(s => {
+        s.fields.forEach(f => {
+          const key = f.name || getSafeKey(f.label) || f.id;
+          if (f.type === "checkbox" || f.type === "dynamic_checkbox") {
+            dataSchema[key] = { type: "array", items: { type: "string" } };
+          } else {
+            dataSchema[key] = { type: "string" };
+          }
+        });
+      });
+
+      const screenConfig: any = {
         id: screen.id,
         title: screen.title,
         terminal: isLast,
@@ -109,6 +139,12 @@ export function buildFlowJson(screens: FlowScreen[]): object {
           ],
         },
       };
+
+      if (Object.keys(dataSchema).length > 0) {
+        screenConfig.data = dataSchema;
+      }
+
+      return screenConfig;
     }),
   };
 }
