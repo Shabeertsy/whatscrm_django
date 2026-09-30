@@ -341,6 +341,9 @@ class FlowDataExchangeView(View):
         Pre-populate fields using execution variables if available.
         """
         flow_obj = self._find_flow_by_token_cached(flow_token)
+        if not flow_obj:
+            logger.warning("[FlowDataExchange] INIT WARNING: Could not find FlowSubmission for token %s. If you are using QR code preview, dynamic data WILL NOT WORK because we cannot identify the flow!", flow_token[:8])
+            
         first_screen = "SEARCH"
         if flow_obj and flow_obj.flow_json and flow_obj.flow_json.get("screens"):
             first_screen = flow_obj.flow_json["screens"][0].get("id", "SEARCH")
@@ -376,11 +379,14 @@ class FlowDataExchangeView(View):
         next_screen = data.get("next_screen", submitted_screen)
 
 
-        # ── Load the flow's API config 
+        # Load the flow's API config 
         flow_obj = self._find_flow_by_token_cached(flow_token)
+        if not flow_obj:
+            logger.warning("[FlowDataExchange] SCREEN WARNING: Could not find FlowSubmission for token %s. Dynamic data will be skipped.", flow_token[:8])
+        
         api_config = getattr(flow_obj, "data_api_config", {}) if flow_obj else {}
 
-        # ── Fetch dynamic options for every configured field on next screen ──
+        # Fetch dynamic options for every configured field on next screen ──
         extra_data = {}
         for field_name, cfg in api_config.items():
             target_screen = cfg.get("screen", next_screen)
