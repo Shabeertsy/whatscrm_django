@@ -23,13 +23,9 @@ export function FieldRow({
     <div className={`rounded-lg border ${error ? "border-rose-300 dark:border-rose-600" : "border-slate-200 dark:border-slate-700"} bg-white dark:bg-slate-900`}>
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-t-lg">
-        <GripVertical className="w-3.5 h-3.5 text-slate-300 cursor-grab flex-shrink-0" />
-        <span className="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400 bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 px-2 py-0.5 rounded flex-shrink-0">
-          {meta.icon} {meta.label}
-        </span>
         <input
           className="flex-1 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-400 min-w-0"
-          placeholder={`Field ${fieldIndex + 1} label`}
+          placeholder="Field Label"
           value={field.label}
           onChange={e => onUpdate({ ...field, label: e.target.value })}
         />
@@ -53,7 +49,7 @@ export function FieldRow({
               <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Variable Name (Machine Key)</label>
               <input
                 className="w-full bg-slate-50 dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007e3a] transition-colors"
-                placeholder="e.g. destination"
+                placeholder=""
                 value={field.name || ""}
                 onChange={e => onUpdate({ ...field, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
               />
@@ -70,7 +66,7 @@ export function FieldRow({
                   </div>
                   <input
                     className="flex-1 bg-slate-50 dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1 text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007e3a] transition-colors"
-                    placeholder="Option label"
+                    placeholder=""
                     value={opt.label}
                     onChange={e => onUpdate({ ...field, options: field.options.map(o => o.id === opt.id ? { ...o, label: e.target.value } : o) })}
                   />

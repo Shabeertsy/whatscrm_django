@@ -109,7 +109,7 @@ export function CreateFlowModal({ instances, onClose, onSuccess }: CreateFlowMod
                   value={formData.name}
                   onChange={e => { setFormData({ ...formData, name: e.target.value }); setErrors(p => ({ ...p, name: "" })); }}
                   className={`w-full bg-slate-50 dark:bg-[#131924] border rounded-lg px-3 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-[#007e3a] ${errors.name ? "border-rose-400" : "border-slate-200 dark:border-slate-700"}`}
-                  placeholder='e.g. "Appointment Booking"'
+                  placeholder=""
                 />
                 {errors.name && <p className="text-xs text-rose-500 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{errors.name}</p>}
               </div>
@@ -155,34 +155,43 @@ export function CreateFlowModal({ instances, onClose, onSuccess }: CreateFlowMod
             </div>
 
             {/* Screen Tabs */}
-            <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-700 -mb-px overflow-x-auto">
+            <div className="flex items-center gap-1.5 p-1 bg-slate-100 dark:bg-slate-800/60 rounded-xl overflow-x-auto">
               {screens.map((screen, idx) => {
                 const hasErr = !!errors[`screen_${screen.id}_title`] || screen.fields.some(f => !!errors[`field_${f.id}`]);
+                const isActive = activeScreenIdx === idx;
+                
                 return (
                   <button
                     key={screen.id}
                     type="button"
                     onClick={() => setActiveScreenIdx(idx)}
-                    className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium whitespace-nowrap border-b-2 transition-colors ${activeScreenIdx === idx
-                      ? "border-[#007e3a] text-[#007e3a] dark:text-[#00c857]"
-                      : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
-                      } ${hasErr ? "text-rose-500 dark:text-rose-400" : ""}`}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
+                      isActive 
+                        ? "bg-white dark:bg-slate-700 shadow-sm text-[#007e3a] dark:text-emerald-400" 
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                    }`}
                   >
-                    Screen {idx + 1}
-                    {idx === screens.length - 1 && (
-                      <span className="text-xs text-emerald-500 font-normal">✓</span>
-                    )}
-                    {hasErr && <span className="w-1.5 h-1.5 rounded-full bg-rose-400 inline-block" />}
-                    {screens.length > 1 && (
-                      <span
-                        role="button"
-                        onClick={e => { e.stopPropagation(); removeScreen(screen.id); }}
-                        className="ml-1 text-slate-300 hover:text-rose-500 transition-colors leading-none"
-                        title="Remove screen"
-                      >
-                        <X className="w-3 h-3" />
-                      </span>
-                    )}
+                    <span className={hasErr ? "text-rose-500 dark:text-rose-400" : ""}>
+                      Screen {idx + 1}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      {idx === screens.length - 1 && (
+                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded flex items-center ${isActive ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-300" : "bg-slate-200 text-slate-500 dark:bg-slate-700 dark:text-slate-400"}`}>
+                          Final
+                        </span>
+                      )}
+                      {hasErr && <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />}
+                      {screens.length > 1 && (
+                        <span
+                          role="button"
+                          onClick={e => { e.stopPropagation(); removeScreen(screen.id); }}
+                          className={`p-0.5 rounded-md transition-colors flex items-center justify-center ${isActive ? "hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-400 hover:text-rose-500" : "hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-400 hover:text-rose-500"}`}
+                          title="Remove screen"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </span>
+                      )}
+                    </div>
                   </button>
                 );
               })}
@@ -190,10 +199,10 @@ export function CreateFlowModal({ instances, onClose, onSuccess }: CreateFlowMod
               <button
                 type="button"
                 onClick={addScreen}
-                className="flex items-center gap-1 px-3 py-2 text-sm text-slate-400 hover:text-[#007e3a] dark:hover:text-[#00c857] border-b-2 border-transparent transition-colors whitespace-nowrap"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-[#007e3a] hover:bg-slate-200/50 dark:hover:bg-slate-700/50 rounded-lg transition-all whitespace-nowrap"
                 title="Add a new screen"
               >
-                <Plus className="w-3.5 h-3.5" /> Add Screen
+                <Plus className="w-4 h-4" /> Add
               </button>
             </div>
 

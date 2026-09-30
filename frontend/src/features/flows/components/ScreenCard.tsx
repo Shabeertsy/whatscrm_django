@@ -28,10 +28,9 @@ export function ScreenCard({
         <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#007e3a]/10 text-[#007e3a] text-xs font-bold flex items-center justify-center border border-[#007e3a]/20">
           {index + 1}
         </span>
-        <Monitor className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
         <input
           className="flex-1 bg-transparent text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-400 min-w-0"
-          placeholder={`Screen ${index + 1} title`}
+          placeholder="Screen Title"
           value={screen.title}
           onChange={e => onUpdate({ ...screen, title: e.target.value })}
         />
