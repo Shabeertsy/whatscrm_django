@@ -7,10 +7,12 @@ export function useFlows() {
   const [flows, setFlows] = useState<any[]>([]);
   const [instances, setInstances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const fetchFlowsData = async () => {
+  const fetchFlowsData = async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const [flowsRes, instRes] = await Promise.all([flowsApi.listFlows(), whatsappApi.listInstances()]);
       setFlows(Array.isArray(flowsRes.data) ? flowsRes.data : (flowsRes.data as any).results || []);
       const loaded = Array.isArray(instRes.data) ? instRes.data : (instRes.data as any).results || [];
@@ -18,7 +20,7 @@ export function useFlows() {
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -34,14 +36,24 @@ export function useFlows() {
   const closeConfirm = () => setConfirmState(s => ({ ...s, open: false }));
 
   const deleteFlow = async (id: string) => {
-    await flowsApi.deleteFlow(id);
-    await fetchFlowsData();
+    setDeletingId(id);
+    try {
+      await flowsApi.deleteFlow(id);
+      await fetchFlowsData(false);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const publishFlow = async (id: string) => {
-    await flowsApi.uploadJson(id);
-    await flowsApi.publishFlow(id);
-    await fetchFlowsData();
+    setPublishingId(id);
+    try {
+      await flowsApi.uploadJson(id);
+      await flowsApi.publishFlow(id);
+      await fetchFlowsData(false);
+    } finally {
+      setPublishingId(null);
+    }
   };
 
   const getFlowDetails = async (id: string) => {
@@ -83,6 +95,8 @@ export function useFlows() {
     flows,
     instances,
     loading,
+    publishingId,
+    deletingId,
     fetchFlowsData,
     getFlowDetails,
     confirmState,

@@ -92,9 +92,9 @@ export function buildFlowJson(screens: FlowScreen[]): object {
                 const base = { name: f.id, label: f.label, required: f.required };
                 if (f.type === "text_input") return { type: "TextInput", ...base };
                 if (f.type === "textarea") return { type: "TextArea", ...base };
-                if (f.type === "dropdown") return { type: "Dropdown", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
-                if (f.type === "radio") return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
-                if (f.type === "checkbox") return { type: "CheckboxGroup", ...base, "data-source": f.options.map(o => ({ id: o.id, title: o.label })) };
+                if (f.type === "dropdown") return { type: "Dropdown", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
+                if (f.type === "radio") return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
+                if (f.type === "checkbox") return { type: "CheckboxGroup", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
                 if (f.type === "dynamic_dropdown") return { type: "Dropdown", ...base, "data-source": `\${data.${f.id}}` };
                 if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}}` };
                 return base;

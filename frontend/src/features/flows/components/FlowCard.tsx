@@ -1,9 +1,18 @@
 import React from "react";
-import { Globe, Trash2, BarChart2 } from "lucide-react";
+import { Globe, Trash2, BarChart2, Loader2 } from "lucide-react";
 
 
 
-export function FlowCard({ flow, onDelete, onPublish, onClick }: { flow: any; onDelete: (e: React.MouseEvent) => void; onPublish: (e: React.MouseEvent) => void; onClick: () => void }) {
+export function FlowCard({ 
+  flow, isPublishing, isDeleting, onDelete, onPublish, onClick 
+}: { 
+  flow: any; 
+  isPublishing?: boolean; 
+  isDeleting?: boolean; 
+  onDelete: (e: React.MouseEvent) => void; 
+  onPublish: (e: React.MouseEvent) => void; 
+  onClick: () => void 
+}) {
   const isPublished = flow.status === "PUBLISHED";
   return (
     <div onClick={onClick} className="group bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md hover:border-[#007e3a]/50 transition-all cursor-pointer">
@@ -22,12 +31,12 @@ export function FlowCard({ flow, onDelete, onPublish, onClick }: { flow: any; on
         </div>
         <div className="flex items-center gap-1">
           {!isPublished && (
-            <button onClick={onPublish} title="Publish to Meta" className="p-1.5 text-slate-400 hover:text-[#007e3a] transition-colors rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
-              <Globe className="h-4 w-4" />
+            <button disabled={isPublishing} onClick={onPublish} title="Publish to Meta" className="p-1.5 text-slate-400 hover:text-[#007e3a] transition-colors rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
+              {isPublishing ? <Loader2 className="h-4 w-4 animate-spin text-[#007e3a]" /> : <Globe className="h-4 w-4" />}
             </button>
           )}
-          <button onClick={onDelete} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800">
-            <Trash2 className="h-4 w-4" />
+          <button disabled={isDeleting} onClick={onDelete} className="p-1.5 text-slate-400 hover:text-rose-500 transition-colors rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-50">
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin text-rose-500" /> : <Trash2 className="h-4 w-4" />}
           </button>
         </div>
       </div>

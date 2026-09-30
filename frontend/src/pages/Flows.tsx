@@ -11,7 +11,7 @@ import { useFlows } from "../features/flows/hooks/useFlows";
 
 export default function Flows() {
   const { 
-    flows, instances, loading, fetchFlowsData, getFlowDetails, 
+    flows, instances, loading, publishingId, deletingId, fetchFlowsData, getFlowDetails, 
     confirmState, closeConfirm, handleDelete, handlePublish 
   } = useFlows();
 
@@ -44,6 +44,8 @@ export default function Flows() {
             <FlowCard
               key={flow.id}
               flow={flow}
+              isPublishing={publishingId === flow.id}
+              isDeleting={deletingId === flow.id}
               onDelete={(e) => handleDelete(flow.id, e)}
               onPublish={(e) => handlePublish(flow.id, e)}
               onClick={() => handleViewFlow(flow.id)}
