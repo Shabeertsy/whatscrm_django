@@ -54,12 +54,24 @@ export function buildFlowJson(screens: FlowScreen[]): object {
       const isLast = idx === screens.length - 1;
       const nextScreenId = !isLast ? screens[idx + 1].id : "";
 
+      const previousScreensPayload = screens.slice(0, idx).reduce((acc, s) => {
+        s.fields.forEach(f => {
+          acc[f.id] = `\${data.${f.id}}`;
+        });
+        return acc;
+      }, {} as Record<string, string>);
+
+      const currentScreenPayload = screen.fields.reduce((acc, f) => {
+        acc[f.id] = `\${form.${f.id}}`;
+        return acc;
+      }, {} as Record<string, string>);
+
+      const combinedPayload = { ...previousScreensPayload, ...currentScreenPayload };
+
       // Footer on-click-action (note: hyphenated key required by Meta spec)
       const footerAction = isLast
-        ? { name: "complete", payload: {} }
-        : hasDynamicFieldOnNextScreen(screens, idx)
-          ? { name: "data_exchange", payload: { screen: nextScreenId } }
-          : { name: "navigate", next_screen: nextScreenId };
+        ? { name: "complete", payload: combinedPayload }
+        : { name: "data_exchange", payload: { screen: nextScreenId, ...combinedPayload } };
 
       return {
         id: screen.id,
