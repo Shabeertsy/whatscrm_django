@@ -3,6 +3,8 @@ import { FlowScreen, ApiConfig } from "../types";
 
 export const uid = () => Math.random().toString(36).slice(2, 8);
 
+
+
 // Screen IDs must only contain alphabets and underscores (WhatsApp Flow JSON spec)
 export const alphaId = (len = 6) =>
   Array.from({ length: len }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join("");
@@ -83,7 +85,7 @@ export function buildFlowJson(screens: FlowScreen[]): object {
       //  Add schema for dynamic fields on CURRENT screen
       screen.fields.forEach(f => {
         if (f.type === "dynamic_dropdown" || f.type === "dynamic_checkbox") {
-          dataSchema[f.id] = {
+          dataSchema[`${f.id}_options`] = {
             type: "array",
             items: {
               type: "object",
@@ -124,14 +126,15 @@ export function buildFlowJson(screens: FlowScreen[]): object {
               type: "Form",
               name: "form",
               children: screen.fields.map((f) => {
-                const base = { name: f.id, label: f.label, required: f.required };
+                const key = f.name || getSafeKey(f.label) || f.id;
+                const base = { name: key, label: f.label, required: f.required };
                 if (f.type === "text_input") return { type: "TextInput", ...base };
                 if (f.type === "textarea") return { type: "TextArea", ...base };
                 if (f.type === "dropdown") return { type: "Dropdown", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
                 if (f.type === "radio") return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
                 if (f.type === "checkbox") return { type: "CheckboxGroup", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
-                if (f.type === "dynamic_dropdown") return { type: "Dropdown", ...base, "data-source": `\${data.${f.id}}` };
-                if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}}` };
+                if (f.type === "dynamic_dropdown") return { type: "Dropdown", ...base, "data-source": `\${data.${f.id}_options}` };
+                if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}_options}` };
                 return base;
               }),
             },

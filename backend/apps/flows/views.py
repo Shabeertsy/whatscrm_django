@@ -353,7 +353,7 @@ class FlowDataExchangeView(View):
         for field_name, cfg in api_config.items():
             if cfg.get("screen", first_screen) == first_screen:
                 options = self._fetch_dynamic_options(cfg, submitted_data={**data, **prefill})
-                extra_data[field_name] = options
+                extra_data[f"{field_name}_options"] = options
 
         return {
             "screen": first_screen,
@@ -388,7 +388,7 @@ class FlowDataExchangeView(View):
                 continue
 
             options = self._fetch_dynamic_options(cfg, submitted_data=data)
-            extra_data[field_name] = options  # e.g. "product_field": [{"id":..,"title":..}]
+            extra_data[f"{field_name}_options"] = options  # e.g. "product_field_options": [{"id":..,"title":..}]
 
         return {
             "screen": next_screen,
