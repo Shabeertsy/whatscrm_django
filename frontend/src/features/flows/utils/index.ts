@@ -59,14 +59,14 @@ export function buildFlowJson(screens: FlowScreen[]): object {
 
       const previousScreensPayload = screens.slice(0, idx).reduce((acc, s) => {
         s.fields.forEach(f => {
-          const key = getSafeKey(f.label) || f.id;
+          const key = f.name || getSafeKey(f.label) || f.id;
           acc[key] = `\${data.${key}}`;
         });
         return acc;
       }, {} as Record<string, string>);
 
       const currentScreenPayload = screen.fields.reduce((acc, f) => {
-        const key = getSafeKey(f.label) || f.id;
+        const key = f.name || getSafeKey(f.label) || f.id;
         acc[key] = `\${form.${f.id}}`;
         return acc;
       }, {} as Record<string, string>);

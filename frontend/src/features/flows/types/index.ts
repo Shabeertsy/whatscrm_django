@@ -18,6 +18,7 @@ export interface ApiConfig {
 
 export interface FlowField {
   id: string;
+  name?: string; // stable machine key
   type: FieldType;
   label: string;
   placeholder?: string;

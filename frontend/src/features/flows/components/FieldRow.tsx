@@ -48,8 +48,22 @@ export function FieldRow({
       {/* Body */}
       {open && (
         <div className="px-10 py-3 space-y-3 bg-white dark:bg-slate-900/30 rounded-b-lg border-t border-slate-100 dark:border-slate-800">
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Variable Name (Machine Key)</label>
+              <input
+                className="w-full bg-slate-50 dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007e3a] transition-colors"
+                placeholder="e.g. destination"
+                value={field.name || ""}
+                onChange={e => onUpdate({ ...field, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
+              />
+            </div>
+            <div className="flex-1" />
+          </div>
+
           {hasOptions && (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 pt-2">
+              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Options</label>
               {field.options.map(opt => (
                 <div key={opt.id} className="flex items-center gap-2 group">
                   <div className={`w-3.5 h-3.5 border border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-800 flex items-center justify-center ${field.type === "radio" ? "rounded-full" : "rounded-sm"}`}>
