@@ -73,6 +73,15 @@ function buildFlowJson(screens: FlowScreen[]): object {
     }, {} as Record<string, string[]>),
     screens: screens.map((screen, idx) => {
       const isLast = idx === screens.length - 1;
+      const nextScreenId = !isLast ? screens[idx + 1].id : "";
+
+      // Footer on-click-action (note: hyphenated key required by Meta spec)
+      const footerAction = isLast
+        ? { name: "complete", payload: {} }
+        : hasDynamicFieldOnNextScreen(screens, idx)
+          ? { name: "data_exchange", payload: { screen: nextScreenId } }
+          : { name: "navigate", next_screen: nextScreenId };
+
       return {
         id: screen.id,
         title: screen.title,
@@ -83,6 +92,7 @@ function buildFlowJson(screens: FlowScreen[]): object {
             {
               type: "Form",
               name: "form",
+              // Footer must NOT be inside Form children — it lives in layout.children
               children: screen.fields.map((f) => {
                 const base = { name: f.id, label: f.label, required: f.required };
                 if (f.type === "text_input") return { type: "TextInput", input_type: "text", ...base };
@@ -93,16 +103,13 @@ function buildFlowJson(screens: FlowScreen[]): object {
                 if (f.type === "dynamic_dropdown") return { type: "Dropdown",      ...base, "data-source": `\${data.${f.id}}` };
                 if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}}` };
                 return base;
-              })
+              }),
             },
+            // Footer is a sibling of Form, directly in layout.children
             {
               type: "Footer",
               label: isLast ? "Submit" : "Next",
-              on_click_action: isLast
-                ? { type: "complete", payload: {} }
-                : hasDynamicFieldOnNextScreen(screens, idx)
-                  ? { name: "data_exchange", payload: { next_screen: screens[idx + 1].id } }
-                  : { type: "navigate", next: { type: "screen", name: screens[idx + 1].id }, payload: {} },
+              "on-click-action": footerAction,
             },
           ],
         },
