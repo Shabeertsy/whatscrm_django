@@ -83,7 +83,7 @@ export function buildFlowJson(screens: FlowScreen[]): object {
                 return base;
               }),
             },
-            // Footer is a sibling of Form, directly in layout.children
+            // directly in layout.children
             {
               type: "Footer",
               label: isLast ? "Submit" : "Next",

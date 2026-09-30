@@ -917,6 +917,17 @@ class AutomationEngine(BaseChatbotEngine):
                         if isinstance(resp_data, dict):
                             execution.variables.update(resp_data)
                             execution.save(update_fields=["variables"])
+
+                            from apps.flows.models import FlowSubmission
+                            sub = FlowSubmission.objects.filter(
+                                conversation=self.conv,
+                                completed=False
+                            ).order_by('-created_at').first()
+                            
+                            if sub:
+                                sub.screen_data = resp_data
+                                sub.completed = True
+                                sub.save(update_fields=["screen_data", "completed", "updated_at"])
                     except Exception as exc:
                         logger.error("[AutomationEngine] Failed to parse nfm_reply JSON: %s", exc)
 
