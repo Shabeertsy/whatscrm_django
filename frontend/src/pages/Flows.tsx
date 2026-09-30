@@ -41,6 +41,8 @@ interface FlowScreen { id: string; title: string; fields: FlowField[]; }
 
 
 const uid = () => Math.random().toString(36).slice(2, 8);
+// Screen IDs must only contain alphabets and underscores (WhatsApp Flow JSON spec)
+const alphaId = (len = 6) => Array.from({ length: len }, () => String.fromCharCode(65 + Math.floor(Math.random() * 26))).join("");
 
 const FIELD_TYPES: { type: FieldType; icon: React.ReactNode; label: string }[] = [
   { type: "text_input",       icon: <TextCursor  className="w-3.5 h-3.5" />, label: "Short Text"         },
@@ -487,7 +489,7 @@ export default function Flows() {
     isDestructive?: boolean; onConfirm: () => void;
   }>({ open: false, title: "", description: "", onConfirm: () => {} });
 
-  const defaultScreen = (): FlowScreen => ({ id: `SCREEN_${uid().toUpperCase()}`, title: "", fields: [] });
+  const defaultScreen = (): FlowScreen => ({ id: `SCREEN_${alphaId()}`, title: "", fields: [] });
   const [screens, setScreens] = useState<FlowScreen[]>([defaultScreen()]);
 
   const previewJson = JSON.stringify(buildFlowJson(screens), null, 2);
