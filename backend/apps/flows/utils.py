@@ -1,5 +1,6 @@
 import copy
 import logging
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +124,112 @@ def build_routing_model(screens: list[dict]) -> dict:
     return routing
 
 
-def clean_flow_json(flow_json: dict) -> tuple[dict, bool]:
+def fix_dynamic_datasources(flow_json: dict, data_api_config: dict) -> tuple[dict, bool]:
+    """
+    Cross-reference data_api_config against the flow_json to fix two common issues:
+
+    1. Old ``data-source`` format:
+         ``${data.<field_id>}``  →  ``${data.<field_id>_options}``
+       WhatsApp requires the server-returned key to match the binding exactly.
+       The server always emits ``<field_id>_options``, so the binding must end
+       in ``_options``.
+
+    2. Missing ``data`` schema on the screen:
+       WhatsApp ignores server-supplied keys that are not declared in the
+       screen's ``data`` block.  We inject a minimal schema so the platform
+       knows to accept and render the options.
+    """
+    if not data_api_config or not isinstance(flow_json, dict):
+        return flow_json, False
+
+    # Build a quick index: field_id → screen_id
+    field_screen: dict[str, str] = {
+        fid: cfg.get("screen", "") for fid, cfg in data_api_config.items()
+    }
+    dynamic_field_ids: set[str] = set(field_screen.keys())
+
+    cleaned = copy.deepcopy(flow_json)
+    changed = False
+
+    for screen in cleaned.get("screens", []):
+        screen_id = screen.get("id", "")
+
+        # Collect dynamic field IDs that belong to this screen
+        dynamic_on_screen = {fid for fid, sid in field_screen.items() if sid == screen_id}
+
+        # ── 1. Ensure the ``data`` schema block exists ──────────────────────
+        data_block = screen.get("data", {})
+        if not isinstance(data_block, dict):
+            data_block = {}
+
+        for fid in dynamic_on_screen:
+            options_key = f"{fid}_options"
+            if options_key not in data_block:
+                data_block[options_key] = {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id":    {"type": "string"},
+                            "title": {"type": "string"},
+                        },
+                    },
+                    "__example__": [
+                        {"id": "opt1", "title": "Option 1"},
+                        {"id": "opt2", "title": "Option 2"},
+                    ],
+                }
+                screen["data"] = data_block
+                changed = True
+                logger.info(
+                    "[fix_dynamic_datasources] Added data schema for '%s' on screen '%s'",
+                    options_key, screen_id,
+                )
+
+        # ── 2. Fix data-source bindings inside all form children ─────────────
+        layout = screen.get("layout", {})
+        for top_child in layout.get("children", []):
+            if not isinstance(top_child, dict):
+                continue
+
+            # Walk into Form → children
+            children_to_check = (
+                top_child.get("children", [])
+                if top_child.get("type") == "Form"
+                else [top_child]
+            )
+
+            for comp in children_to_check:
+                if not isinstance(comp, dict):
+                    continue
+                if comp.get("type") not in ("Dropdown", "CheckboxGroup"):
+                    continue
+
+                ds = comp.get("data-source", "")
+                if not isinstance(ds, str):
+                    continue
+
+                # Match: ${data.<field_id>}  where field_id is a dynamic field
+                # but NOT already ending in _options
+                m = re.fullmatch(r"\$\{data\.([a-zA-Z0-9_]+)\}", ds)
+                if m:
+                    fid = m.group(1)
+                    if fid in dynamic_field_ids and not fid.endswith("_options"):
+                        comp["data-source"] = f"${{data.{fid}_options}}"
+                        changed = True
+                        logger.info(
+                            "[fix_dynamic_datasources] Fixed data-source for field '%s': "
+                            "'%s' → '${data.%s_options}'",
+                            fid, ds, fid,
+                        )
+
+    return cleaned, changed
+
+
+def clean_flow_json(
+    flow_json: dict,
+    data_api_config: dict | None = None,
+) -> tuple[dict, bool]:
     """Apply all fixes to a flow_json dict. Returns (fixed_json, was_changed)."""
     if not isinstance(flow_json, dict):
         return flow_json, False
@@ -165,4 +271,11 @@ def clean_flow_json(flow_json: dict) -> tuple[dict, bool]:
         fixed_screens.append(screen)
 
     cleaned["screens"] = fixed_screens
+
+    # Fix dynamic dropdown data-source bindings and inject missing data schema
+    if data_api_config:
+        cleaned, ds_changed = fix_dynamic_datasources(cleaned, data_api_config)
+        if ds_changed:
+            any_changed = True
+
     return cleaned, any_changed

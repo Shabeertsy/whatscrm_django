@@ -124,8 +124,13 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
 
         instance_obj = flow.instance
         
-        # Auto-sanitize the JSON before pushing to Meta
-        cleaned_json, changed = clean_flow_json(flow.flow_json)
+        # Auto-sanitize the JSON before pushing to Meta.
+        # Pass data_api_config so dynamic dropdown data-source references and
+        # screen data schemas are repaired automatically.
+        cleaned_json, changed = clean_flow_json(
+            flow.flow_json,
+            data_api_config=flow.data_api_config or {},
+        )
         if changed:
             flow.flow_json = cleaned_json
             flow.save(update_fields=["flow_json", "updated_at"])
@@ -342,21 +347,39 @@ class FlowDataExchangeView(View):
         """
         flow_obj = self._find_flow_by_token_cached(flow_token)
         if not flow_obj:
-            logger.warning("[FlowDataExchange] INIT WARNING: Could not find FlowSubmission for token %s. If you are using QR code preview, dynamic data WILL NOT WORK because we cannot identify the flow!", flow_token[:8])
-            
+            logger.warning(
+                "[FlowDataExchange] INIT: No FlowSubmission for token %s — "
+                "attempting fallback lookup by meta_flow_id.",
+                flow_token[:8],
+            )
+
         first_screen = "SEARCH"
         if flow_obj and flow_obj.flow_json and flow_obj.flow_json.get("screens"):
             first_screen = flow_obj.flow_json["screens"][0].get("id", "SEARCH")
-            
+
         prefill = self._get_prefill_from_execution(flow_token)
 
         # ── Fetch dynamic options for the first screen ──
         api_config = getattr(flow_obj, "data_api_config", {}) if flow_obj else {}
         extra_data = {}
         for field_name, cfg in api_config.items():
-            if cfg.get("screen", first_screen) == first_screen:
+            cfg_screen = cfg.get("screen", first_screen)
+            if cfg_screen == first_screen:
                 options = self._fetch_dynamic_options(cfg, submitted_data={**data, **prefill})
                 extra_data[f"{field_name}_options"] = options
+                logger.info(
+                    "[FlowDataExchange] INIT: fetched %d options for field '%s' (screen=%s)",
+                    len(options), field_name, first_screen,
+                )
+
+        if not extra_data and api_config:
+            logger.warning(
+                "[FlowDataExchange] INIT: api_config has %d entries but none matched "
+                "first_screen='%s'. Config screens: %s",
+                len(api_config),
+                first_screen,
+                {k: v.get('screen') for k, v in api_config.items()},
+            )
 
         return {
             "screen": first_screen,
@@ -371,22 +394,28 @@ class FlowDataExchangeView(View):
         """
         Route each screen's submission to its handler.
         For screens with dynamic dropdowns, call the configured API.
+
+        The footer on-click-action sends: { screen: <nextScreenId>, ...formValues }
+        so the *next* screen to render is always data["screen"].
         """
-        submitted_screen = data.get("screen", screen)
-        if submitted_screen == "COMPLETE" or screen == "COMPLETE":
+        # The payload includes the next screen ID under the key "screen"
+        next_screen = data.get("screen", screen)
+
+        if next_screen == "COMPLETE" or screen == "COMPLETE":
             return self._handle_complete(flow_token, data)
 
-        next_screen = data.get("next_screen", submitted_screen)
-
-
-        # Load the flow's API config 
+        # Load the flow's API config
         flow_obj = self._find_flow_by_token_cached(flow_token)
         if not flow_obj:
-            logger.warning("[FlowDataExchange] SCREEN WARNING: Could not find FlowSubmission for token %s. Dynamic data will be skipped.", flow_token[:8])
-        
+            logger.warning(
+                "[FlowDataExchange] SCREEN: No FlowSubmission for token %s — "
+                "dynamic options will be skipped.",
+                flow_token[:8],
+            )
+
         api_config = getattr(flow_obj, "data_api_config", {}) if flow_obj else {}
 
-        # Fetch dynamic options for every configured field on next screen ──
+        # Fetch dynamic options for every configured field on the next screen
         extra_data = {}
         for field_name, cfg in api_config.items():
             target_screen = cfg.get("screen", next_screen)
@@ -394,12 +423,22 @@ class FlowDataExchangeView(View):
                 continue
 
             options = self._fetch_dynamic_options(cfg, submitted_data=data)
-            extra_data[f"{field_name}_options"] = options  # e.g. "product_field_options": [{"id":..,"title":..}]
+            extra_data[f"{field_name}_options"] = options
+            logger.info(
+                "[FlowDataExchange] SCREEN: fetched %d options for field '%s' → screen=%s",
+                len(options), field_name, next_screen,
+            )
+
+        logger.info(
+            "[FlowDataExchange] SCREEN: action=data_exchange current=%s next=%s "
+            "extra_keys=%s",
+            screen, next_screen, list(extra_data.keys()),
+        )
 
         return {
             "screen": next_screen,
             "data": {
-                **data,      
+                **data,
                 **extra_data,
             },
         }
@@ -455,10 +494,39 @@ class FlowDataExchangeView(View):
     # ── Cached flow lookup ───────────────────────────────────────────────────
 
     def _find_flow_by_token_cached(self, flow_token: str):
-        """Look up the WhatsappFlow from a FlowSubmission. Cached per request."""
+        """
+        Look up the WhatsappFlow from a FlowSubmission.
+        Cached per request.
+
+        Fallback: If no FlowSubmission is found (e.g. QR code preview or
+        a manually-sent flow), try to match by meta_flow_id.  Meta's preview
+        tokens are random strings, so this fallback only works when the caller
+        passed the meta_flow_id itself as the token — otherwise we return None
+        and log a warning.
+        """
         if not hasattr(self, "_cached_flow"):
+            # Primary: look up by flow_token on FlowSubmission
             sub = FlowSubmission.objects.select_related("flow").filter(flow_token=flow_token).first()
-            self._cached_flow = sub.flow if sub else None
+            if sub:
+                self._cached_flow = sub.flow
+            else:
+                # Secondary fallback: token might be the meta_flow_id itself
+                # (useful for manual tests or direct API calls).
+                flow = WhatsappFlow.objects.filter(meta_flow_id=flow_token).first()
+                if flow:
+                    logger.info(
+                        "[FlowDataExchange] Fallback: matched flow '%s' by meta_flow_id from token.",
+                        flow.name,
+                    )
+                    self._cached_flow = flow
+                else:
+                    logger.warning(
+                        "[FlowDataExchange] No FlowSubmission or WhatsappFlow found for token %s. "
+                        "Dynamic options CANNOT be fetched. "
+                        "If testing via QR preview, open the flow from an automation instead.",
+                        flow_token[:8] if len(flow_token) >= 8 else flow_token,
+                    )
+                    self._cached_flow = None
         return self._cached_flow
 
     def _handle_complete(self, flow_token: str, screen_data: dict) -> dict:
