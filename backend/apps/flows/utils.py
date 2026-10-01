@@ -278,4 +278,8 @@ def clean_flow_json(
         if ds_changed:
             any_changed = True
 
+        if cleaned.get("data_api_version") != "3.0":
+            cleaned["data_api_version"] = "3.0"
+            any_changed = True
+
     return cleaned, any_changed

@@ -846,7 +846,7 @@ def send_whatsapp_flow_message(
         flow_token:   Unique per-session token (stored in execution.variables)
         header_text:  Text shown above the button area (optional)
         body_text:    Main message body (supports {{variable}} from prior nodes)
-        button_label: CTA button text shown to the customer (e.g. "Find a Resort 🏨")
+        button_label: CTA button text shown to the customer (e.g. "Find a Resort")
         first_screen: First screen to open in the Flow (default: "SEARCH")
     """
     payload = {
