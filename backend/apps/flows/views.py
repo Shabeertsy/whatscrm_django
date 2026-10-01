@@ -292,7 +292,7 @@ class FlowDataExchangeView(View):
 
         # Unencrypted health ping
         if body.get("action") == "ping" and "encrypted_flow_data" not in body:
-            return JsonResponse({"data": {"status": "active"}})
+            return JsonResponse({"version": "3.0", "data": {"status": "active"}})
 
         # ── Encrypted payload ──
         aes_key = None
@@ -315,7 +315,7 @@ class FlowDataExchangeView(View):
 
         # ── Ping (encrypted) ──
         if action_name == "ping":
-            response_data = {"data": {"status": "active"}}
+            response_data = {"version": "3.0", "data": {"status": "active"}}
             encrypted = encrypt_flow_response(response_data, aes_key, iv)
             return HttpResponse(encrypted, content_type="text/plain")
 
@@ -329,6 +329,9 @@ class FlowDataExchangeView(View):
             logger.warning("[FlowDataExchange] Unknown action: %s", action_name)
             response_data = {"screen": "ERROR", "data": {}}
 
+        if isinstance(response_data, dict):
+            response_data["version"] = "3.0"
+            
         encrypted = encrypt_flow_response(response_data, aes_key, iv)
         return HttpResponse(encrypted, content_type="text/plain")
 
