@@ -4,7 +4,9 @@ import re
 
 logger = logging.getLogger(__name__)
 
-# Properties not allowed by Meta Flow JSON spec, keyed by component type.
+
+
+# Properties not allowed by Meta Flow JSON spec
 DISALLOWED_PROPS: dict[str, set[str]] = {
     "TextInput": {"input_type"},
 }
@@ -157,7 +159,7 @@ def fix_dynamic_datasources(flow_json: dict, data_api_config: dict) -> tuple[dic
         # Collect dynamic field IDs that belong to this screen
         dynamic_on_screen = {fid for fid, sid in field_screen.items() if sid == screen_id}
 
-        # ── 1. Ensure the ``data`` schema block exists ──────────────────────
+        # Ensure the ``data`` schema block exists
         data_block = screen.get("data", {})
         if not isinstance(data_block, dict):
             data_block = {}
@@ -186,7 +188,7 @@ def fix_dynamic_datasources(flow_json: dict, data_api_config: dict) -> tuple[dic
                     options_key, screen_id,
                 )
 
-        # ── 2. Fix data-source bindings inside all form children ─────────────
+        # Fix data-source bindings inside all form children
         layout = screen.get("layout", {})
         for top_child in layout.get("children", []):
             if not isinstance(top_child, dict):

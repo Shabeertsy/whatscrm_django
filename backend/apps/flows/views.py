@@ -27,6 +27,7 @@ from .utils import clean_flow_json
 logger = logging.getLogger(__name__)
 
 
+
 # Flow CRUD ViewSet
 # ──────────────────────────────────────────────
 class WhatsappFlowViewSet(viewsets.ModelViewSet):
@@ -43,6 +44,7 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_AUTOMATIONS
 
+
     def get_queryset(self):
         return scope_by_owner(
             WhatsappFlow.objects.select_related("instance").all(),
@@ -50,10 +52,12 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
             owner_field="instance__user",
         )
 
+
     def get_serializer_class(self):
         if self.action == "list":
             return WhatsappFlowListSerializer
         return WhatsappFlowSerializer
+
 
     def perform_create(self, serializer):
         """Save flow locally, then optionally create on Meta."""
@@ -65,11 +69,13 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
         if instance_obj and instance_obj.access_token and instance_obj.whatsapp_business_account_id:
             self._create_on_meta(flow, instance_obj)
 
+
     def perform_destroy(self, instance):
         """Delete from Meta first, then locally."""
         if instance.meta_flow_id and instance.instance.access_token:
             self._delete_from_meta(instance)
         instance.delete()
+
 
     @action(detail=True, methods=["post"])
     def publish(self, request, pk=None):
@@ -93,6 +99,7 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
         logger.error("[FlowViewSet] Meta publish failed: %s", res.text)
         return Response({"error": "Meta API error", "detail": res.json()}, status=res.status_code)
 
+
     @action(detail=True, methods=["post"])
     def sync(self, request, pk=None):
         """Sync flow status from Meta."""
@@ -114,6 +121,7 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
             return Response(WhatsappFlowSerializer(flow).data)
 
         return Response({"error": "Meta API error", "detail": res.json()}, status=res.status_code)
+
 
     @action(detail=True, methods=["post"], url_path="upload-json")
     def upload_json(self, request, pk=None):
@@ -161,7 +169,8 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
         logger.error("[FlowViewSet] Meta upload failed: %s", res.text)
         return Response({"error": "Meta API error", "detail": res.json()}, status=res.status_code)
 
-    # ── Private helpers ────────────────────────────────────────────────────
+
+    # Private helpers ────────────────────────────────────────────────────
     def _build_endpoint_uri(self):
         base = getattr(settings, "BACKEND_PUBLIC_URL", "").rstrip("/")
         return f"{base}/api/flows/wa/data-exchange/" if base else ""
@@ -196,7 +205,7 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
 
 
 # Flow Submissions
-# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────
 class FlowSubmissionListView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_AUTOMATIONS
@@ -204,14 +213,11 @@ class FlowSubmissionListView(APIView):
     def get(self, request):
         qs = FlowSubmission.objects.select_related("flow", "conversation").all()
 
-        # Filter by flow id
         flow_id = request.query_params.get("flow")
         if flow_id:
             qs = qs.filter(flow_id=flow_id)
 
-        # Scope to tenant
         qs = scope_by_owner(qs, request.user, owner_field="flow__instance__user")
-
         serializer = FlowSubmissionSerializer(qs, many=True)
         return Response(serializer.data)
 
@@ -241,6 +247,7 @@ class PreviewApiView(APIView):
             resp = requests.get(url, params=params, headers=headers, timeout=10)
             resp.raise_for_status()
             raw = resp.json()
+
         except requests.exceptions.Timeout:
             return Response({"error": "API timed out after 10 seconds"}, status=408)
         except requests.exceptions.ConnectionError as exc:
@@ -274,17 +281,15 @@ class PreviewApiView(APIView):
 
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Data Exchange Endpoint — called by Meta for every screen interaction
 # ─────────────────────────────────────────────────────────────────────────────
-
 @method_decorator(csrf_exempt, name="dispatch")
 class FlowDataExchangeView(View):
 
     def post(self, request, *args, **kwargs):
         raw_body = request.body
 
-        # ── Health-check: Meta may send an unencrypted ping ──
+        # Health-check: Meta may send an unencrypted ping
         try:
             body = json.loads(raw_body)
         except json.JSONDecodeError:
@@ -294,7 +299,7 @@ class FlowDataExchangeView(View):
         if body.get("action") == "ping" and "encrypted_flow_data" not in body:
             return JsonResponse({"version": "3.0", "data": {"status": "active"}})
 
-        # ── Encrypted payload ──
+        # Encrypted payload
         aes_key = None
         iv      = None
         try:
@@ -313,7 +318,7 @@ class FlowDataExchangeView(View):
             action_name, screen, flow_token[:8] if flow_token else "",
         )
 
-        # ── Ping (encrypted) ──
+        # Ping (encrypted)
         if action_name == "ping":
             response_data = {"version": "3.0", "data": {"status": "active"}}
             encrypted = encrypt_flow_response(response_data, aes_key, iv)
@@ -335,8 +340,8 @@ class FlowDataExchangeView(View):
         encrypted = encrypt_flow_response(response_data, aes_key, iv)
         return HttpResponse(encrypted, content_type="text/plain")
 
-    # ── Screen handlers ──────────────────────────────────────────────────────
 
+    # ── Screen handlers ──────────────────────────────────────────────────────
     def _handle_init(self, flow_token: str, data: dict) -> dict:
         """
         Called when the Flow first opens.
@@ -389,15 +394,13 @@ class FlowDataExchangeView(View):
 
     def _handle_screen(self, screen: str, flow_token: str, data: dict) -> dict:
         """
-        Route each screen's submission to its handler.
         For screens with dynamic dropdowns, call the configured API.
 
         The footer on-click-action sends: { screen: <nextScreenId>, ...formValues }
         so the *next* screen to render is always data["screen"].
         """
-        # The payload includes the next screen ID under the key "screen"
-        next_screen = data.get("screen", screen)
 
+        next_screen = data.get("screen", screen)
         if next_screen == "COMPLETE" or screen == "COMPLETE":
             return self._handle_complete(flow_token, data)
 
@@ -440,8 +443,8 @@ class FlowDataExchangeView(View):
             },
         }
 
-    # ── Dynamic API caller ───────────────────────────────────────────────────
 
+    # ── Dynamic API caller ───────────────────────────────────────────────────
     def _fetch_dynamic_options(self, cfg: dict, submitted_data: dict) -> list:
     
         url         = cfg.get("url", "")
@@ -488,8 +491,8 @@ class FlowDataExchangeView(View):
 
         return options
 
-    # ── Cached flow lookup ───────────────────────────────────────────────────
 
+    # ── Cached flow lookup ───────────────────────────────────────────────────
     def _find_flow_by_token_cached(self, flow_token: str):
         """
         Look up the WhatsappFlow from a FlowSubmission.
@@ -526,6 +529,7 @@ class FlowDataExchangeView(View):
                     self._cached_flow = None
         return self._cached_flow
 
+
     def _handle_complete(self, flow_token: str, screen_data: dict) -> dict:
         screen_data = self._enrich_with_labels(screen_data, flow_token)
 
@@ -546,6 +550,7 @@ class FlowDataExchangeView(View):
 
         self._resume_automation(flow_token, screen_data)
         return {"screen": "SUCCESS", "data": {}}
+
 
     def _enrich_with_labels(self, screen_data: dict, flow_token: str) -> dict:
         """
@@ -569,7 +574,6 @@ class FlowDataExchangeView(View):
             if raw_value is None:
                 continue 
 
-            # Fetch the options list from the API (same helper used by _handle_screen)
             options = self._fetch_dynamic_options(cfg, submitted_data=screen_data)
             lookup = {opt["id"]: opt["title"] for opt in options}
 
@@ -588,6 +592,7 @@ class FlowDataExchangeView(View):
             )
 
         return enriched
+
 
     #  Automation resume 
     def _resume_automation(self, flow_token: str, screen_data: dict):
@@ -639,10 +644,10 @@ class FlowDataExchangeView(View):
         except Exception as exc:
             logger.error("[FlowDataExchange] Failed to resume automation: %s", exc, exc_info=True)
 
+
     def _get_prefill_from_execution(self, flow_token: str) -> dict:
         """
         Prefill the first screen with any variables already collected
-        by prior automation nodes (e.g. guest_count from collect_input).
         """
         try:
             from apps.automation.models import FlowExecution, ExecutionStatus
@@ -653,7 +658,6 @@ class FlowDataExchangeView(View):
             ).first()
 
             if execution:
-                # Return all non-internal variables as prefill data
                 return {
                     k: v for k, v in execution.variables.items()
                     if not k.startswith("__")
