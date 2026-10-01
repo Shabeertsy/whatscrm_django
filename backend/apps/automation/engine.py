@@ -679,6 +679,8 @@ class AutomationEngine(BaseChatbotEngine):
 
                 from apps.messaging.utils import send_whatsapp_flow_message
                 
+                action_type = "data_exchange" if flow_obj.data_api_config else "navigate"
+
                 try:
                     res = send_whatsapp_flow_message(
                         instance     = self.conv.instance,
@@ -689,6 +691,7 @@ class AutomationEngine(BaseChatbotEngine):
                         body_text    = body_text,
                         button_label = cta_label,
                         first_screen = first_screen_id,
+                        flow_action  = action_type,
                     )
                 except Exception as exc:
                     err_str = str(exc)
@@ -706,6 +709,7 @@ class AutomationEngine(BaseChatbotEngine):
                             body_text    = body_text,
                             button_label = cta_label,
                             first_screen = correct_screen,
+                            flow_action  = action_type,
                         )
                     else:
                         raise exc

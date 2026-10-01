@@ -833,6 +833,7 @@ def send_whatsapp_flow_message(
     body_text: str,
     button_label: str,
     first_screen: str = "SEARCH",
+    flow_action: str = "navigate",
 ):
     """
     Send an interactive WhatsApp Flow message — the CTA button that opens
@@ -863,7 +864,7 @@ def send_whatsapp_flow_message(
                     "flow_token": flow_token,
                     "flow_id": flow_id,
                     "flow_cta": button_label,
-                    "flow_action": "navigate",
+                    "flow_action": flow_action,
                     "flow_action_payload": {
                         "screen": first_screen
                     },

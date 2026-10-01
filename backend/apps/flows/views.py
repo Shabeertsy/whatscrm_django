@@ -195,15 +195,9 @@ class WhatsappFlowViewSet(viewsets.ModelViewSet):
             logger.warning("[FlowViewSet] Meta delete failed: %s", exc)
 
 
-# ─────────────────────────────────────────────────────────────────────────────
 # Flow Submissions
 # ─────────────────────────────────────────────────────────────────────────────
-
 class FlowSubmissionListView(APIView):
-    """
-    GET /api/flows/submissions/?flow=<uuid>
-    List all submissions for a specific flow.
-    """
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_AUTOMATIONS
 
