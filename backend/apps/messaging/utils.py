@@ -865,11 +865,14 @@ def send_whatsapp_flow_message(
                     "flow_id": flow_id,
                     "flow_cta": button_label,
                     "flow_action": flow_action,
-                    "flow_action_payload": {"screen": first_screen} if flow_action == "navigate" else {},
                 },
             },
         },
     }
+
+    if flow_action == "navigate":
+        payload["interactive"]["action"]["parameters"]["flow_action_payload"] = {"screen": first_screen}
+
 
     # Add header only if provided (optional field)
     if header_text:
