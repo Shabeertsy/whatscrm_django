@@ -1459,6 +1459,9 @@ class AutomationEngine(BaseChatbotEngine):
 
         Returns the resolved value, or the original path string if not found.
         """
+        if path in variables:
+            return variables[path]
+            
         parts = path.split(".")
         value = variables
         for part in parts:
