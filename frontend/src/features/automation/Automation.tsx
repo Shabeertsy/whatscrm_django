@@ -2,13 +2,15 @@ import React, { useState, useCallback } from "react";
 import { useNodesState, useEdgesState, addEdge, Connection, Node, ReactFlowProvider } from "@xyflow/react";
 import PageHeader from "../../components/shared/PageHeader";
 import FlowCanvas from "./components/FlowCanvas";
-import SidebarElements from "./components/SidebarElements";
+import SidebarElements from "./components/ui/sidebar/SidebarElements";
 import PropertiesPanel from "./components/PropertiesPanel";
 import { Flow } from "./api";
 import { automationApi } from "../../api/automation";
 import { Plus, ArrowLeft, Workflow, Trash2, Save, Play, Pause, Edit2 } from "lucide-react";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { showToast } from "../../utils/toast";
+
+
 
 export function Automation() {
   const [flows, setFlows] = useState<Flow[]>([]);
@@ -28,6 +30,8 @@ export function Automation() {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
+
+
   // Load flows on mount
   React.useEffect(() => {
     fetchFlows();
@@ -43,6 +47,7 @@ export function Automation() {
       setIsLoading(false);
     }
   };
+
 
   // Update flow nodes/edges locally whenever they change so we don't lose state
   React.useEffect(() => {
@@ -433,7 +438,7 @@ export function Automation() {
             viewport={activeFlow?.viewport}
             onViewportChange={handleViewportChange}
           />
-          <PropertiesPanel selectedNode={selectedNode} updateNodeData={updateNodeData} onDeleteNode={handleDeleteNode} />
+          <PropertiesPanel selectedNode={selectedNode} updateNodeData={updateNodeData} onDeleteNode={handleDeleteNode} allNodes={nodes} />
         </ReactFlowProvider>
       </div>
     </div>

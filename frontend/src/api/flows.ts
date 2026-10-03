@@ -10,4 +10,10 @@ export const flowsApi = {
   publishFlow: (id: string) => apiClient.post(`/flows/${id}/publish/`),
   syncFlow: (id: string) => apiClient.post(`/flows/${id}/sync/`),
   previewApi: (cfg: object) => apiClient.post("/flows/preview-api/", cfg),
+
+  getFlowFields: (flowId: string) => apiClient.get(`/flows/${flowId}/fields/`),
+
+  previewListingApi: (url: string, resultsKey?: string) =>
+    apiClient.post("/flows/preview-api/", { url, results_key: resultsKey || "" }),
 };
+

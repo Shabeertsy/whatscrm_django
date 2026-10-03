@@ -1,6 +1,7 @@
 import React from "react";
 import { Node } from "@xyflow/react";
-import { Trash2, Zap, GitBranch, Clock, MessageSquare, Sliders, Settings, Sparkles, MapPin } from "lucide-react";
+import { Trash2, Zap, GitBranch, Clock, MessageSquare, Sliders, Settings, MapPin } from "lucide-react";
+import { ResizableSidebar } from "./ui/sidebar/ResizableSidebar";
 
 
 import { TriggerPanel } from "./panels/TriggerPanel";
@@ -15,6 +16,7 @@ import { HttpRequestPanel } from "./panels/HttpRequestPanel";
 import { MenuOptionsPanel } from "./panels/MenuOptionsPanel";
 import { SaveLocationPanel } from "./panels/SaveLocationPanel";
 import { WhatsappFlowPanel } from "./panels/WhatsappFlowPanel";
+import { SendListingPanel } from "./panels/SendListing";
 
 
 
@@ -24,12 +26,15 @@ interface Props {
   selectedNode: Node | null;
   updateNodeData: (id: string, data: Record<string, unknown>) => void;
   onDeleteNode?: (id: string) => void;
+  allNodes?: Node[];
 }
 
 type PanelProps = {
   nodeId: string;
   data: Record<string, unknown>;
   update: (id: string, patch: Record<string, unknown>) => void;
+  flowVariables?: string[];
+  waFlowIds?: string[];
 };
 
 
@@ -49,8 +54,34 @@ function resolvePanel(type: string, title: string): React.FC<PanelProps> | null 
   if (type === "save_location" || type === "saveLocation" || t.includes("save location")) return SaveLocationPanel;
   if (type === "whatsapp_flow" || type === "whatsappFlow" || t.includes("whatsapp flow")) return WhatsappFlowPanel;
   if (type === "action") return SendMessagePanel;
+  if (type === "send_listing" || type === "sendListing" || t.includes("send listing") || t.includes("property listing")) return SendListingPanel;
 
   return null;
+}
+
+/** Extract saved variable names and WA flow IDs from all nodes in the flow */
+function deriveFlowContext(allNodes: Node[]): { vars: string[]; waFlowIds: string[] } {
+  const vars: string[] = [];
+  const waFlowIds: string[] = [];
+  for (const n of allNodes) {
+    const d = n.data as Record<string, unknown>;
+    // collect_input saves to a named variable
+    if ((n.type === "collect_input" || n.type === "collectInput") && d.variableName) {
+      vars.push(String(d.variableName));
+    }
+    // http_request saves response to a variable
+    if ((n.type === "http_request" || n.type === "httpRequest") && d.responseVariable) {
+      vars.push(String(d.responseVariable));
+    }
+    // whatsapp_flow node — record flow IDs so the panel can fetch their field names
+    if ((n.type === "whatsapp_flow" || n.type === "whatsappFlow") && d.flowId) {
+      waFlowIds.push(String(d.flowId));
+    }
+  }
+  return {
+    vars: [...new Set(vars.filter(Boolean))],
+    waFlowIds: [...new Set(waFlowIds.filter(Boolean))],
+  };
 }
 
 function getNodeStyle(type: string) {
@@ -68,6 +99,8 @@ function getNodeStyle(type: string) {
       return { bg: "bg-teal-600", shadow: "shadow-teal-500/20", label: "WhatsApp Flow", icon: MessageSquare };
     case "save_location":
       return { bg: "bg-rose-600", shadow: "shadow-rose-500/20", label: "Save Location", icon: MapPin };
+    case "send_listing":
+      return { bg: "bg-amber-500", shadow: "shadow-amber-500/20", label: "Property Listing", icon: MessageSquare };
     default:
       return { bg: "bg-slate-800 dark:bg-slate-700", shadow: "shadow-slate-500/20", label: "Action Node", icon: Sliders };
   }
@@ -75,17 +108,21 @@ function getNodeStyle(type: string) {
 
 
 
-// Media upload section 
-// ─────────────────────────────────────────────────────────────────────────────
-// PropertiesPanel — thin shell: header + title + routed panel + delete footer
-// ─────────────────────────────────────────────────────────────────────────────
 
-export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: Props) {
+
+export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode, allNodes = [] }: Props) {
+  const { vars: flowVariables, waFlowIds } = deriveFlowContext(allNodes);
 
 
   if (!selectedNode) {
     return (
-      <aside className="w-96 md:w-[400px] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl border-l border-slate-200/80 dark:border-slate-800/80 flex flex-col h-full justify-center items-center p-8 text-center transition-all shadow-2xl z-20">
+      <ResizableSidebar
+        defaultWidth={400}
+        minWidth={300}
+        maxWidth={800}
+        position="right"
+        className="bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl border-l border-slate-200/80 dark:border-slate-800/80 justify-center items-center p-8 text-center shadow-2xl z-20"
+      >
         <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400 dark:text-slate-500 mb-4 shadow-inner border border-slate-200/60 dark:border-slate-700/60">
           <Settings className="w-8 h-8 animate-spin-slow" />
         </div>
@@ -93,7 +130,7 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
         <p className="text-xs text-slate-500 dark:text-slate-400 max-w-[240px] leading-relaxed font-medium">
           Click on any block in your workflow canvas to customize its properties and routing rules.
         </p>
-      </aside>
+      </ResizableSidebar>
     );
   }
 
@@ -101,15 +138,20 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
   const { data } = selectedNode;
   const nodeType = selectedNode.type ?? "action";
   const nodeTitle = (data.title as string) ?? "";
-  const isMediaNode = nodeTitle.toLowerCase().includes("media") || !!data.mediaUrl;
 
   const style = getNodeStyle(nodeType);
   const NodeIcon = style.icon;
   const Panel = resolvePanel(nodeType, nodeTitle);
 
   return (
-    <aside className="w-96 md:w-[400px] bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl border-l border-slate-200/80 dark:border-slate-800/80 flex flex-col h-full justify-between overflow-y-auto transition-all shadow-2xl z-20">
-      <div>
+    <ResizableSidebar
+      defaultWidth={400}
+      minWidth={300}
+      maxWidth={800}
+      position="right"
+      className="bg-white/95 dark:bg-[#0B0F19]/95 backdrop-blur-xl border-l border-slate-200/80 dark:border-slate-800/80 justify-between overflow-hidden shadow-2xl z-20"
+    >
+      <div className="overflow-y-auto flex-1">
         {/* Node Header */}
         <div className="relative overflow-hidden bg-slate-50/80 dark:bg-slate-900/50 p-5 border-b border-slate-200/80 dark:border-slate-800/80">
           <div className="flex items-center space-x-3.5">
@@ -146,6 +188,8 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
                 nodeId={selectedNode.id}
                 data={data as Record<string, unknown>}
                 update={updateNodeData}
+                flowVariables={flowVariables}
+                waFlowIds={waFlowIds}
               />
             </div>
           )}
@@ -162,7 +206,7 @@ export function PropertiesPanel({ selectedNode, updateNodeData, onDeleteNode }: 
           <span>Delete This Block</span>
         </button>
       </div>
-    </aside>
+    </ResizableSidebar>
   );
 }
 

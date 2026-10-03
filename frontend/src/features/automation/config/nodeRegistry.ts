@@ -4,14 +4,14 @@
  *   - NODE_TYPES       
  *   - INITIAL_DATA     
  *   - TYPE_ALIASES     
- *   - Sidebar items    (SidebarElements.tsx)
+ *   - Sidebar items   
  *
  * Adding a new node = add one entry here only.
  */
 
 import {
   MessageSquare, Image as ImageIcon, Menu, SplitSquareHorizontal, Clock, XCircle, FileInput, Save,
-  Sparkles, Globe, Zap, LucideIcon, MapPin, Smartphone
+  Sparkles, Globe, Zap, LucideIcon, MapPin, Smartphone, Building2
 } from "lucide-react";
 
 
@@ -27,6 +27,7 @@ import AiControlNode from "../components/nodes/AiControlNode";
 import HttpRequestNode from "../components/nodes/HttpRequestNode";
 import SaveLocationNode from "../components/nodes/SaveLocationNode";
 import WhatsappFlowNode from "../components/nodes/WhatsappFlowNode";
+import SendListingNode from "../components/nodes/SendListingNode";
 import DeletableEdge from "../components/DeletableEdge";
 
 
@@ -44,7 +45,8 @@ export type CanonicalType =
   | "save_location"
   | "ai_control"
   | "http_request"
-  | "whatsapp_flow";
+  | "whatsapp_flow"
+  | "send_listing";
 
 export interface NodeRegistryEntry {
   /** ReactFlow component */
@@ -69,9 +71,10 @@ export interface NodeRegistryEntry {
   defaultConfig: (title: string, desc: string) => Record<string, unknown>;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 // Registry
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────────
 
 export const NODE_REGISTRY: Record<CanonicalType, NodeRegistryEntry> = {
 
@@ -311,13 +314,41 @@ export const NODE_REGISTRY: Record<CanonicalType, NodeRegistryEntry> = {
       ctaLabel: "Open Form",
     }),
   },
+
+  send_listing: {
+    component: SendListingNode,
+    label: "Send Listing",
+    description: "Paginate items from your API",
+    icon: Building2,
+    color: "text-amber-500",
+    category: "Messages",
+    aliases: ["send_listing", "sendListing", "Send Listing"],
+    defaultWidth: 220,
+    defaultHeight: 140,
+    defaultConfig: (title, desc) => ({
+      version: 1,
+      title,
+      description: desc,
+      apiUrl: "",
+      queryParams: {},
+      resultsKey: "results",
+      maxResults: 5,
+      cardTemplate: `*Item {{__index}} of {{__total}}*\n\n{{name}}\n{{location}}\n{{room_type}} | Rs {{price}}/month\nAvailable: {{available_from}}\n{{link}}`,
+      nextLabel: "Next",
+      bookLabel: "Book Now",
+      exitLabel: "Exit",
+      noResultsMessage: "Sorry, no results found matching your criteria.",
+      noMoreMessage: "You've seen all available results.",
+    }),
+  },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+
+
 // Derived helpers (consumed by SidebarElements.tsx and FlowCanvas.tsx)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** ReactFlow nodeTypes map — memoised in FlowCanvas via useMemo */
+/** ReactFlow nodeTypes map */
 export const NODE_TYPES = Object.fromEntries(
   Object.entries(NODE_REGISTRY).map(([k, v]) => [k, v.component])
 ) as any;

@@ -285,3 +285,31 @@ def clean_flow_json(
             any_changed = True
 
     return cleaned, any_changed
+
+
+
+def flatten_dict(d: dict, parent_key: str = '', sep: str = '.') -> dict:
+    """
+    Flattens a nested dictionary to dot-notation keys (e.g. location.city).
+    Lists of dicts are joined by their inner properties (e.g. amenities.name -> 'Garden, Pool').
+    """
+    items = []
+    for k, v in d.items():
+        new_key = f"{parent_key}{sep}{k}" if parent_key else str(k)
+        if isinstance(v, dict):
+            items.extend(flatten_dict(v, new_key, sep=sep).items())
+        elif isinstance(v, list):
+            if v and all(isinstance(x, dict) for x in v):
+                flat_list = [flatten_dict(x) for x in v]
+                subkeys = set()
+                for flat_item in flat_list:
+                    subkeys.update(flat_item.keys())
+                for subk in subkeys:
+                    vals = [str(fi[subk]) for fi in flat_list if subk in fi and fi[subk] is not None]
+                    items.append((f"{new_key}{sep}{subk}", ", ".join(vals)))
+            else:
+                vals = [str(x) for x in v if x is not None]
+                items.append((new_key, ", ".join(vals)))
+        else:
+            items.append((new_key, v))
+    return dict(items)

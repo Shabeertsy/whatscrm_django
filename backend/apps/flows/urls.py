@@ -6,6 +6,7 @@ from .views import (
     FlowSubmissionListView,
     FlowDataExchangeView,
     PreviewApiView,
+    FlowFieldsView,
 )
 
 router = DefaultRouter()
@@ -14,13 +15,10 @@ router.register(r"", WhatsappFlowViewSet, basename="wa-flow")
 urlpatterns = [
     # Meta calls this endpoint for every screen interaction (public, no auth)
     path("wa/data-exchange/", FlowDataExchangeView.as_view(), name="flow-data-exchange"),
-
-    # Flow submissions list
     path("submissions/", FlowSubmissionListView.as_view(), name="flow-submissions"),
-
-    # Preview an API config from the flow builder
     path("preview-api/", PreviewApiView.as_view(), name="flow-preview-api"),
+    path("<uuid:flow_id>/fields/", FlowFieldsView.as_view(), name="flow-fields"),
 
-    # Flow CRUD — must come AFTER specific paths to avoid router catching them
+    # Flow CRUD
     path("", include(router.urls)),
 ]

@@ -22,6 +22,7 @@ class NodeType(models.TextChoices):
     HTTP_REQUEST   = "http_request",   "HTTP Request"
     SAVE_LOCATION  = "save_location",  "Save Location"
     WHATSAPP_FLOW  = "whatsapp_flow",  "Send WhatsApp Flow"
+    SEND_LISTING   = "send_listing",   "Send Property Listing"
 
 
 class TriggerType(models.TextChoices):
@@ -147,6 +148,7 @@ class FlowNode(BaseModel):
         "ai_control":     ["aiAction"],
         "http_request":   ["httpMethod", "url"],
         "whatsapp_flow":  ["flowId", "ctaLabel"],
+        "send_listing":   ["apiUrl", "cardTemplate"],
     }
 
     def clean(self):

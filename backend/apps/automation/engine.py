@@ -1,6 +1,7 @@
 import re
 import logging
 from typing import Optional
+from apps.flows.utils import flatten_dict
 
 from django.conf import settings
 from django.db.models import Q
@@ -159,6 +160,9 @@ class AutomationEngine(BaseChatbotEngine):
 
             elif node_type in (NodeType.WHATSAPP_FLOW, "whatsapp_flow"):
                 result = self._handle_whatsapp_flow_node(current_node, execution)
+
+            elif node_type in (NodeType.SEND_LISTING, "send_listing"):
+                result = self._handle_send_listing_node(current_node, execution, reply)
 
             else:
                 logger.warning(
@@ -475,62 +479,113 @@ class AutomationEngine(BaseChatbotEngine):
         Execute an HTTP request and optionally save the response to a variable.
         """
         import requests
-        
-        http_method = node.config.get("httpMethod", "GET").upper()
-        url         = self._interpolate_text(node.config.get("url", ""), execution.variables)
-        headers     = node.config.get("headers", {})
-        req_body    = node.config.get("requestBody")
-        resp_var    = node.config.get("responseVariable", "")
+
+        http_method      = node.config.get("httpMethod", "GET").upper()
+        url              = self._interpolate_text(node.config.get("url", ""), execution.variables)
+        headers          = node.config.get("headers", {}) or {}
+        query_params_cfg = node.config.get("queryParams", {}) or {}
+        req_body         = node.config.get("requestBody")
+        resp_var         = node.config.get("responseVariable", "")
+        resp_extract     = node.config.get("responseExtract", {}) or {}
 
         if not url:
             logger.warning("[AutomationEngine] Conv %s HTTP Request node missing URL.", self.conv.id)
         else:
             # Interpolate headers
-            interpolated_headers = {}
-            for k, v in headers.items():
-                interpolated_headers[k] = self._interpolate_text(str(v), execution.variables)
-    
+            interpolated_headers = {
+                k: self._interpolate_text(str(v), execution.variables)
+                for k, v in headers.items()
+            }
+
+            # Interpolate queryParams dict and build params dict
+            params = {
+                k: self._interpolate_text(str(v), execution.variables)
+                for k, v in query_params_cfg.items()
+                if self._interpolate_text(str(v), execution.variables)  # skip empty values
+            }
+
             # Interpolate request body
             if isinstance(req_body, str):
                 req_body = self._interpolate_text(req_body, execution.variables)
             elif isinstance(req_body, dict):
-                req_body = req_body.copy()
-                for k, v in req_body.items():
-                    if isinstance(v, str):
-                        req_body[k] = self._interpolate_text(v, execution.variables)
-    
+                req_body = {
+                    k: self._interpolate_text(str(v), execution.variables)
+                    if isinstance(v, str) else v
+                    for k, v in req_body.items()
+                }
+
             try:
-                logger.info("[AutomationEngine] Conv %s HTTP %s %s", self.conv.id, http_method, url)
+                logger.info(
+                    "[AutomationEngine] Conv %s HTTP %s %s params=%s",
+                    self.conv.id, http_method, url, list(params.keys()),
+                )
                 if http_method == "GET":
-                    response = requests.get(url, headers=interpolated_headers, timeout=10)
+                    response = requests.get(url, headers=interpolated_headers, params=params, timeout=10)
                 elif http_method == "POST":
                     if isinstance(req_body, dict):
-                        response = requests.post(url, headers=interpolated_headers, json=req_body, timeout=10)
+                        response = requests.post(url, headers=interpolated_headers, params=params, json=req_body, timeout=10)
                     else:
-                        response = requests.post(url, headers=interpolated_headers, data=req_body, timeout=10)
+                        response = requests.post(url, headers=interpolated_headers, params=params, data=req_body, timeout=10)
                 elif http_method == "PUT":
                     if isinstance(req_body, dict):
-                        response = requests.put(url, headers=interpolated_headers, json=req_body, timeout=10)
+                        response = requests.put(url, headers=interpolated_headers, params=params, json=req_body, timeout=10)
                     else:
-                        response = requests.put(url, headers=interpolated_headers, data=req_body, timeout=10)
+                        response = requests.put(url, headers=interpolated_headers, params=params, data=req_body, timeout=10)
                 else:
-                    response = requests.request(http_method, url, headers=interpolated_headers, data=req_body, timeout=10)
-                
+                    response = requests.request(
+                        http_method, url,
+                        headers=interpolated_headers, params=params, data=req_body, timeout=10,
+                    )
+
+                try:
+                    resp_data = response.json()
+                except ValueError:
+                    resp_data = response.text
+
+                vars_changed = False
+
+                # Store full response under responseVariable
                 if resp_var:
-                    try:
-                        resp_data = response.json()
-                    except ValueError:
-                        resp_data = response.text
-                    
                     execution.variables[resp_var] = resp_data
+                    vars_changed = True
+                    logger.info(
+                        "[AutomationEngine] Conv %s HTTP response stored in '{{%s}}'",
+                        self.conv.id, resp_var,
+                    )
+
+                # Extract individual fields using dot-path notation
+                if resp_extract and isinstance(resp_data, (dict, list)):
+                    # Build a temporary lookup that includes the full response
+                    # at the responseVariable key so paths like "results.0.name" work
+                    lookup_root = (
+                        {resp_var: resp_data, **resp_data}
+                        if isinstance(resp_data, dict)
+                        else {resp_var: resp_data}
+                    )
+                    for target_var, dot_path in resp_extract.items():
+                        resolved = self._resolve_variable(lookup_root, dot_path)
+                        if resolved is not None and resolved != dot_path:
+                            execution.variables[target_var] = resolved
+                            vars_changed = True
+                            logger.info(
+                                "[AutomationEngine] Conv %s extracted '%s' = %s (from path '%s')",
+                                self.conv.id, target_var,
+                                str(resolved)[:80], dot_path,
+                            )
+                        else:
+                            logger.warning(
+                                "[AutomationEngine] Conv %s responseExtract: path '%s' not found in response.",
+                                self.conv.id, dot_path,
+                            )
+
+                if vars_changed:
                     execution.save(update_fields=["variables"])
-                    logger.info("[AutomationEngine] Conv %s HTTP response saved to '%s'", self.conv.id, resp_var)
-    
+
             except Exception as exc:
                 logger.error("[AutomationEngine] Conv %s HTTP Request failed: %s", self.conv.id, exc)
 
         self._log_step(execution, node, StepStatus.COMPLETED)
-        
+
         next_node = self._advance_to_next(execution, node)
         if next_node is None:
             execution.complete()
@@ -873,6 +928,220 @@ class AutomationEngine(BaseChatbotEngine):
         return reply if not reply.is_empty else None
 
 
+
+    # SEND_LISTING
+    def _handle_send_listing_node(self, node, execution, reply):
+        """
+        Calls your property API with the user's submitted filters, sends the first
+        result as a formatted card with Next / Book Now / Exit buttons, then pauses.
+        """
+        import requests as _requests
+
+        cfg     = self._listing_cfg(node)
+        api_url = self._interpolate_text(cfg["api_url"], execution.variables)
+
+        if not api_url:
+            logger.warning("[SendListing] Conv %s — apiUrl missing.", self.conv.id)
+            self._log_step(execution, node, StepStatus.FAILED)
+            return self._listing_advance(execution, node, reply)
+
+        params  = self._interpolate_dict(cfg["query_params"], execution.variables)
+        headers = self._interpolate_dict(cfg["headers"],      execution.variables)
+
+        try:
+            logger.info("[SendListing] Conv %s GET %s params=%s", self.conv.id, api_url, list(params.keys()))
+            resp  = _requests.get(api_url, params=params, headers=headers, timeout=10)
+            resp.raise_for_status()
+            items = self._extract_list(resp.json(), cfg["results_key"], cfg["max_results"])
+        except Exception as exc:
+            logger.error("[SendListing] Conv %s API error: %s", self.conv.id, exc)
+            reply.add_text(cfg["no_results_msg"])
+            self._log_step(execution, node, StepStatus.FAILED)
+            return self._listing_advance(execution, node, reply)
+
+        if not items:
+            logger.info("[SendListing] Conv %s — no results.", self.conv.id)
+            reply.add_text(cfg["no_results_msg"])
+            self._log_step(execution, node, StepStatus.COMPLETED)
+            return self._listing_advance(execution, node, reply)
+
+        # Persist listing state so pagination survives across WAITING cycles
+        execution.variables.update({
+            "__listing_results": items,
+            "__listing_index":   0,
+            "__listing_total":   len(items),
+        })
+        execution.save(update_fields=["variables"])
+        self._send_listing_card(execution, reply, items, index=0, cfg=cfg)
+
+        self._log_step(execution, node, StepStatus.PENDING)
+        execution.status = ExecutionStatus.WAITING
+        execution.save(update_fields=["status"])
+        return _WAITING
+
+
+    def _resume_send_listing(self, node, execution, ctx, reply, inbound_text):
+        """Called when the user replies while paused on a SEND_LISTING node."""
+        chosen = self._resolve_interactive_id(inbound_text, execution)
+        logger.info("[SendListing] Conv %s — chose '%s'.", self.conv.id, chosen)
+
+        items = execution.variables.get("__listing_results", [])
+        index = int(execution.variables.get("__listing_index", 0))
+        total = len(items)
+        cfg   = self._listing_cfg(node)
+
+        if chosen == "listing_next":
+            next_index = index + 1
+            if next_index >= total:
+                reply.add_text(cfg["no_more_msg"])
+                self._log_step(execution, node, StepStatus.COMPLETED)
+                return self._listing_advance(execution, node, reply)
+
+            execution.variables["__listing_index"] = next_index
+            execution.save(update_fields=["variables"])
+            self._send_listing_card(execution, reply, items, next_index, cfg)
+            logger.info("[SendListing] Conv %s — card %d/%d.", self.conv.id, next_index + 1, total)
+
+        elif chosen == "listing_book":
+            # Expose selected item as {{selected_<field>}} for downstream nodes
+            if 0 <= index < total:
+                for k, v in items[index].items():
+                    execution.variables[f"selected_{k}"] = v
+            self._listing_clear_state(execution)
+            self._log_step(execution, node, StepStatus.COMPLETED)
+            execution.status = ExecutionStatus.RUNNING
+            execution.save(update_fields=["status"])
+            logger.info("[SendListing] Conv %s — booked item %d.", self.conv.id, index)
+            return self._listing_advance(execution, node, reply)
+
+        elif chosen == "listing_exit":
+            self._listing_clear_state(execution)
+            self._log_step(execution, node, StepStatus.COMPLETED)
+            execution.complete()
+            logger.info("[SendListing] Conv %s — exited.", self.conv.id)
+
+        else:
+            # Unknown reply — resend current card so buttons stay visible
+            logger.info("[SendListing] Conv %s — unknown reply, resending card.", self.conv.id)
+            if 0 <= index < total:
+                self._send_listing_card(execution, reply, items, index, cfg)
+
+        return reply if not reply.is_empty else None
+
+
+    # ── SEND_LISTING helpers ──────────────────────────────────────────────────
+
+    def _listing_cfg(self, node: "FlowNode") -> dict:
+        """Return all node config values normalised into one dict."""
+        c = node.config
+        return {
+            "api_url":        c.get("apiUrl", ""),
+            "query_params":   c.get("queryParams",  {}) or {},
+            "headers":        c.get("headers",       {}) or {},
+            "results_key":    c.get("resultsKey",    ""),
+            "max_results":    int(c.get("maxResults", 10)),
+            "card_template":  c.get("cardTemplate",  ""),
+            "next_label":     c.get("nextLabel",     " Next"),
+            "book_label":     c.get("bookLabel",     " Book Now"),
+            "exit_label":     c.get("exitLabel",     " Exit"),
+            "no_results_msg": c.get("noResultsMessage", "Sorry, no properties found matching your criteria."),
+            "no_more_msg":    c.get("noMoreMessage",    "You've seen all available properties."),
+        }
+
+    def _interpolate_dict(self, d: dict, variables: dict) -> dict:
+        """Interpolate {{variables}} in each dict value; drop keys that resolve to empty."""
+        return {
+            k: val
+            for k, v in d.items()
+            if (val := self._interpolate_text(str(v), variables).strip())
+        }
+
+    @staticmethod
+    def _extract_list(raw, results_key: str, max_results: int) -> list:
+        """Walk a dot-path into the API response and return a capped item list."""
+        items = raw
+        if results_key:
+            for key in results_key.split("."):
+                items = items.get(key, []) if isinstance(items, dict) else []
+        return (items if isinstance(items, list) else [])[:max_results]
+
+    def _send_listing_card(self, execution, reply, items: list, index: int, cfg: dict):
+        """Format and deliver one property card with interactive pagination buttons."""
+        total     = len(items)
+        flat_item = flatten_dict(items[index]) if isinstance(items[index], dict) else {}
+        card_vars = {
+            **execution.variables,
+            **{str(k): str(v) for k, v in flat_item.items()},
+            "__index": str(index + 1),
+            "__total": str(total),
+        }
+        card_text = self._interpolate_text(cfg["card_template"], card_vars)
+
+        options = []
+        if (index + 1) < total:
+            options.append({"id": "listing_next", "label": cfg["next_label"], "value": "listing_next"})
+        options.append({"id": "listing_book", "label": cfg["book_label"], "value": "listing_book"})
+        options.append({"id": "listing_exit", "label": cfg["exit_label"], "value": "listing_exit"})
+
+        if self.conv.instance and self.conv.instance.is_active:
+            try:
+                from apps.messaging.utils import send_and_save_interactive_buttons
+                send_and_save_interactive_buttons(self.conv, body_text=card_text, options=options)
+                logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
+                return
+            except Exception as exc:
+                logger.warning("[SendListing] Interactive buttons failed (%s), using plain text.", exc)
+
+        # Fallback for plain-text clients
+        btn_lines = "\n".join(f"{i+1}. {o['label']}" for i, o in enumerate(options))
+        reply.add_text(f"{card_text}\n\n{btn_lines}")
+
+    def _resolve_interactive_id(self, inbound_text: str, execution) -> str:
+        """
+        Reads the button/list-reply ID from the latest inbound WhatsApp message.
+        Falls back to mapping "1", "2", "3" plain-text to the correct action ID.
+        """
+        last = self.conv.messages.filter(direction="inbound").order_by("-timestamp").first()
+        if last and last.raw_data:
+            interactive = last.raw_data.get("interactive", {})
+            i_type = interactive.get("type", "")
+            if i_type == "button_reply":
+                return interactive.get("button_reply", {}).get("id", "").strip().lower()
+            if i_type == "list_reply":
+                return interactive.get("list_reply",  {}).get("id", "").strip().lower()
+
+        # Build a positional map matching what was displayed
+        items    = execution.variables.get("__listing_results", [])
+        index    = execution.variables.get("__listing_index", 0)
+        has_next = (index + 1) < len(items)
+        mapping, pos = {}, 1
+        if has_next:
+            mapping[str(pos)] = "listing_next"; pos += 1
+        mapping[str(pos)] = "listing_book"; pos += 1
+        mapping[str(pos)] = "listing_exit"
+        return mapping.get(inbound_text.strip(), "")
+
+    @staticmethod
+    def _listing_clear_state(execution):
+        """Remove temporary listing state from execution variables."""
+        for key in ("__listing_results", "__listing_index", "__listing_total"):
+            execution.variables.pop(key, None)
+        execution.save(update_fields=["variables"])
+
+    def _listing_advance(self, execution, node, reply):
+        """Continue flow traversal past the listing node."""
+        execution.status = ExecutionStatus.RUNNING
+        execution.save(update_fields=["status"])
+        next_node = self._advance_to_next(execution, node)
+        if next_node is None:
+            execution.complete()
+            return reply if not reply.is_empty else None
+        ctx = ChatbotContext(contact_name=self.conv.contact.name or "", inbound_message_body="")
+        self._traverse_flow(execution, node, ctx, reply, start_at=next_node)
+        return reply if not reply.is_empty else None
+
+
+
     #  Resuming waiting executions (menu responses)                    
     def _resume_execution(
         self,
@@ -943,6 +1212,9 @@ class AutomationEngine(BaseChatbotEngine):
                 self.conv.id,
             )
             return None
+
+        if current_node.node_type in (NodeType.SEND_LISTING, "send_listing"):
+            return self._resume_send_listing(current_node, execution, ctx, reply, inbound_text)
 
         logger.warning(
             "[AutomationEngine] Conv %s WAITING on unexpected node type '%s'.",
@@ -1164,14 +1436,61 @@ class AutomationEngine(BaseChatbotEngine):
         return re.sub(r"\s+", " ", text.strip().lower())
 
     @staticmethod
-    def _interpolate_text(text: str, variables: dict) -> str:
-        """Replace {{var_name}} placeholders with values from variables."""
+    def _resolve_variable(variables: dict, path: str):
+        """
+        Resolve a dot-notation path against the variables dict.
+
+        Examples:
+            path="name"                    → variables["name"]
+            path="results.0.name"          → variables["results"][0]["name"]
+            path="properties.price"        → variables["properties"]["price"]
+
+        Returns the resolved value, or the original path string if not found.
+        """
+        parts = path.split(".")
+        value = variables
+        for part in parts:
+            if isinstance(value, dict):
+                value = value.get(part)
+            elif isinstance(value, list):
+                try:
+                    value = value[int(part)]
+                except (ValueError, IndexError):
+                    return path  # can't resolve — return path unchanged
+            else:
+                return path  # dead end
+            if value is None:
+                return ""
+        return value
+
+    @classmethod
+    def _interpolate_text(cls, text: str, variables: dict) -> str:
+        """
+        Replace {{var_name}} and {{dot.path.access}} placeholders with values
+        from variables dict.
+
+        Supports:
+          {{name}}                    — flat variable
+          {{results.0.name}}          — list index + key
+          {{api_response.price}}      — nested dict key
+          {{properties.2.image_url}}  — deep path
+        """
         if not text or not isinstance(text, str):
             return text
-        for var_name, var_value in (variables or {}).items():
-            if not var_name.startswith("__"):
-                text = text.replace(f"{{{{{var_name}}}}}", str(var_value))
-        return text
+        import re
+        def replacer(match):
+            path = match.group(1).strip()
+            if path.startswith("__"):
+                return match.group(0)  # keep private vars as-is
+            resolved = cls._resolve_variable(variables or {}, path)
+            if resolved is None or resolved == path:
+                # path not found — leave placeholder so dev can debug
+                return match.group(0)
+            if isinstance(resolved, (dict, list)):
+                import json
+                return json.dumps(resolved, ensure_ascii=False)
+            return str(resolved)
+        return re.sub(r"\{\{([^}]+)\}\}", replacer, text)
 
     @staticmethod
     def _compute_delay_seconds(config: dict) -> int:

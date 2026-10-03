@@ -1,6 +1,7 @@
 import json
 import logging
 import secrets
+from apps.flows.utils import flatten_dict
 
 import requests
 from django.conf import settings
@@ -268,6 +269,10 @@ class PreviewApiView(APIView):
                 hint = f" Available keys: {', '.join(items.keys())}."
             return Response({"error": f"Expected a list but got {type(items).__name__}.{hint} Check your Results Key.", "raw": raw}, status=422)
 
+        # Extract keys from the first non-empty item
+        first_item = next((item for item in items if isinstance(item, dict)), None)
+        keys = list(flatten_dict(first_item).keys()) if first_item else []
+
         options = []
         for item in items:
             if not isinstance(item, dict):
@@ -277,12 +282,58 @@ class PreviewApiView(APIView):
             if opt_id:
                 options.append({"id": str(opt_id), "title": str(opt_label)})
 
-        return Response({"count": len(options), "options": options[:50]}) 
+        return Response({"count": len(options), "options": options[:50], "keys": keys})
+
+
+
+class FlowFieldsView(APIView):
+    """
+    Return all field names (form variable keys) for a given WhatsApp Flow.
+    """
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_AUTOMATIONS
+
+    FIELD_TYPES = {"TextInput", "TextArea", "Dropdown", "RadioButtonsGroup", "CheckboxGroup", "DatePicker"}
+
+    def get(self, request, flow_id):
+        try:
+            flow = WhatsappFlow.objects.get(id=flow_id)
+        except WhatsappFlow.DoesNotExist:
+            return Response({"error": "Flow not found"}, status=404)
+
+        fields: set[str] = set()
+
+        # Extract from flow_json component names 
+        fj = flow.flow_json or {}
+        for screen in fj.get("screens", []):
+            layout = screen.get("layout", {})
+            self._walk_children(layout.get("children", []), fields)
+
+        # Supplement with keys from real submissions 
+        latest_sub = (
+            FlowSubmission.objects.filter(flow=flow, completed=True)
+            .order_by("-created_at").first()
+        )
+        if latest_sub and isinstance(latest_sub.screen_data, dict):
+            fields.update(latest_sub.screen_data.keys())
+
+        return Response({"flow_id": str(flow_id), "fields": sorted(fields)})
+
+    def _walk_children(self, children, fields: set):
+        for comp in children:
+            if not isinstance(comp, dict):
+                continue
+            if comp.get("type") in self.FIELD_TYPES:
+                name = comp.get("name") or comp.get("id", "")
+                if name:
+                    fields.add(name)
+            # Recurse into Form wrappers and nested children
+            self._walk_children(comp.get("children", []), fields)
 
 
 
 # Data Exchange Endpoint — called by Meta for every screen interaction
-# ─────────────────────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────
 @method_decorator(csrf_exempt, name="dispatch")
 class FlowDataExchangeView(View):
 
@@ -341,7 +392,7 @@ class FlowDataExchangeView(View):
         return HttpResponse(encrypted, content_type="text/plain")
 
 
-    # ── Screen handlers ──────────────────────────────────────────────────────
+    # ── Screen handlers ──────────────────────────────────────
     def _handle_init(self, flow_token: str, data: dict) -> dict:
         """
         Called when the Flow first opens.

@@ -1,4 +1,5 @@
 import React from "react";
+import { Info } from "lucide-react";
 
 
 // Shared className tokens — single source of truth for all panel inputs
@@ -58,15 +59,18 @@ interface TextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaEl
   focus?: keyof typeof CLS;
   rows?: number;
 }
-export function FieldTextarea({ focus = "focusGreen", rows = 3, ...props }: TextareaProps) {
-  return (
-    <textarea
-      rows={rows}
-      {...props}
-      className={cls(CLS.base, CLS[focus], CLS.resize)}
-    />
-  );
-}
+export const FieldTextarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
+  ({ focus = "focusGreen", rows = 3, ...props }, ref) => {
+    return (
+      <textarea
+        ref={ref}
+        rows={rows}
+        {...props}
+        className={cls(CLS.base, CLS[focus], CLS.resize)}
+      />
+    );
+  }
+);
 
 
 
@@ -88,13 +92,21 @@ export function FieldSelect({ focus = "focusGreen", children, ...props }: Select
 
 
 interface FieldGroupProps {
-  label: string;
+  label: React.ReactNode;
+  info?: string;
   children: React.ReactNode;
 }
-export function FieldGroup({ label, children }: FieldGroupProps) {
+export function FieldGroup({ label, info, children }: FieldGroupProps) {
   return (
     <div>
-      <FieldLabel>{label}</FieldLabel>
+      <FieldLabel>
+        {label}
+        {info && (
+          <span title={info} className="cursor-help text-slate-400 hover:text-slate-500 dark:hover:text-slate-300 transition-colors inline-flex ml-1">
+            <Info className="h-3.5 w-3.5" />
+          </span>
+        )}
+      </FieldLabel>
       {children}
     </div>
   );
