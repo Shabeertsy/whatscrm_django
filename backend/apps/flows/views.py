@@ -538,7 +538,10 @@ class FlowDataExchangeView(View):
             opt_id    = item.get(id_field, "")
             opt_label = item.get(label_field, str(opt_id))
             if opt_id:
-                options.append({"id": str(opt_id), "title": str(opt_label)})
+                opt = {"id": str(opt_id), "title": str(opt_label)}
+                if "uuid" in item:
+                    opt["uuid"] = str(item["uuid"])
+                options.append(opt)
 
         return options
 
@@ -627,6 +630,7 @@ class FlowDataExchangeView(View):
 
             options = self._fetch_dynamic_options(cfg, submitted_data=screen_data)
             lookup = {opt["id"]: opt["title"] for opt in options}
+            lookup_uuid = {opt["id"]: opt.get("uuid") for opt in options}
 
             field_type = cfg.get("field_type", "dynamic_dropdown")
 
@@ -634,12 +638,16 @@ class FlowDataExchangeView(View):
                 labels = [lookup.get(str(v), str(v)) for v in raw_value]
                 enriched[f"{field_id}_label"] = ", ".join(labels)  
                 enriched[f"{field_id}_labels"] = labels             
+                uuids = [lookup_uuid.get(str(v), str(v)) for v in raw_value]
+                enriched[f"{field_id}_uuid"] = uuids
             else:
                 enriched[f"{field_id}_label"] = lookup.get(str(raw_value), str(raw_value))
+                opt_uuid = lookup_uuid.get(str(raw_value))
+                enriched[f"{field_id}_uuid"] = opt_uuid if opt_uuid else str(raw_value)
 
             logger.info(
-                "[FlowDataExchange] Enriched field %s: %s → %s",
-                field_id, raw_value, enriched.get(f"{field_id}_label"),
+                "[FlowDataExchange] Enriched field %s: %s → label: %s, uuid: %s",
+                field_id, raw_value, enriched.get(f"{field_id}_label"), enriched.get(f"{field_id}_uuid"),
             )
 
         return enriched
