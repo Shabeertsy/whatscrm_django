@@ -624,31 +624,45 @@ class FlowDataExchangeView(View):
         enriched = dict(screen_data) 
 
         for field_id, cfg in api_config.items():
-            raw_value = screen_data.get(field_id)
-            if raw_value is None:
-                continue 
-
             options = self._fetch_dynamic_options(cfg, submitted_data=screen_data, for_enrichment=True)
+            if not options:
+                continue
+
             lookup = {opt["id"]: opt["title"] for opt in options}
             lookup_uuid = {opt["id"]: opt.get("uuid") for opt in options}
 
             field_type = cfg.get("field_type", "dynamic_dropdown")
 
-            if field_type == "dynamic_checkbox" and isinstance(raw_value, list):
-                labels = [lookup.get(str(v), str(v)) for v in raw_value]
-                enriched[f"{field_id}_label"] = ", ".join(labels)  
-                enriched[f"{field_id}_labels"] = labels             
-                uuids = [lookup_uuid.get(str(v), str(v)) for v in raw_value]
-                enriched[f"{field_id}_uuid"] = uuids
+            matched_keys = []
+            if field_id in screen_data:
+                matched_keys.append(field_id)
             else:
-                enriched[f"{field_id}_label"] = lookup.get(str(raw_value), str(raw_value))
-                opt_uuid = lookup_uuid.get(str(raw_value))
-                enriched[f"{field_id}_uuid"] = opt_uuid if opt_uuid else str(raw_value)
+                for k, v in screen_data.items():
+                    if k.endswith("_label") or k.endswith("_labels") or k.endswith("_uuid"):
+                        continue
+                    if field_type == "dynamic_checkbox" and isinstance(v, list) and len(v) > 0:
+                        if all(str(val) in lookup for val in v):
+                            matched_keys.append(k)
+                    elif str(v) in lookup:
+                        matched_keys.append(k)
 
-            logger.info(
-                "[FlowDataExchange] Enriched field %s: %s → label: %s, uuid: %s",
-                field_id, raw_value, enriched.get(f"{field_id}_label"), enriched.get(f"{field_id}_uuid"),
-            )
+            for k in matched_keys:
+                raw_value = screen_data.get(k)
+                if field_type == "dynamic_checkbox" and isinstance(raw_value, list):
+                    labels = [lookup.get(str(v), str(v)) for v in raw_value]
+                    enriched[f"{k}_label"] = ", ".join(labels)  
+                    enriched[f"{k}_labels"] = labels             
+                    uuids = [lookup_uuid.get(str(v), str(v)) for v in raw_value]
+                    enriched[f"{k}_uuid"] = uuids
+                else:
+                    enriched[f"{k}_label"] = lookup.get(str(raw_value), str(raw_value))
+                    opt_uuid = lookup_uuid.get(str(raw_value))
+                    enriched[f"{k}_uuid"] = opt_uuid if opt_uuid else str(raw_value)
+
+                logger.info(
+                    "[FlowDataExchange] Enriched field %s (mapped from %s): %s → label: %s, uuid: %s",
+                    k, field_id, raw_value, enriched.get(f"{k}_label"), enriched.get(f"{k}_uuid"),
+                )
 
         return enriched
 
