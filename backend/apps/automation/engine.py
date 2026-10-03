@@ -943,7 +943,11 @@ class AutomationEngine(BaseChatbotEngine):
         if not api_url:
             logger.warning("[SendListing] Conv %s — apiUrl missing.", self.conv.id)
             self._log_step(execution, node, StepStatus.FAILED)
-            return self._listing_advance(execution, node, reply)
+            next_node = self._advance_to_next(execution, node)
+            if next_node is None:
+                execution.complete()
+                return _STOP
+            return next_node
 
         params  = self._interpolate_dict(cfg["query_params"], execution.variables)
         headers = self._interpolate_dict(cfg["headers"],      execution.variables)
@@ -957,13 +961,21 @@ class AutomationEngine(BaseChatbotEngine):
             logger.error("[SendListing] Conv %s API error: %s", self.conv.id, exc)
             reply.add_text(cfg["no_results_msg"])
             self._log_step(execution, node, StepStatus.FAILED)
-            return self._listing_advance(execution, node, reply)
+            next_node = self._advance_to_next(execution, node)
+            if next_node is None:
+                execution.complete()
+                return _STOP
+            return next_node
 
         if not items:
             logger.info("[SendListing] Conv %s — no results.", self.conv.id)
             reply.add_text(cfg["no_results_msg"])
             self._log_step(execution, node, StepStatus.COMPLETED)
-            return self._listing_advance(execution, node, reply)
+            next_node = self._advance_to_next(execution, node)
+            if next_node is None:
+                execution.complete()
+                return _STOP
+            return next_node
 
         # Persist listing state so pagination survives across WAITING cycles
         execution.variables.update({
