@@ -1200,6 +1200,15 @@ class AutomationEngine(BaseChatbotEngine):
                     try:
                         resp_data = json.loads(response_json_str)
                         if isinstance(resp_data, dict):
+                            flow_token = resp_data.get("flow_token")
+                            if flow_token:
+                                try:
+                                    from apps.flows.views import FlowDataExchangeView
+                                    view = FlowDataExchangeView()
+                                    resp_data = view._enrich_with_labels(resp_data, flow_token)
+                                except Exception as e:
+                                    logger.error("[AutomationEngine] Failed to enrich flow labels: %s", e)
+
                             execution.variables.update(resp_data)
                             execution.save(update_fields=["variables"])
 
