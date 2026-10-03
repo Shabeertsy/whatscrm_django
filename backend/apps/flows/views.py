@@ -496,7 +496,7 @@ class FlowDataExchangeView(View):
 
 
     # ── Dynamic API caller ───────────────────────────────────────────────────
-    def _fetch_dynamic_options(self, cfg: dict, submitted_data: dict) -> list:
+    def _fetch_dynamic_options(self, cfg: dict, submitted_data: dict, for_enrichment: bool = False) -> list:
     
         url         = cfg.get("url", "")
         id_field    = cfg.get("id_field", "id")
@@ -539,7 +539,7 @@ class FlowDataExchangeView(View):
             opt_label = item.get(label_field, str(opt_id))
             if opt_id:
                 opt = {"id": str(opt_id), "title": str(opt_label)}
-                if "uuid" in item:
+                if for_enrichment and "uuid" in item:
                     opt["uuid"] = str(item["uuid"])
                 options.append(opt)
 
@@ -628,7 +628,7 @@ class FlowDataExchangeView(View):
             if raw_value is None:
                 continue 
 
-            options = self._fetch_dynamic_options(cfg, submitted_data=screen_data)
+            options = self._fetch_dynamic_options(cfg, submitted_data=screen_data, for_enrichment=True)
             lookup = {opt["id"]: opt["title"] for opt in options}
             lookup_uuid = {opt["id"]: opt.get("uuid") for opt in options}
 
