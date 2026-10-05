@@ -450,10 +450,13 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
           type="number"
           min={1}
           max={20}
-          value={String(data.maxResults ?? 1)}
+          value={data.maxResults === undefined ? 1 : (data.maxResults as any)}
           onChange={(e) => {
             const raw = e.target.value;
-            if (raw === "") return;
+            if (raw === "") {
+              set({ maxResults: "" });
+              return;
+            }
             let val = parseInt(raw, 10);
             if (!isNaN(val)) {
               if (val > 20) val = 20;
@@ -496,10 +499,15 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
           <FieldInput
             type="number"
             disabled={data.enableImages === false}
-            value={data.imageLimit !== undefined ? (data.imageLimit as number) : 4}
+            value={data.imageLimit === undefined ? 4 : (data.imageLimit as any)}
             onChange={(e) => {
-              const val = parseInt(e.target.value);
-              if (!isNaN(val)) set({ imageLimit: Math.max(1, val) });
+              const val = e.target.value;
+              if (val === "") {
+                set({ imageLimit: "" });
+              } else {
+                const parsed = parseInt(val);
+                if (!isNaN(parsed)) set({ imageLimit: Math.max(1, parsed) });
+              }
             }}
             title="Maximum images per item"
             className="!w-20 flex-none text-center"

@@ -1160,7 +1160,10 @@ class AutomationEngine(BaseChatbotEngine):
                 raw_url_str = self._interpolate_text(cfg["card_image_template"], card_vars).strip()
                 urls = self._parse_image_urls(raw_url_str)
                 if urls:
-                    limit = int(cfg.get("imageLimit", 4))
+                    try:
+                        limit = int(cfg.get("imageLimit", 4))
+                    except (ValueError, TypeError):
+                        limit = 4
                     header_url, *additional_urls = urls[:limit]
 
             if self.conv.instance and self.conv.instance.is_active:
