@@ -1022,16 +1022,14 @@ class AutomationEngine(BaseChatbotEngine):
                     execution.variables[f"selected_{k}"] = v
             self._listing_clear_state(execution)
             self._log_step(execution, node, StepStatus.COMPLETED)
-            execution.status = ExecutionStatus.RUNNING
-            execution.save(update_fields=["status"])
             logger.info("[SendListing] Conv %s — booked item %d.", self.conv.id, index)
-            return self._listing_advance(execution, node, reply)
+            return self._listing_advance(execution, node, reply, action="book")
 
         elif chosen == "listing_exit":
             self._listing_clear_state(execution)
             self._log_step(execution, node, StepStatus.COMPLETED)
-            execution.complete()
             logger.info("[SendListing] Conv %s — exited.", self.conv.id)
+            return self._listing_advance(execution, node, reply, action="exit")
 
         else:
             # Unknown reply — resend current card so buttons stay visible
@@ -1054,8 +1052,11 @@ class AutomationEngine(BaseChatbotEngine):
             "results_key":    c.get("resultsKey",    ""),
             "max_results":    int(c.get("maxResults", 10)),
             "card_template":  c.get("cardTemplate",  ""),
+            "enable_next":    c.get("enableNext",    True),
             "next_label":     c.get("nextLabel",     " Next"),
+            "enable_book":    c.get("enableBook",    True),
             "book_label":     c.get("bookLabel",     " Book Now"),
+            "enable_exit":    c.get("enableExit",    True),
             "exit_label":     c.get("exitLabel",     " Exit"),
             "no_results_msg": c.get("noResultsMessage", "Sorry, no properties found matching your criteria."),
             "no_more_msg":    c.get("noMoreMessage",    "You've seen all available properties."),
@@ -1090,11 +1091,18 @@ class AutomationEngine(BaseChatbotEngine):
         }
         card_text = self._interpolate_text(cfg["card_template"], card_vars)
 
+        logger.info(
+            "[SendListing] Conv %s — Building options: index=%d, total=%d, enable_next=%s, enable_book=%s, enable_exit=%s",
+            self.conv.id, index, total, cfg.get("enable_next"), cfg.get("enable_book"), cfg.get("enable_exit")
+        )
+
         options = []
-        if (index + 1) < total:
+        if cfg["enable_next"] and (index + 1) < total:
             options.append({"id": "listing_next", "label": cfg["next_label"], "value": "listing_next"})
-        options.append({"id": "listing_book", "label": cfg["book_label"], "value": "listing_book"})
-        options.append({"id": "listing_exit", "label": cfg["exit_label"], "value": "listing_exit"})
+        if cfg["enable_book"]:
+            options.append({"id": "listing_book", "label": cfg["book_label"], "value": "listing_book"})
+        if cfg["enable_exit"]:
+            options.append({"id": "listing_exit", "label": cfg["exit_label"], "value": "listing_exit"})
 
         if self.conv.instance and self.conv.instance.is_active:
             try:
@@ -1142,12 +1150,15 @@ class AutomationEngine(BaseChatbotEngine):
         # Build a positional map matching what was displayed
         items    = execution.variables.get("__listing_results", [])
         index    = execution.variables.get("__listing_index", 0)
+        cfg = self._listing_cfg(execution.current_node)
         has_next = (index + 1) < len(items)
         mapping, pos = {}, 1
-        if has_next:
+        if cfg["enable_next"] and has_next:
             mapping[str(pos)] = "listing_next"; pos += 1
-        mapping[str(pos)] = "listing_book"; pos += 1
-        mapping[str(pos)] = "listing_exit"
+        if cfg["enable_book"]:
+            mapping[str(pos)] = "listing_book"; pos += 1
+        if cfg["enable_exit"]:
+            mapping[str(pos)] = "listing_exit"
         return mapping.get(inbound_text.strip(), "")
 
     @staticmethod
@@ -1157,14 +1168,23 @@ class AutomationEngine(BaseChatbotEngine):
             execution.variables.pop(key, None)
         execution.save(update_fields=["variables"])
 
-    def _listing_advance(self, execution, node, reply):
+    def _listing_advance(self, execution, node, reply, action="book"):
         """Continue flow traversal past the listing node."""
         execution.status = ExecutionStatus.RUNNING
         execution.save(update_fields=["status"])
-        next_node = self._advance_to_next(execution, node)
-        if next_node is None:
+        
+        edge = node.outgoing_edges.filter(source_handle=action).first()
+        if not edge and action == "book":
+            # Fallback for old flows where handle was not specified
+            edge = node.outgoing_edges.filter(source_handle__isnull=True).first() or node.outgoing_edges.first()
+            
+        if not edge:
             execution.complete()
             return reply if not reply.is_empty else None
+            
+        next_node = edge.target_node
+        execution.current_node = next_node
+        execution.save(update_fields=["current_node"])
 
         ctx = ChatbotContext(
             conversation_id=self.conv.id,

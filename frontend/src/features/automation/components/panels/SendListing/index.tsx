@@ -540,28 +540,67 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
           Button Labels
         </span>
         <div className="grid grid-cols-3 gap-2">
-          <FieldGroup label="Next">
+          <FieldGroup
+            label={
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.enableNext !== false}
+                  onChange={(e) => set({ enableNext: e.target.checked })}
+                  className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a1f2e] text-amber-500 focus:ring-amber-500/20"
+                />
+                <span className={data.enableNext === false ? "opacity-50" : ""}>Next</span>
+              </label>
+            }
+          >
             <FieldInput
               value={(data.nextLabel as string) || "Next"}
               onChange={(e) => set({ nextLabel: e.target.value })}
               placeholder="Next"
               focus="focusAmber"
+              disabled={data.enableNext === false}
             />
           </FieldGroup>
-          <FieldGroup label="Book">
+          <FieldGroup
+            label={
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.enableBook !== false}
+                  onChange={(e) => set({ enableBook: e.target.checked })}
+                  className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a1f2e] text-amber-500 focus:ring-amber-500/20"
+                />
+                <span className={data.enableBook === false ? "opacity-50" : ""}>Book</span>
+              </label>
+            }
+          >
             <FieldInput
               value={(data.bookLabel as string) || "Book Now"}
               onChange={(e) => set({ bookLabel: e.target.value })}
               placeholder="Book Now"
               focus="focusAmber"
+              disabled={data.enableBook === false}
             />
           </FieldGroup>
-          <FieldGroup label="Exit">
+          <FieldGroup
+            label={
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={data.enableExit !== false}
+                  onChange={(e) => set({ enableExit: e.target.checked })}
+                  className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a1f2e] text-amber-500 focus:ring-amber-500/20"
+                />
+                <span className={data.enableExit === false ? "opacity-50" : ""}>Exit</span>
+              </label>
+            }
+          >
             <FieldInput
               value={(data.exitLabel as string) || "Exit"}
               onChange={(e) => set({ exitLabel: e.target.value })}
               placeholder="Exit"
               focus="focusAmber"
+              disabled={data.enableExit === false}
             />
           </FieldGroup>
         </div>

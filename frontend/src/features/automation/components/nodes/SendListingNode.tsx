@@ -95,8 +95,24 @@ export function SendListingNode({ data, selected }: SendListingNodeProps) {
 
       <Handle type="target" position={Position.Left}
         className="!bg-amber-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]" />
-      <Handle type="source" position={Position.Right}
-        className="!bg-amber-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924]" />
+      
+      {/* Book Handle */}
+      <Handle type="source" id="book" position={Position.Right} style={{ top: '65%' }}
+        className="group !bg-amber-500 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924] hover:!w-3 hover:!h-3 transition-all cursor-crosshair"
+      >
+        <div className="absolute left-full ml-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-400 text-[9px] font-extrabold uppercase rounded border border-amber-200 dark:border-amber-700/50 shadow-sm pointer-events-none whitespace-nowrap z-50">
+          Book
+        </div>
+      </Handle>
+        
+      {/* Exit Handle */}
+      <Handle type="source" id="exit" position={Position.Right} style={{ top: '85%' }}
+        className="group !bg-slate-400 !w-2.5 !h-2.5 !border-2 !border-white dark:!border-[#131924] hover:!w-3 hover:!h-3 transition-all cursor-crosshair"
+      >
+        <div className="absolute left-full ml-1.5 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[9px] font-extrabold uppercase rounded border border-slate-200 dark:border-slate-700 shadow-sm pointer-events-none whitespace-nowrap z-50">
+          Exit
+        </div>
+      </Handle>
     </div>
   );
 }
