@@ -1165,26 +1165,32 @@ class AutomationEngine(BaseChatbotEngine):
 
             if self.conv.instance and self.conv.instance.is_active:
                 try:
-                    from apps.messaging.utils import send_and_save_interactive_buttons, send_and_save_message
+                    from apps.messaging.utils import send_and_save_interactive_buttons, send_and_save_message, process_external_media_url
                     
                     # WhatsApp interactive templates only support 1 header image.
                     # Send any additional images as standalone image messages first.
                     for img_url in additional_images:
                         try:
+                            proc_url, proc_path = process_external_media_url(img_url, "image", phone=self.conv.contact.phone)
                             send_and_save_message(
                                 self.conv,
                                 msg_type="image",
-                                media_url=img_url,
+                                media_url=proc_url,
+                                storage_path=proc_path,
                                 sent_by=None
                             )
                         except Exception as img_exc:
                             logger.error("[SendListing] Conv %s — failed to send additional image %s: %s", self.conv.id, img_url, img_exc)
 
+                    processed_header_url = ""
+                    if header_image_url:
+                        processed_header_url, _ = process_external_media_url(header_image_url, "image", phone=self.conv.contact.phone)
+
                     send_and_save_interactive_buttons(
                         self.conv, 
                         body_text=card_text[:1024], 
                         options=options,
-                        header_image_url=header_image_url
+                        header_image_url=processed_header_url
                     )
                     logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
                 except Exception as exc:
