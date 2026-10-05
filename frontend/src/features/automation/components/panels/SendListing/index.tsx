@@ -435,15 +435,26 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
 
       {/* Max results to show */}
       <FieldGroup label="Results Per Page">
-        <FieldSelect
+        <FieldInput
+          type="number"
+          min={1}
+          max={20}
           value={String(data.maxResults ?? 1)}
-          onChange={(e) => set({ maxResults: Number(e.target.value) })}
+          onChange={(e) => {
+            const raw = e.target.value;
+            if (raw === "") return;
+            let val = parseInt(raw, 10);
+            if (!isNaN(val)) {
+              if (val > 20) val = 20;
+              if (val < 1) val = 1;
+              set({ maxResults: val });
+            }
+          }}
           focus="focusAmber"
-        >
-          {[1, 2, 3].map((n) => (
-            <option key={n} value={n}>{n} {n === 1 ? 'result' : 'results'} at a time</option>
-          ))}
-        </FieldSelect>
+        />
+        <div className="mt-1.5 text-xs text-slate-500 font-medium">
+          Note: WhatsApp will send each result as a separate message bubble. Sending more than 5 at a time may annoy users or trigger spam limits.
+        </div>
       </FieldGroup>
 
       {/* Card template section */}

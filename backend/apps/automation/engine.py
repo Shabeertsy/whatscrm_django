@@ -1003,7 +1003,7 @@ class AutomationEngine(BaseChatbotEngine):
         index = int(execution.variables.get("__listing_index", 0))
         total = len(items)
         cfg   = self._listing_cfg(node)
-        page_size = min(3, max(1, int(cfg.get("max_results", 1))))
+        page_size = min(20, max(1, int(cfg.get("max_results", 1))))
 
         if chosen == "listing_next":
             next_index = index + page_size
@@ -1097,7 +1097,7 @@ class AutomationEngine(BaseChatbotEngine):
     def _send_listing_card(self, execution, reply, items: list, start_index: int, cfg: dict):
         """Format and deliver up to `page_size` property cards."""
         total = len(items)
-        page_size = min(3, max(1, int(cfg.get("max_results", 1))))
+        page_size = min(20, max(1, int(cfg.get("max_results", 1))))
         
         for offset in range(page_size):
             index = start_index + offset
@@ -1555,13 +1555,7 @@ class AutomationEngine(BaseChatbotEngine):
     def _interpolate_text(cls, text: str, variables: dict) -> str:
         """
         Replace {{var_name}} and {{dot.path.access}} placeholders with values
-        from variables dict.
-
-        Supports:
-          {{name}}                    — flat variable
-          {{results.0.name}}          — list index + key
-          {{api_response.price}}      — nested dict key
-          {{properties.2.image_url}}  — deep path
+        from variables dict. Missing paths are replaced with empty strings.
         """
         if not text or not isinstance(text, str):
             return text
@@ -1572,8 +1566,8 @@ class AutomationEngine(BaseChatbotEngine):
                 return match.group(0)  # keep private vars as-is
             resolved = cls._resolve_variable(variables or {}, path)
             if resolved is None or resolved == path:
-                # path not found — leave placeholder so dev can debug
-                return match.group(0)
+                # path not found — return empty string to prevent leaking to customer
+                return ""
             if isinstance(resolved, (dict, list)):
                 import json
                 return json.dumps(resolved, ensure_ascii=False)
