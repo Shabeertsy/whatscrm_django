@@ -434,14 +434,14 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
       </FieldGroup>
 
       {/* Max results to show */}
-      <FieldGroup label="Max Results to Show">
+      <FieldGroup label="Results Per Page">
         <FieldSelect
-          value={String(data.maxResults ?? 5)}
+          value={String(data.maxResults ?? 1)}
           onChange={(e) => set({ maxResults: Number(e.target.value) })}
           focus="focusAmber"
         >
-          {[1, 2, 3, 5, 8, 10].map((n) => (
-            <option key={n} value={n}>{n} results</option>
+          {[1, 2, 3].map((n) => (
+            <option key={n} value={n}>{n} {n === 1 ? 'result' : 'results'} at a time</option>
           ))}
         </FieldSelect>
       </FieldGroup>

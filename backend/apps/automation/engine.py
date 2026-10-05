@@ -986,7 +986,7 @@ class AutomationEngine(BaseChatbotEngine):
             "__listing_total":   len(items),
         })
         execution.save(update_fields=["variables"])
-        self._send_listing_card(execution, reply, items, index=0, cfg=cfg)
+        self._send_listing_card(execution, reply, items, start_index=0, cfg=cfg)
 
         self._log_step(execution, node, StepStatus.PENDING)
         execution.status = ExecutionStatus.WAITING
@@ -1003,9 +1003,10 @@ class AutomationEngine(BaseChatbotEngine):
         index = int(execution.variables.get("__listing_index", 0))
         total = len(items)
         cfg   = self._listing_cfg(node)
+        page_size = min(3, max(1, int(cfg.get("max_results", 1))))
 
         if chosen == "listing_next":
-            next_index = index + 1
+            next_index = index + page_size
             if next_index >= total:
                 reply.add_text(cfg["no_more_msg"])
                 self._log_step(execution, node, StepStatus.COMPLETED)
@@ -1014,16 +1015,21 @@ class AutomationEngine(BaseChatbotEngine):
             execution.variables["__listing_index"] = next_index
             execution.save(update_fields=["variables"])
             self._send_listing_card(execution, reply, items, next_index, cfg)
-            logger.info("[SendListing] Conv %s — card %d/%d.", self.conv.id, next_index + 1, total)
+            logger.info("[SendListing] Conv %s — card next %d.", self.conv.id, next_index)
 
-        elif chosen == "listing_book":
+        elif chosen.startswith("listing_book_"):
+            try:
+                book_index = int(chosen.split("_")[-1])
+            except ValueError:
+                book_index = index
+                
             # Expose selected item as {{selected_<field>}} for downstream nodes
-            if 0 <= index < total:
-                for k, v in items[index].items():
+            if 0 <= book_index < total:
+                for k, v in items[book_index].items():
                     execution.variables[f"selected_{k}"] = v
             self._listing_clear_state(execution)
             self._log_step(execution, node, StepStatus.COMPLETED)
-            logger.info("[SendListing] Conv %s — booked item %d.", self.conv.id, index)
+            logger.info("[SendListing] Conv %s — booked item %d.", self.conv.id, book_index)
             return self._listing_advance(execution, node, reply, action="book")
 
         elif chosen == "listing_exit":
@@ -1078,48 +1084,62 @@ class AutomationEngine(BaseChatbotEngine):
         if results_key:
             for key in results_key.split("."):
                 items = items.get(key, []) if isinstance(items, dict) else []
-        return (items if isinstance(items, list) else [])[:max_results]
+        
+        extracted = items if isinstance(items, list) else []
+        
+        # We don't want to aggressively truncate to 'max_results' if the user thinks 
+        # it means 'page size'. We will let them paginate through up to 100 items.
+        safety_cap = 100
+        logger.info("[SendListing] _extract_list: Found %d items. Capping to %d for safety.", 
+                    len(extracted), safety_cap)
+        return extracted[:safety_cap]
 
-    def _send_listing_card(self, execution, reply, items: list, index: int, cfg: dict):
-        """Format and deliver one property card with interactive pagination buttons."""
-        total     = len(items)
-        flat_item = flatten_dict(items[index]) if isinstance(items[index], dict) else {}
-        card_vars = {
-            **execution.variables,
-            **{str(k): str(v) for k, v in flat_item.items()},
-            "__index": str(index + 1),
-            "__total": str(total),
-        }
-        card_text = self._interpolate_text(cfg["card_template"], card_vars)
+    def _send_listing_card(self, execution, reply, items: list, start_index: int, cfg: dict):
+        """Format and deliver up to `page_size` property cards."""
+        total = len(items)
+        page_size = min(3, max(1, int(cfg.get("max_results", 1))))
+        
+        for offset in range(page_size):
+            index = start_index + offset
+            if index >= total:
+                break
+                
+            is_last_in_page = (offset == page_size - 1) or (index == total - 1)
+            
+            flat_item = flatten_dict(items[index]) if isinstance(items[index], dict) else {}
+            card_vars = {
+                **execution.variables,
+                **{str(k): str(v) for k, v in flat_item.items()},
+                "__index": str(index + 1),
+                "__total": str(total),
+            }
+            card_text = self._interpolate_text(cfg["card_template"], card_vars)
 
-        logger.info(
-            "[SendListing] Conv %s — Building options: index=%d, total=%d, enable_next=%s, enable_book=%s, enable_exit=%s",
-            self.conv.id, index, total, cfg.get("enable_next"), cfg.get("enable_book"), cfg.get("enable_exit")
-        )
+            options = []
+            if cfg["enable_book"]:
+                options.append({"id": f"listing_book_{index}", "label": cfg["book_label"], "value": f"listing_book_{index}"})
 
-        options = []
-        if cfg["enable_next"] and (index + 1) < total:
-            options.append({"id": "listing_next", "label": cfg["next_label"], "value": "listing_next"})
-        if cfg["enable_book"]:
-            options.append({"id": "listing_book", "label": cfg["book_label"], "value": "listing_book"})
-        if cfg["enable_exit"]:
-            options.append({"id": "listing_exit", "label": cfg["exit_label"], "value": "listing_exit"})
+            # Only add Next and Exit to the last card of the page to save button slots
+            if is_last_in_page:
+                if cfg["enable_next"] and (index + 1) < total:
+                    options.append({"id": "listing_next", "label": cfg["next_label"], "value": "listing_next"})
+                if cfg["enable_exit"]:
+                    options.append({"id": "listing_exit", "label": cfg["exit_label"], "value": "listing_exit"})
 
-        if self.conv.instance and self.conv.instance.is_active:
-            try:
-                from apps.messaging.utils import send_and_save_interactive_buttons
-                send_and_save_interactive_buttons(self.conv, body_text=card_text[:1024], options=options)
-                logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
-                return
-            except Exception as exc:
-                logger.error(
-                    "[SendListing] Conv %s — Interactive buttons API failed (card_text_len=%d): %s",
-                    self.conv.id, len(card_text), exc
-                )
+            # WhatsApp requires at least 1 button for interactive messages
+            if not options:
+                options.append({"id": "listing_none", "label": "-", "value": "listing_none"})
 
-        # Fallback for plain-text clients (no active instance or buttons API failed)
-        btn_lines = "\n".join(f"{i+1}. {o['label']}" for i, o in enumerate(options))
-        reply.add_text(f"{card_text}\n\n{btn_lines}")
+            if self.conv.instance and self.conv.instance.is_active:
+                try:
+                    from apps.messaging.utils import send_and_save_interactive_buttons
+                    send_and_save_interactive_buttons(self.conv, body_text=card_text[:1024], options=options)
+                    logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
+                except Exception as exc:
+                    logger.error("[SendListing] Conv %s — API failed (len=%d): %s", self.conv.id, len(card_text), exc)
+            else:
+                btn_lines = "\n".join(f"{i+1}. {o['label']}" for i, o in enumerate(options))
+                reply.add_text(f"{card_text}\n\n{btn_lines}")
 
     def _resolve_interactive_id(self, inbound_text: str, execution) -> str:
         """
@@ -1137,9 +1157,12 @@ class AutomationEngine(BaseChatbotEngine):
             if i_type == "button_reply":
                 resolved = interactive.get("button_reply", {}).get("id", "").strip().lower()
                 logger.info("[SendListing] Conv %s — resolved button_reply id='%s'", self.conv.id, resolved)
-                return resolved
+                if resolved.startswith("listing_book_") or resolved in ["listing_next", "listing_exit"]:
+                    return resolved
             if i_type == "list_reply":
-                return interactive.get("list_reply",  {}).get("id", "").strip().lower()
+                resolved = interactive.get("list_reply",  {}).get("id", "").strip().lower()
+                if resolved.startswith("listing_book_") or resolved in ["listing_next", "listing_exit"]:
+                    return resolved
         else:
             logger.warning(
                 "[SendListing] Conv %s — last inbound msg has no raw_data (msg_id=%s, msg_type=%s)",
@@ -1148,19 +1171,13 @@ class AutomationEngine(BaseChatbotEngine):
                 last.msg_type if last else None,
             )
 
-        # Build a positional map matching what was displayed
-        items    = execution.variables.get("__listing_results", [])
-        index    = execution.variables.get("__listing_index", 0)
-        cfg = self._listing_cfg(execution.current_node)
-        has_next = (index + 1) < len(items)
-        mapping, pos = {}, 1
-        if cfg["enable_next"] and has_next:
-            mapping[str(pos)] = "listing_next"; pos += 1
-        if cfg["enable_book"]:
-            mapping[str(pos)] = "listing_book"; pos += 1
-        if cfg["enable_exit"]:
-            mapping[str(pos)] = "listing_exit"
-        return mapping.get(inbound_text.strip(), "")
+        text = inbound_text.strip().lower()
+        if text in ["listing_next", "listing_exit"] or text.startswith("listing_book_"):
+            return text
+            
+        # Optional: fallback for plain text if they typed exact label
+        # Not implementing positional map here as page_size makes it overly complex
+        return ""
 
     @staticmethod
     def _listing_clear_state(execution):
