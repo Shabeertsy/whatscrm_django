@@ -1047,6 +1047,7 @@ class AutomationEngine(BaseChatbotEngine):
         return reply if not reply.is_empty else None
 
 
+
     # ── SEND_LISTING helpers ──────────────────────────────────────────────────
 
     def _listing_cfg(self, node: "FlowNode") -> dict:
@@ -1059,6 +1060,7 @@ class AutomationEngine(BaseChatbotEngine):
             "results_key":    c.get("resultsKey",    ""),
             "max_results":    int(c.get("maxResults", 10)),
             "card_template":  c.get("cardTemplate",  ""),
+            "card_image_template": c.get("cardImageTemplate", ""),
             "enable_next":    c.get("enableNext",    True),
             "next_label":     c.get("nextLabel",     " Next"),
             "enable_book":    c.get("enableBook",    True),
@@ -1076,6 +1078,27 @@ class AutomationEngine(BaseChatbotEngine):
             for k, v in d.items()
             if (val := self._interpolate_text(str(v), variables).strip())
         }
+
+    @staticmethod
+    def _parse_image_urls(raw_image_url: str) -> list:
+        urls = []
+        if raw_image_url.startswith("[") and raw_image_url.endswith("]"):
+            import json
+            try:
+                parsed_list = json.loads(raw_image_url)
+                if isinstance(parsed_list, list):
+                    for item in parsed_list:
+                        if isinstance(item, dict):
+                            url = item.get("url") or item.get("image") or item.get("src")
+                            if url and isinstance(url, str):
+                                urls.append(url.strip())
+                        elif isinstance(item, str):
+                            urls.append(item.strip())
+            except Exception:
+                urls = [u.strip().strip('"\'') for u in raw_image_url.strip("[]").split(",") if u.strip()]
+        else:
+            urls = [u.strip() for u in raw_image_url.split(",") if u.strip()]
+        return urls
 
     @staticmethod
     def _extract_list(raw, results_key: str, max_results: int) -> list:
@@ -1105,7 +1128,6 @@ class AutomationEngine(BaseChatbotEngine):
                 break
                 
             is_last_in_page = (offset == page_size - 1) or (index == total - 1)
-            
             flat_item = flatten_dict(items[index]) if isinstance(items[index], dict) else {}
             card_vars = {
                 **execution.variables,
@@ -1130,16 +1152,47 @@ class AutomationEngine(BaseChatbotEngine):
             if not options:
                 options.append({"id": "listing_none", "label": "-", "value": "listing_none"})
 
+            # Parse the header image URL if provided
+            header_image_url = ""
+            additional_images = []
+            if cfg.get("enableImages", True) and cfg.get("card_image_template"):
+                raw_image_url = self._interpolate_text(cfg["card_image_template"], card_vars).strip()
+                if raw_image_url:
+                    urls = self._parse_image_urls(raw_image_url)
+                    if urls:
+                        header_image_url = urls[0]
+                        additional_images = urls[1:]
+
             if self.conv.instance and self.conv.instance.is_active:
                 try:
-                    from apps.messaging.utils import send_and_save_interactive_buttons
-                    send_and_save_interactive_buttons(self.conv, body_text=card_text[:1024], options=options)
+                    from apps.messaging.utils import send_and_save_interactive_buttons, send_and_save_message
+                    
+                    # WhatsApp interactive templates only support 1 header image.
+                    # Send any additional images as standalone image messages first.
+                    for img_url in additional_images:
+                        try:
+                            send_and_save_message(
+                                self.conv,
+                                msg_type="image",
+                                media_url=img_url,
+                                sent_by=None
+                            )
+                        except Exception as img_exc:
+                            logger.error("[SendListing] Conv %s — failed to send additional image %s: %s", self.conv.id, img_url, img_exc)
+
+                    send_and_save_interactive_buttons(
+                        self.conv, 
+                        body_text=card_text[:1024], 
+                        options=options,
+                        header_image_url=header_image_url
+                    )
                     logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
                 except Exception as exc:
                     logger.error("[SendListing] Conv %s — API failed (len=%d): %s", self.conv.id, len(card_text), exc)
             else:
                 btn_lines = "\n".join(f"{i+1}. {o['label']}" for i, o in enumerate(options))
                 reply.add_text(f"{card_text}\n\n{btn_lines}")
+
 
     def _resolve_interactive_id(self, inbound_text: str, execution) -> str:
         """

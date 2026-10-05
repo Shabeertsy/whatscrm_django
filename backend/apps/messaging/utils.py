@@ -512,7 +512,7 @@ def send_and_save_interactive_list(conversation, *, body_text, button_label, opt
     return msg
 
 
-def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, body_text, options, header_text="", footer_text=""):
+def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, body_text, options, header_text="", footer_text="", header_image_url=""):
     """
     Sends a WhatsApp Interactive Reply Buttons message via the Meta Cloud API.
     `options` is a list of dicts: [{"id": "...", "label": "..."}]
@@ -540,8 +540,16 @@ def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, b
         "body": {"text": body_text[:1024]},
         "action": {"buttons": buttons},
     }
-    if header_text:
+    
+    if header_image_url:
+        # WhatsApp requires a direct media link
+        interactive["header"] = {
+            "type": "image",
+            "image": {"link": header_image_url}
+        }
+    elif header_text:
         interactive["header"] = {"type": "text", "text": header_text[:60]}
+        
     if footer_text:
         interactive["footer"] = {"text": footer_text[:60]}
 
@@ -561,7 +569,7 @@ def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, b
     return response.json()
 
 
-def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", sent_by=None):
+def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", header_image_url="", sent_by=None):
     """
     Send a WhatsApp interactive reply-buttons message, save to DB, and broadcast.
     Returns the saved Message instance.
@@ -585,6 +593,7 @@ def send_and_save_interactive_buttons(conversation, *, body_text, options, heade
                 options=options,
                 header_text=header_text,
                 footer_text=footer_text,
+                header_image_url=header_image_url,
             )
             if wa_resp.get("messages"):
                 wa_message_id = wa_resp["messages"][0]["id"]

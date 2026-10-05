@@ -44,12 +44,23 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
   const [apiKeyError, setApiKeyError] = useState("");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-
+  const [activeInput, setActiveInput] = useState<"cardTemplate" | "cardImageTemplate">("cardTemplate");
 
   const insertKeyIntoTemplate = (key: string) => {
+    const toInsert = `{{${key}}}`;
+
+    if (activeInput === "cardImageTemplate") {
+      const currentImgVal = (data.cardImageTemplate as string) || "";
+      if (currentImgVal === toInsert) {
+        set({ cardImageTemplate: "" });
+      } else {
+        set({ cardImageTemplate: toInsert });
+      }
+      return;
+    }
+
     const el = textareaRef.current;
     const currentVal = (data.cardTemplate as string) || "";
-    const toInsert = `{{${key}}}`;
 
     if (currentVal.includes(toInsert)) {
       const newVal = currentVal.split(toInsert).join("");
@@ -457,10 +468,41 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
         </div>
       </FieldGroup>
 
+      {/* Card Image Template */}
+      <FieldGroup
+        label={
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={data.enableImages !== false}
+              onChange={(e) => set({ enableImages: e.target.checked })}
+              className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a1f2e] text-amber-500 focus:ring-amber-500/20"
+            />
+            <span className={data.enableImages === false ? "opacity-50" : ""}>Enable Images & Albums</span>
+          </label>
+        }
+      >
+        <FieldInput
+          disabled={data.enableImages === false}
+          value={(data.cardImageTemplate as string) || ""}
+          onChange={(e) => set({ cardImageTemplate: e.target.value })}
+          onFocus={() => setActiveInput("cardImageTemplate")}
+          placeholder="e.g. {{images.url}}"
+          focus="focusAmber"
+          mono
+        />
+        {data.enableImages !== false && (
+          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+            Click this field, then select an image key from API Response below.
+          </div>
+        )}
+      </FieldGroup>
+
       {/* Card template section */}
       <FieldGroup label="Card Message Template *">
         <FieldTextarea
           ref={textareaRef}
+          onFocus={() => setActiveInput("cardTemplate")}
           value={(data.cardTemplate as string) || ""}
           onChange={(e) => set({ cardTemplate: e.target.value })}
           placeholder={apiKeyStatus === "ok" ? CARD_TEMPLATE_PLACEHOLDER : "Click \"Get API Keys\" above to load available fields, then build your template here…"}
