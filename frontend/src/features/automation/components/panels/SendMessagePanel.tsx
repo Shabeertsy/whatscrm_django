@@ -1,7 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FieldGroup, FieldTextarea } from "../ui/FormFields";
 import { MediaSelectorModal } from "../modals/MediaSelectorModal";
 import { FolderOpen, X, Image as ImageIcon, Film, FileText, Music, Link as LinkIcon } from "lucide-react";
+import { messagingApi } from "../../../../api/messaging";
 
 interface Props {
   nodeId: string;
@@ -13,14 +14,27 @@ export function SendMessagePanel({ nodeId, data, update }: Props) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const mediaType = (data.mediaType as string) || "";
-  const mediaUrl = data.mediaUrl as string | undefined;
+  let mediaUrl = data.mediaUrl as string | undefined;
   const mediaName = data.mediaName as string | undefined;
+
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(mediaUrl || null);
+
+  useEffect(() => {
+    if (data.storagePath) {
+      messagingApi.resolveMediaUrl(data.storagePath as string)
+        .then(res => setResolvedUrl(res.data.url))
+        .catch(() => setResolvedUrl(mediaUrl || null));
+    } else {
+      setResolvedUrl(mediaUrl || null);
+    }
+  }, [data.storagePath, mediaUrl]);
 
   const handleClearMedia = () => {
     update(nodeId, {
       mediaUrl: null,
       mediaName: null,
       mediaType: "",
+      storagePath: null,
     });
   };
 
@@ -80,7 +94,7 @@ export function SendMessagePanel({ nodeId, data, update }: Props) {
 
             {mediaType === "image" && (
               <div className="rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-700/80 h-28 bg-slate-100 dark:bg-slate-800">
-                <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
+                <img src={resolvedUrl || mediaUrl} alt="" className="w-full h-full object-cover" />
               </div>
             )}
 
@@ -112,6 +126,7 @@ export function SendMessagePanel({ nodeId, data, update }: Props) {
               mediaUrl: item.file_url,
               mediaName: item.name,
               mediaType: item.media_type,
+              storagePath: item.storage_path || null,
             });
           }}
         />

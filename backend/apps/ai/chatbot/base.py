@@ -27,8 +27,13 @@ class ChatbotReply:
         self.messages.append({"msg_type": "text", "body": text, "media_url": ""})
         return self
 
-    def add_media(self, msg_type: str, media_url: str, caption: str = "") -> "ChatbotReply":
-        self.messages.append({"msg_type": msg_type, "body": caption, "media_url": media_url})
+    def add_media(self, msg_type: str, media_url: str, caption: str = "", storage_path: str = "") -> "ChatbotReply":
+        self.messages.append({
+            "msg_type": msg_type,
+            "body": caption,
+            "media_url": media_url,
+            "storage_path": storage_path
+        })
         return self
 
     @property

@@ -117,6 +117,7 @@ class ChatbotDispatcher:
                 msg_type=part["msg_type"],
                 body=part["body"],
                 media_url=part.get("media_url", ""),
+                storage_path=part.get("storage_path", ""),
                 sent_by=None,
             )
         broadcast_conversation_update(self.conv)

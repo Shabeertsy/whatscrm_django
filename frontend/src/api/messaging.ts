@@ -214,6 +214,9 @@ export const messagingApi = {
   listMediaLibrary(params?: { media_type?: string; search?: string }) {
     return apiClient.get<MediaLibraryItem[]>(`${BASE}/media-library/`, { params });
   },
+  resolveMediaUrl(storagePath: string) {
+    return apiClient.get<{url: string}>(`${BASE}/media-library/resolve-url/`, { params: { path: storagePath } });
+  },
   createMediaItem(data: { name: string; file_url: string; media_type?: string; storage_path?: string; mime_type?: string; file_size?: number }) {
     return apiClient.post<MediaLibraryItem>(`${BASE}/media-library/`, data);
   },

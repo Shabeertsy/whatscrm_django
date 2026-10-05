@@ -936,4 +936,30 @@ class MediaLibraryViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=get_tenant_owner(self.request.user))
 
+    @action(detail=False, methods=['get'], url_path='resolve-url')
+    def resolve_url(self, request):
+        path = request.query_params.get('path')
+        if not path:
+            return Response({"error": "path required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        item = self.get_queryset().filter(storage_path=path).first()
+        if not item:
+            return Response({"error": "not found"}, status=status.HTTP_404_NOT_FOUND)
+            
+        try:
+            storage = get_whatsapp_storage()
+            url = storage.url(item.storage_path)
+            
+            if url.startswith('http://') or url.startswith('https://'):
+                file_url = url
+            elif getattr(settings, 'BACKEND_PUBLIC_URL', None):
+                base_url = settings.BACKEND_PUBLIC_URL.rstrip('/')
+                file_url = f"{base_url}{url}"
+            else:
+                file_url = request.build_absolute_uri(url)
+                
+            return Response({"url": file_url})
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 

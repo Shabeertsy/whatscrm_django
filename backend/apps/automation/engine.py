@@ -189,12 +189,13 @@ class AutomationEngine(BaseChatbotEngine):
 
         media_url  = node.config.get("mediaUrl", "")
         media_type = node.config.get("mediaType", "")
+        storage_path = node.config.get("storagePath", "")
 
         if media_url and media_type:
             msg_type = media_type.split("/")[0] if "/" in media_type else "image"
             if msg_type not in ("image", "video", "audio", "document"):
                 msg_type = "document"
-            reply.add_media(msg_type=msg_type, media_url=media_url, caption=message_text)
+            reply.add_media(msg_type=msg_type, media_url=media_url, caption=message_text, storage_path=storage_path)
         else:
             reply.add_text(message_text)
 
