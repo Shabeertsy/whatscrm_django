@@ -482,15 +482,29 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
           </label>
         }
       >
-        <FieldInput
-          disabled={data.enableImages === false}
-          value={(data.cardImageTemplate as string) || ""}
-          onChange={(e) => set({ cardImageTemplate: e.target.value })}
-          onFocus={() => setActiveInput("cardImageTemplate")}
-          placeholder="e.g. {{images.url}}"
-          focus="focusAmber"
-          mono
-        />
+        <div className="flex gap-2">
+          <FieldInput
+            disabled={data.enableImages === false}
+            value={(data.cardImageTemplate as string) || ""}
+            onChange={(e) => set({ cardImageTemplate: e.target.value })}
+            onFocus={() => setActiveInput("cardImageTemplate")}
+            placeholder="e.g. {{images.url}}"
+            focus="focusAmber"
+            mono
+            className="flex-1 min-w-0"
+          />
+          <FieldInput
+            type="number"
+            disabled={data.enableImages === false}
+            value={data.imageLimit !== undefined ? (data.imageLimit as number) : 4}
+            onChange={(e) => {
+              const val = parseInt(e.target.value);
+              if (!isNaN(val)) set({ imageLimit: Math.max(1, val) });
+            }}
+            title="Maximum images per item"
+            className="!w-20 flex-none text-center"
+          />
+        </div>
         {data.enableImages !== false && (
           <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
             Click this field, then select an image key from API Response below.

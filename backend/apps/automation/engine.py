@@ -1080,25 +1080,27 @@ class AutomationEngine(BaseChatbotEngine):
         }
 
     @staticmethod
-    def _parse_image_urls(raw_image_url: str) -> list:
-        urls = []
-        if raw_image_url.startswith("[") and raw_image_url.endswith("]"):
+    def _parse_image_urls(raw_url_str: str) -> list:
+        """Parse a comma-separated string or JSON array into a list of clean URLs."""
+        if not raw_url_str:
+            return []
+
+        if raw_url_str.startswith("[") and raw_url_str.endswith("]"):
             import json
             try:
-                parsed_list = json.loads(raw_image_url)
-                if isinstance(parsed_list, list):
-                    for item in parsed_list:
+                items = json.loads(raw_url_str)
+                if isinstance(items, list):
+                    def extract_url(item):
                         if isinstance(item, dict):
-                            url = item.get("url") or item.get("image") or item.get("src")
-                            if url and isinstance(url, str):
-                                urls.append(url.strip())
-                        elif isinstance(item, str):
-                            urls.append(item.strip())
-            except Exception:
-                urls = [u.strip().strip('"\'') for u in raw_image_url.strip("[]").split(",") if u.strip()]
-        else:
-            urls = [u.strip() for u in raw_image_url.split(",") if u.strip()]
-        return urls
+                            return item.get("url") or item.get("image") or item.get("src")
+                        return item if isinstance(item, str) else None
+                    
+                    extracted = (extract_url(item) for item in items)
+                    return [u.strip() for u in extracted if u and isinstance(u, str) and u.strip()]
+            except json.JSONDecodeError:
+                raw_url_str = raw_url_str.strip("[]")
+
+        return [u.strip().strip("\"'") for u in raw_url_str.split(",") if u.strip()]
 
     @staticmethod
     def _extract_list(raw, results_key: str, max_results: int) -> list:
@@ -1152,45 +1154,40 @@ class AutomationEngine(BaseChatbotEngine):
             if not options:
                 options.append({"id": "listing_none", "label": "-", "value": "listing_none"})
 
-            # Parse the header image URL if provided
-            header_image_url = ""
-            additional_images = []
+            # Parse header image URL and additional album images if enabled
+            header_url, additional_urls = "", []
             if cfg.get("enableImages", True) and cfg.get("card_image_template"):
-                raw_image_url = self._interpolate_text(cfg["card_image_template"], card_vars).strip()
-                if raw_image_url:
-                    urls = self._parse_image_urls(raw_image_url)
-                    if urls:
-                        header_image_url = urls[0]
-                        additional_images = urls[1:]
+                raw_url_str = self._interpolate_text(cfg["card_image_template"], card_vars).strip()
+                urls = self._parse_image_urls(raw_url_str)
+                if urls:
+                    limit = int(cfg.get("imageLimit", 4))
+                    header_url, *additional_urls = urls[:limit]
 
             if self.conv.instance and self.conv.instance.is_active:
                 try:
                     from apps.messaging.utils import send_and_save_interactive_buttons, send_and_save_message, process_external_media_url
                     
-                    # WhatsApp interactive templates only support 1 header image.
-                    # Send any additional images as standalone image messages first.
-                    for img_url in additional_images:
+                    # Dispatch additional images as standalone messages (WhatsApp will group them as an album)
+                    for img_url in additional_urls:
                         try:
                             proc_url, proc_path = process_external_media_url(img_url, "image", phone=self.conv.contact.phone)
                             send_and_save_message(
-                                self.conv,
-                                msg_type="image",
-                                media_url=proc_url,
-                                storage_path=proc_path,
-                                sent_by=None
+                                self.conv, msg_type="image", media_url=proc_url, 
+                                storage_path=proc_path, sent_by=None
                             )
                         except Exception as img_exc:
-                            logger.error("[SendListing] Conv %s — failed to send additional image %s: %s", self.conv.id, img_url, img_exc)
+                            logger.error("[SendListing] Conv %s — image fail: %s", self.conv.id, img_exc)
 
-                    processed_header_url = ""
-                    if header_image_url:
-                        processed_header_url, _ = process_external_media_url(header_image_url, "image", phone=self.conv.contact.phone)
+                    # Prepare and send the main interactive card
+                    proc_header_url = ""
+                    if header_url:
+                        proc_header_url, _ = process_external_media_url(header_url, "image", phone=self.conv.contact.phone)
 
                     send_and_save_interactive_buttons(
                         self.conv, 
                         body_text=card_text[:1024], 
                         options=options,
-                        header_image_url=processed_header_url
+                        header_image_url=proc_header_url
                     )
                     logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
                 except Exception as exc:
@@ -1237,6 +1234,7 @@ class AutomationEngine(BaseChatbotEngine):
         # Optional: fallback for plain text if they typed exact label
         # Not implementing positional map here as page_size makes it overly complex
         return ""
+
 
     @staticmethod
     def _listing_clear_state(execution):

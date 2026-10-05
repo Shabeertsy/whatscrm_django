@@ -42,12 +42,13 @@ export function FieldLabel({ children, className }: LabelProps) {
 interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "className"> {
   focus?: keyof typeof CLS;
   mono?: boolean;
+  className?: string;
 }
-export function FieldInput({ focus = "focusGreen", mono = false, ...props }: InputProps) {
+export function FieldInput({ focus = "focusGreen", mono = false, className, ...props }: InputProps) {
   return (
     <input
       {...props}
-      className={cls(CLS.base, CLS[focus], mono ? CLS.mono : undefined)}
+      className={cls(CLS.base, CLS[focus], mono ? CLS.mono : undefined, className)}
     />
   );
 }
@@ -58,15 +59,16 @@ export function FieldInput({ focus = "focusGreen", mono = false, ...props }: Inp
 interface TextareaProps extends Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "className"> {
   focus?: keyof typeof CLS;
   rows?: number;
+  className?: string;
 }
 export const FieldTextarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
-  ({ focus = "focusGreen", rows = 3, ...props }, ref) => {
+  ({ focus = "focusGreen", rows = 3, className, ...props }, ref) => {
     return (
       <textarea
         ref={ref}
         rows={rows}
         {...props}
-        className={cls(CLS.base, CLS[focus], CLS.resize)}
+        className={cls(CLS.base, CLS[focus], CLS.resize, className)}
       />
     );
   }
@@ -78,12 +80,13 @@ export const FieldTextarea = React.forwardRef<HTMLTextAreaElement, TextareaProps
 interface SelectProps extends Omit<React.SelectHTMLAttributes<HTMLSelectElement>, "className"> {
   focus?: keyof typeof CLS;
   children: React.ReactNode;
+  className?: string;
 }
-export function FieldSelect({ focus = "focusGreen", children, ...props }: SelectProps) {
+export function FieldSelect({ focus = "focusGreen", children, className, ...props }: SelectProps) {
   return (
     <select
       {...props}
-      className={cls(CLS.base, CLS[focus])}
+      className={cls(CLS.base, CLS[focus], className)}
     >
       {children}
     </select>
