@@ -537,7 +537,7 @@ def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, b
 
     interactive = {
         "type": "button",
-        "body": {"text": body_text},
+        "body": {"text": body_text[:1024]},
         "action": {"buttons": buttons},
     }
     if header_text:

@@ -1099,13 +1099,16 @@ class AutomationEngine(BaseChatbotEngine):
         if self.conv.instance and self.conv.instance.is_active:
             try:
                 from apps.messaging.utils import send_and_save_interactive_buttons
-                send_and_save_interactive_buttons(self.conv, body_text=card_text, options=options)
+                send_and_save_interactive_buttons(self.conv, body_text=card_text[:1024], options=options)
                 logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
                 return
             except Exception as exc:
-                logger.warning("[SendListing] Interactive buttons failed (%s), using plain text.", exc)
+                logger.error(
+                    "[SendListing] Conv %s — Interactive buttons API failed (card_text_len=%d): %s",
+                    self.conv.id, len(card_text), exc
+                )
 
-        # Fallback for plain-text clients
+        # Fallback for plain-text clients (no active instance or buttons API failed)
         btn_lines = "\n".join(f"{i+1}. {o['label']}" for i, o in enumerate(options))
         reply.add_text(f"{card_text}\n\n{btn_lines}")
 
@@ -1118,10 +1121,23 @@ class AutomationEngine(BaseChatbotEngine):
         if last and last.raw_data:
             interactive = last.raw_data.get("interactive", {})
             i_type = interactive.get("type", "")
+            logger.info(
+                "[SendListing] Conv %s — raw_data interactive type='%s' data=%s",
+                self.conv.id, i_type, interactive
+            )
             if i_type == "button_reply":
-                return interactive.get("button_reply", {}).get("id", "").strip().lower()
+                resolved = interactive.get("button_reply", {}).get("id", "").strip().lower()
+                logger.info("[SendListing] Conv %s — resolved button_reply id='%s'", self.conv.id, resolved)
+                return resolved
             if i_type == "list_reply":
                 return interactive.get("list_reply",  {}).get("id", "").strip().lower()
+        else:
+            logger.warning(
+                "[SendListing] Conv %s — last inbound msg has no raw_data (msg_id=%s, msg_type=%s)",
+                self.conv.id,
+                last.id if last else None,
+                last.msg_type if last else None,
+            )
 
         # Build a positional map matching what was displayed
         items    = execution.variables.get("__listing_results", [])
