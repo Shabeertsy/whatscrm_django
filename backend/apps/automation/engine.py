@@ -1165,7 +1165,16 @@ class AutomationEngine(BaseChatbotEngine):
         if next_node is None:
             execution.complete()
             return reply if not reply.is_empty else None
-        ctx = ChatbotContext(contact_name=self.conv.contact.name or "", inbound_message_body="")
+
+        ctx = ChatbotContext(
+            conversation_id=self.conv.id,
+            contact_name=self.conv.contact.name or "",
+            contact_wa_id=self.conv.contact.wa_id or "",
+            inbound_message_body="",
+            inbound_message_type="interactive",
+            history=[],
+        )
+        
         self._traverse_flow(execution, node, ctx, reply, start_at=next_node)
         return reply if not reply.is_empty else None
 
