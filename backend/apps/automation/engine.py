@@ -954,7 +954,8 @@ class AutomationEngine(BaseChatbotEngine):
         headers = self._interpolate_dict(cfg["headers"],      execution.variables)
 
         try:
-            logger.info("[SendListing] Conv %s GET %s params=%s", self.conv.id, api_url, list(params.keys()))
+            logger.info("[SendListing] Conv %s GET %s params_raw=%s params_interpolated=%s", 
+                        self.conv.id, api_url, cfg["query_params"], params)
             resp  = _requests.get(api_url, params=params, headers=headers, timeout=10)
             resp.raise_for_status()
             items = self._extract_list(resp.json(), cfg["results_key"], cfg["max_results"])
