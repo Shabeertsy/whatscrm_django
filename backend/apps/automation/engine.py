@@ -1061,6 +1061,8 @@ class AutomationEngine(BaseChatbotEngine):
             "max_results":    int(c.get("maxResults", 10)),
             "card_template":  c.get("cardTemplate",  ""),
             "card_image_template": c.get("cardImageTemplate", ""),
+            "enableImages":   c.get("enableImages", True),
+            "imageLimit":     int(c.get("imageLimit", 4) or 4),
             "enable_next":    c.get("enableNext",    True),
             "next_label":     c.get("nextLabel",     " Next"),
             "enable_book":    c.get("enableBook",    True),
