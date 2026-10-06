@@ -135,6 +135,7 @@ export function buildFlowJson(screens: FlowScreen[]): object {
                 if (f.type === "checkbox") return { type: "CheckboxGroup", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
                 if (f.type === "dynamic_dropdown") return { type: "Dropdown", ...base, "data-source": `\${data.${f.id}_options}` };
                 if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}_options}` };
+                if (f.type === "date") return { type: "DatePicker", ...base };
                 return base;
               }),
             },

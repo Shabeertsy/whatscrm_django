@@ -1,5 +1,5 @@
 import React from "react";
-import { TextCursor, AlignLeft, List, Circle, CheckSquare } from "lucide-react";
+import { TextCursor, AlignLeft, List, Circle, CheckSquare, Calendar } from "lucide-react";
 import { FieldType } from "../types";
 
 export const FIELD_TYPES: { type: FieldType; icon: React.ReactNode; label: string }[] = [
@@ -10,4 +10,5 @@ export const FIELD_TYPES: { type: FieldType; icon: React.ReactNode; label: strin
   { type: "checkbox", icon: <CheckSquare className="w-3.5 h-3.5" />, label: "Multi Choice" },
   { type: "dynamic_dropdown", icon: <List className="w-3.5 h-3.5" />, label: "API Dropdown" },
   { type: "dynamic_checkbox", icon: <CheckSquare className="w-3.5 h-3.5" />, label: "API Multi-Select" },
+  { type: "date", icon: <Calendar className="w-3.5 h-3.5" />, label: "Date" },
 ];

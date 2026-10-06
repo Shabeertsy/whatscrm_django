@@ -11,7 +11,7 @@ DISALLOWED_PROPS: dict[str, set[str]] = {
     "TextInput": {"input_type"},
 }
 
-FIELD_TYPES = {"TextInput", "TextArea", "Dropdown", "RadioButtonsGroup", "CheckboxGroup"}
+FIELD_TYPES = {"TextInput", "TextArea", "Dropdown", "RadioButtonsGroup", "CheckboxGroup", "DatePicker"}
 TARGET_VERSION = "6.0"
 
 

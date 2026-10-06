@@ -22,14 +22,19 @@ export function FieldRow({
   return (
     <div className={`rounded-lg border ${error ? "border-rose-300 dark:border-rose-600" : "border-slate-200 dark:border-slate-700"} bg-white dark:bg-slate-900`}>
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-t-lg">
-        <input
-          className="flex-1 bg-transparent text-sm font-medium text-slate-800 dark:text-slate-100 focus:outline-none placeholder-slate-400 min-w-0"
-          placeholder="Field Label"
-          value={field.label}
-          onChange={e => onUpdate({ ...field, label: e.target.value })}
-        />
-        <label className="flex items-center gap-1 text-xs text-slate-500 cursor-pointer flex-shrink-0">
+      <div className="flex items-center gap-2 px-3 py-2.5 bg-slate-50 dark:bg-slate-800/50 rounded-t-lg">
+        <div className="flex items-center gap-1.5 text-slate-500 flex-shrink-0">
+          {meta.icon}
+          <span className="text-xs font-semibold uppercase tracking-wider">{meta.label}</span>
+        </div>
+        <div className="flex-1 px-3 border-l border-slate-200 dark:border-slate-700 ml-2">
+          {field.label ? (
+            <span className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate block">{field.label}</span>
+          ) : (
+            <span className="text-sm italic text-slate-400 block">No label set</span>
+          )}
+        </div>
+        <label className="flex items-center gap-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 cursor-pointer flex-shrink-0 ml-auto mr-2">
           <input type="checkbox" checked={field.required} onChange={e => onUpdate({ ...field, required: e.target.checked })} className="accent-[#007e3a] w-3 h-3" />
           Required
         </label>
@@ -43,18 +48,32 @@ export function FieldRow({
 
       {/* Body */}
       {open && (
-        <div className="px-10 py-3 space-y-3 bg-white dark:bg-slate-900/30 rounded-b-lg border-t border-slate-100 dark:border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="flex-1">
-              <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide mb-1 block">Variable Name (Machine Key)</label>
+        <div className="p-4 space-y-4 bg-white dark:bg-slate-900/30 rounded-b-lg border-t border-slate-100 dark:border-slate-800">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Field Label <span className="text-rose-500">*</span>
+              </label>
               <input
-                className="w-full bg-slate-50 dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded px-2.5 py-1.5 text-xs font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007e3a] transition-colors"
-                placeholder=""
+                className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007e3a] focus:ring-1 focus:ring-[#007e3a]/30 transition-colors shadow-sm"
+                value={field.label}
+                onChange={e => onUpdate({ ...field, label: e.target.value })}
+              />
+              <p className="text-[10px] text-slate-500 mt-1">The question or prompt shown to the user.</p>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5 block">
+                Variable Name (Machine Key)
+              </label>
+              <input
+                className="w-full bg-white dark:bg-[#131924] border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm font-mono text-slate-800 dark:text-slate-200 focus:outline-none focus:border-[#007e3a] focus:ring-1 focus:ring-[#007e3a]/30 transition-colors shadow-sm"
+                placeholder="e.g. user_name"
                 value={field.name || ""}
                 onChange={e => onUpdate({ ...field, name: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "") })}
               />
+              <p className="text-[10px] text-slate-500 mt-1">Used in API responses to identify this data.</p>
             </div>
-            <div className="flex-1" />
           </div>
 
           {hasOptions && (

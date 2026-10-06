@@ -282,7 +282,7 @@ class PreviewApiView(APIView):
             if opt_id:
                 options.append({"id": str(opt_id), "title": str(opt_label)})
 
-        return Response({"count": len(options), "options": options[:50], "keys": keys})
+        return Response({"count": len(options), "options": options[:50], "keys": keys, "raw": raw})
 
 
 

@@ -1,4 +1,6 @@
-export type FieldType = "text_input" | "textarea" | "dropdown" | "radio" | "checkbox" | "dynamic_dropdown" | "dynamic_checkbox";
+export type FieldType = "text_input" | "textarea" | "dropdown" | "radio" | "checkbox" | "dynamic_dropdown" | "dynamic_checkbox" | "date";
+
+
 
 export interface FieldOption {
   id: string;
