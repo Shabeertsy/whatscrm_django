@@ -11,12 +11,12 @@ export function ApiConfigPanel({ field, onUpdate }: { field: FlowField; onUpdate
   const upd = (patch: Partial<ApiConfig>) =>
     onUpdate({ ...field, apiConfig: { ...cfg, ...patch } });
 
-  const [loading, setLoading]     = useState(false);
-  const [options,  setOptions]    = useState<any[]>([]);
-  const [raw,      setRaw]        = useState<any>(null);
-  const [error,    setError]      = useState<string | null>(null);
-  const [count,    setCount]      = useState<number | null>(null);
-  const [view,     setView]       = useState<"list" | "json" | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [options, setOptions] = useState<any[]>([]);
+  const [raw, setRaw] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [count, setCount] = useState<number | null>(null);
+  const [view, setView] = useState<"list" | "json" | null>(null);
 
   const runFetch = async (targetView: "list" | "json") => {
     if (!cfg.url.trim()) return;

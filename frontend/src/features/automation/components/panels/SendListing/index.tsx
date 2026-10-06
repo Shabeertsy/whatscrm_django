@@ -153,15 +153,21 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
     handleParamsChange(params.map((row, idx) => (idx === i ? { ...row, [field]: val } : row)));
 
 
-  const insertVarIntoParam = (varName: string, i: number) =>
+  const insertVarIntoParam = (varName: string) => {
+    if (!focusedParam) return;
+    const { idx, field } = focusedParam;
     handleParamsChange(
-      params.map((row, idx) =>
-        idx === i ? { ...row, value: (row.value || "") + `{{${varName}}}` } : row
+      params.map((row, i) =>
+        i === idx ? { ...row, [field]: (row[field] || "") + `{{${varName}}}` } : row
       )
     );
+  };
 
   // All param-insertable variables = collect_input vars + WA flow fields
   const allParamVars = [...new Set([...flowVariables, ...waFlowVars])];
+
+  // Track which param input is focused for the shared suggestion strip
+  const [focusedParam, setFocusedParam] = useState<{ idx: number; field: "key" | "value" } | null>(null);
 
 
   // Fetch raw JSON from the listing API URL 
@@ -391,6 +397,8 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
                     placeholder="param name"
                     focus="focusAmber"
                     mono
+                    onFocus={() => setFocusedParam({ idx: i, field: "key" })}
+                    onBlur={() => setFocusedParam(null)}
                   />
                 </div>
                 <div className="flex-1">
@@ -400,6 +408,8 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
                     placeholder="{{variable}} or value"
                     focus="focusAmber"
                     mono
+                    onFocus={() => setFocusedParam({ idx: i, field: "value" })}
+                    onBlur={() => setFocusedParam(null)}
                   />
                 </div>
                 <button
@@ -410,27 +420,37 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
                   <Trash2 className="h-3.5 w-3.5" />
                 </button>
               </div>
-              {/* Per-row quick-insert chips — shown inline right below each param row */}
-              {allParamVars.length > 0 && (
-                <div className="flex flex-wrap gap-1 pl-0.5 pb-0.5">
-                  <span className="text-[8px] text-slate-400 self-center mr-0.5 shrink-0">Insert:</span>
-                  {allParamVars.map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); insertVarIntoParam(v, i); }}
-                      className="text-[8px] font-mono font-bold bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 border border-violet-200 dark:border-violet-700/30 px-1.5 py-0.5 rounded hover:bg-violet-100 dark:hover:bg-violet-900/40 transition-colors cursor-pointer"
-                      title={`Insert {{${v}}} into value`}
-                    >
-                      {`{{${v}}}`}
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
           ))}
         </div>
 
+        {/* Single suggestion strip — shown once below all params */}
+        {allParamVars.length > 0 && params.length > 0 && (
+          <div className="mt-2 rounded border border-dashed border-slate-300 dark:border-slate-600 bg-white/60 dark:bg-slate-900/40 px-2 py-1.5 space-y-1">
+            <p className="text-[9px] text-slate-400 dark:text-slate-500">
+              {focusedParam
+                ? <>Inserting into <span className="font-bold text-amber-500">param {focusedParam.idx + 1} {focusedParam.field === "value" ? "value" : "key"}</span> — click to insert:</>
+                : "Focus a param input above, then click a variable to insert it"}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {allParamVars.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onMouseDown={(e) => { e.preventDefault(); insertVarIntoParam(v); }}
+                  className={`text-[8px] font-mono font-bold px-1.5 py-0.5 rounded border transition-all select-none ${
+                    focusedParam
+                      ? "bg-violet-50 dark:bg-violet-950/30 text-violet-600 dark:text-violet-400 border-violet-200 dark:border-violet-700/30 hover:bg-violet-100 dark:hover:bg-violet-900/40 cursor-pointer"
+                      : "bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border-slate-200 dark:border-slate-700 cursor-default"
+                  }`}
+                  title={focusedParam ? `Insert {{${v}}}` : "Focus a param input first"}
+                >
+                  {`{{${v}}}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
       </div>
 
