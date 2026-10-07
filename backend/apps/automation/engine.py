@@ -944,11 +944,8 @@ class AutomationEngine(BaseChatbotEngine):
         if not api_url:
             logger.warning("[SendListing] Conv %s — apiUrl missing.", self.conv.id)
             self._log_step(execution, node, StepStatus.FAILED)
-            next_node = self._advance_to_next(execution, node)
-            if next_node is None:
-                execution.complete()
-                return _STOP
-            return next_node
+            execution.complete()
+            return _STOP
 
         params  = self._interpolate_dict(cfg["query_params"], execution.variables)
         headers = self._interpolate_dict(cfg["headers"],      execution.variables)
@@ -963,21 +960,33 @@ class AutomationEngine(BaseChatbotEngine):
             logger.error("[SendListing] Conv %s API error: %s", self.conv.id, exc)
             reply.add_text(cfg["no_results_msg"])
             self._log_step(execution, node, StepStatus.FAILED)
-            next_node = self._advance_to_next(execution, node)
-            if next_node is None:
-                execution.complete()
-                return _STOP
-            return next_node
+            
+            edge = node.outgoing_edges.filter(source_handle="no_results").first()
+            if edge:
+                execution.status = ExecutionStatus.RUNNING
+                next_node = edge.target_node
+                execution.current_node = next_node
+                execution.save(update_fields=["status", "current_node"])
+                return next_node
+                
+            execution.complete()
+            return _STOP
 
         if not items:
             logger.info("[SendListing] Conv %s — no results.", self.conv.id)
             reply.add_text(cfg["no_results_msg"])
             self._log_step(execution, node, StepStatus.COMPLETED)
-            next_node = self._advance_to_next(execution, node)
-            if next_node is None:
-                execution.complete()
-                return _STOP
-            return next_node
+            
+            edge = node.outgoing_edges.filter(source_handle="no_results").first()
+            if edge:
+                execution.status = ExecutionStatus.RUNNING
+                next_node = edge.target_node
+                execution.current_node = next_node
+                execution.save(update_fields=["status", "current_node"])
+                return next_node
+                
+            execution.complete()
+            return _STOP
 
         # Persist listing state so pagination survives across WAITING cycles
         execution.variables.update({
