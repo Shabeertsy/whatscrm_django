@@ -958,7 +958,6 @@ class AutomationEngine(BaseChatbotEngine):
             items = self._extract_list(resp.json(), cfg["results_key"], cfg["max_results"])
         except Exception as exc:
             logger.error("[SendListing] Conv %s API error: %s", self.conv.id, exc)
-            reply.add_text(cfg["no_results_msg"])
             self._log_step(execution, node, StepStatus.FAILED)
             
             edge = node.outgoing_edges.filter(source_handle="no_results").first()
@@ -969,12 +968,12 @@ class AutomationEngine(BaseChatbotEngine):
                 execution.save(update_fields=["status", "current_node"])
                 return next_node
                 
+            reply.add_text(cfg["no_results_msg"])
             execution.complete()
             return _STOP
 
         if not items:
             logger.info("[SendListing] Conv %s — no results.", self.conv.id)
-            reply.add_text(cfg["no_results_msg"])
             self._log_step(execution, node, StepStatus.COMPLETED)
             
             edge = node.outgoing_edges.filter(source_handle="no_results").first()
@@ -985,6 +984,7 @@ class AutomationEngine(BaseChatbotEngine):
                 execution.save(update_fields=["status", "current_node"])
                 return next_node
                 
+            reply.add_text(cfg["no_results_msg"])
             execution.complete()
             return _STOP
 
