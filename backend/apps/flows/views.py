@@ -640,6 +640,12 @@ class FlowDataExchangeView(View):
                 for k, v in screen_data.items():
                     if k.endswith("_label") or k.endswith("_labels") or k.endswith("_uuid"):
                         continue
+                    
+                    # Prevent ID collisions: do not fallback-match a key if it is 
+                    # explicitly defined as a field in api_config. Let its own pass handle it.
+                    if k in api_config and k != field_id:
+                        continue
+
                     if field_type == "dynamic_checkbox" and isinstance(v, list) and len(v) > 0:
                         if all(str(val) in lookup for val in v):
                             matched_keys.append(k)

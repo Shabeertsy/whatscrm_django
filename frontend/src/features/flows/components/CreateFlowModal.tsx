@@ -11,12 +11,26 @@ interface CreateFlowModalProps {
   instances: any[];
   onClose: () => void;
   onSuccess: () => void;
+  initialFlow?: any;
 }
 
-export function CreateFlowModal({ instances, onClose, onSuccess }: CreateFlowModalProps) {
+export function CreateFlowModal({ instances, initialFlow, onClose, onSuccess }: CreateFlowModalProps) {
+
+
   const defaultScreen = (): FlowScreen => ({ id: `SCREEN_${alphaId()}`, title: "", fields: [] });
-  const [screens, setScreens] = useState<FlowScreen[]>([defaultScreen()]);
-  const [formData, setFormData] = useState({ name: "", category: "APPOINTMENT_BOOKING", instance: instances.length > 0 ? instances[0].id : "" });
+
+  const [screens, setScreens] = useState<FlowScreen[]>(
+    initialFlow?.builder_state?.length > 0 ? initialFlow.builder_state : [defaultScreen()]
+  );
+  const [formData, setFormData] = useState({
+    name: initialFlow ? `Copy of ${initialFlow.name}` : "",
+    category: initialFlow?.category || "APPOINTMENT_BOOKING",
+    instance: initialFlow?.instance || (instances.length > 0 ? instances[0].id : "")
+  });
+
+
+
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [activeScreenIdx, setActiveScreenIdx] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -60,6 +74,7 @@ export function CreateFlowModal({ instances, onClose, onSuccess }: CreateFlowMod
         instance: formData.instance,
         flow_json: buildFlowJson(screens),
         data_api_config: buildDataApiConfig(screens),
+        builder_state: screens,
       });
       onSuccess();
     } catch (err: any) {
@@ -159,17 +174,16 @@ export function CreateFlowModal({ instances, onClose, onSuccess }: CreateFlowMod
               {screens.map((screen, idx) => {
                 const hasErr = !!errors[`screen_${screen.id}_title`] || screen.fields.some(f => !!errors[`field_${f.id}`]);
                 const isActive = activeScreenIdx === idx;
-                
+
                 return (
                   <button
                     key={screen.id}
                     type="button"
                     onClick={() => setActiveScreenIdx(idx)}
-                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${
-                      isActive 
-                        ? "bg-white dark:bg-slate-700 shadow-sm text-[#007e3a] dark:text-emerald-400" 
-                        : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
-                    }`}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-all ${isActive
+                      ? "bg-white dark:bg-slate-700 shadow-sm text-[#007e3a] dark:text-emerald-400"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
+                      }`}
                   >
                     <span className={hasErr ? "text-rose-500 dark:text-rose-400" : ""}>
                       Screen {idx + 1}

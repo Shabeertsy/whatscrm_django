@@ -11,6 +11,7 @@ class WhatsappFlowSerializer(serializers.ModelSerializer):
         fields = [
             "id", "instance", "name", "description",
             "meta_flow_id", "category", "flow_json", "data_api_config",
+            "builder_state",
             "status", "endpoint_uri", "preview_url",
             "submission_count", "created_at", "updated_at",
         ]

@@ -17,12 +17,25 @@ export default function Flows() {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [viewFlow, setViewFlow] = useState<any | null>(null);
+  const [initialCloneFlow, setInitialCloneFlow] = useState<any | null>(null);
 
   const handleViewFlow = async (id: string) => {
     try {
       const data = await getFlowDetails(id);
       setViewFlow(data);
     } catch (e) { console.error("Failed to load flow details", e); }
+  };
+
+  const handleDuplicate = async (id: string, e: any) => {
+    e.stopPropagation();
+    try {
+      const data = await getFlowDetails(id);
+      setInitialCloneFlow(data);
+      setIsFormOpen(true);
+    } catch (e) { 
+      console.error("Failed to clone flow details", e);
+      alert("Failed to load flow details for duplication.");
+    }
   };
 
   return (
@@ -48,6 +61,7 @@ export default function Flows() {
               isDeleting={deletingId === flow.id}
               onDelete={(e) => handleDelete(flow.id, e)}
               onPublish={(e) => handlePublish(flow.id, e)}
+              onDuplicate={(e) => handleDuplicate(flow.id, e)}
               onClick={() => handleViewFlow(flow.id)}
             />
           ))}
@@ -69,8 +83,9 @@ export default function Flows() {
       {isFormOpen && (
         <CreateFlowModal
           instances={instances}
-          onClose={() => setIsFormOpen(false)}
-          onSuccess={() => { setIsFormOpen(false); fetchFlowsData(); }}
+          initialFlow={initialCloneFlow}
+          onClose={() => { setIsFormOpen(false); setInitialCloneFlow(null); }}
+          onSuccess={() => { setIsFormOpen(false); setInitialCloneFlow(null); fetchFlowsData(); }}
         />
       )}
 

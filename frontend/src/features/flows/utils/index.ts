@@ -37,7 +37,10 @@ export function buildDataApiConfig(screens: FlowScreen[]): Record<string, object
     for (const field of screen.fields) {
       const isDynamic = field.type === "dynamic_dropdown" || field.type === "dynamic_checkbox";
       if (isDynamic && field.apiConfig) {
-        config[field.id] = { ...field.apiConfig, screen: screen.id, field_type: field.type };
+        const getSafeKey = (label: string) =>
+          label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        const key = field.name || getSafeKey(field.label) || field.id;
+        config[key] = { ...field.apiConfig, screen: screen.id, field_type: field.type };
       }
     }
   }
@@ -84,8 +87,9 @@ export function buildFlowJson(screens: FlowScreen[]): object {
 
       //  Add schema for dynamic fields on CURRENT screen
       screen.fields.forEach(f => {
+        const key = f.name || getSafeKey(f.label) || f.id;
         if (f.type === "dynamic_dropdown" || f.type === "dynamic_checkbox") {
-          dataSchema[`${f.id}_options`] = {
+          dataSchema[`${key}_options`] = {
             type: "array",
             items: {
               type: "object",
@@ -133,8 +137,8 @@ export function buildFlowJson(screens: FlowScreen[]): object {
                 if (f.type === "dropdown") return { type: "Dropdown", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
                 if (f.type === "radio") return { type: "RadioButtonsGroup", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
                 if (f.type === "checkbox") return { type: "CheckboxGroup", ...base, "data-source": f.options.map(o => ({ id: getSafeKey(o.label) || o.id, title: o.label })) };
-                if (f.type === "dynamic_dropdown") return { type: "Dropdown", ...base, "data-source": `\${data.${f.id}_options}` };
-                if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${f.id}_options}` };
+                if (f.type === "dynamic_dropdown") return { type: "Dropdown", ...base, "data-source": `\${data.${key}_options}` };
+                if (f.type === "dynamic_checkbox") return { type: "CheckboxGroup", ...base, "data-source": `\${data.${key}_options}` };
                 if (f.type === "date") return { type: "DatePicker", ...base };
                 return base;
               }),

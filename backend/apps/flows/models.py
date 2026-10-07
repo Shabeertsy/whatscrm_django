@@ -61,6 +61,13 @@ class WhatsappFlow(BaseModel):
         ),
     )
 
+    # Store the frontend builder UI state so the flow can be copied/edited
+    builder_state = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Frontend UI screens state",
+    )
+
     status = models.CharField(
         max_length=20,
         choices=FlowStatus.choices,
