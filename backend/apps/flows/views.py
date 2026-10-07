@@ -712,7 +712,11 @@ class FlowDataExchangeView(View):
                 inbound_message_body="",
             )
             engine = AutomationEngine(conv)
-            engine._resume_whatsapp_flow(execution.current_node, execution, ctx)
+            reply = engine._resume_whatsapp_flow(execution.current_node, execution, ctx)
+            if reply and not reply.is_empty:
+                from apps.ai.chatbot.dispatcher import ChatbotDispatcher
+                dispatcher = ChatbotDispatcher(conv)
+                dispatcher._persist_and_broadcast(reply)
 
         except Exception as exc:
             logger.error("[FlowDataExchange] Failed to resume automation: %s", exc, exc_info=True)

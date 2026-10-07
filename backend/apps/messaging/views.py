@@ -634,16 +634,29 @@ class WebhookView(APIView):
         profile = (contacts_map.get(wa_id) if contacts_map else {}) or msg_data.get('profile', {})
         update_contact_whatsapp_profile(contact, profile_data=profile, instance=instance)
 
-        #  Get or create conversation
-        conv, created = Conversation.objects.get_or_create(
+        conv = Conversation.objects.filter(
             contact=contact,
             instance=instance,
-            status__in=['open', 'pending'],
-            defaults={'status': 'open'},
-        )
-        if not created and conv.status == 'resolved':
-            conv.status = 'open'
-            conv.save(update_fields=['status'])
+            status__in=['open', 'pending']
+        ).first()
+
+        created = False
+        if not conv:
+            conv = Conversation.objects.filter(
+                contact=contact,
+                instance=instance
+            ).order_by('-updated_at').first()
+
+            if not conv:
+                conv = Conversation.objects.create(
+                    contact=contact,
+                    instance=instance,
+                    status='open'
+                )
+                created = True
+            elif conv.status == 'resolved':
+                conv.status = 'open'
+                conv.save(update_fields=['status'])
 
         #  Extract body and handle media
         body = ''
