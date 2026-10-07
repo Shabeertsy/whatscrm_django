@@ -60,6 +60,7 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
         children: filters.children,
         rooms_needed: filters.rooms,
         hide_unavailable: filters.hideUnavailable,
+        sort: filters.sort,
       };
       if (filters.checkIn) params.check_in = filters.checkIn;
       if (filters.checkOut) params.check_out = filters.checkOut;
@@ -123,7 +124,7 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
     page, filters.propertyTypes, filters.roomTypes, filters.amenities,
     filters.roomViews, filters.bedroomTypes, filters.tags, filters.mealPlans,
     filters.areas,
-    filters.priceMin, filters.priceMax, filters.hideUnavailable
+    filters.priceMin, filters.priceMax, filters.hideUnavailable, filters.sort
   ]);
 
   useEffect(() => {

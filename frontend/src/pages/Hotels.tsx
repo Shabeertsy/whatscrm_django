@@ -157,6 +157,24 @@ export function Hotels() {
 
         {/* Rooms Table */}
         <div className="flex-1 min-w-0 space-y-4">
+          <div className="flex justify-end items-center mb-1">
+            <select
+              value={filters.sort || 'price_asc'}
+              onChange={e => { updateFilter('sort', e.target.value); setPage(1); }}
+              className="text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3.5 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007e3a]/50 focus:border-[#007e3a] hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer appearance-none pr-8 transition-colors"
+              style={{
+                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.6rem center',
+                backgroundSize: '1em'
+              }}
+            >
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">

@@ -18,6 +18,7 @@ export interface RoomFilters {
     rooms: number;
     mealPlans: string[];
     areas: string[];
+    sort: string;
 }
 
 export function useRoomFilters() {
@@ -42,6 +43,7 @@ export function useRoomFilters() {
         rooms: 1,
         mealPlans: [],
         areas: [],
+        sort: "price_asc",
     });
 
     const updateFilter = (key: keyof RoomFilters, value: any) => {
@@ -70,6 +72,7 @@ export function useRoomFilters() {
             priceMin: 0,
             priceMax: 50000,
             hideUnavailable: false,
+            sort: "price_asc",
         }));
     };
 
