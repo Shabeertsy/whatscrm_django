@@ -1212,8 +1212,8 @@ class AutomationEngine(BaseChatbotEngine):
                         header_url = unique_urls[0]
                         additional_urls = unique_urls[1:]
 
-            # Parse header video URL and additional album videos if enabled
-            header_video_url, additional_video_urls = "", []
+            # Parse videos if enabled (they will be sent as standalone messages)
+            all_video_urls = []
             if cfg.get("enableVideos", False):
                 all_raw_video_urls = []
                 
@@ -1247,15 +1247,15 @@ class AutomationEngine(BaseChatbotEngine):
                             unique_urls.append(u)
                             
                     if unique_urls:
-                        header_video_url = unique_urls[0]
-                        additional_video_urls = unique_urls[1:]
+                        # Just store all video URLs to send as standalone messages
+                        all_video_urls = unique_urls
 
             if self.conv.instance and self.conv.instance.is_active:
                 try:
                     from apps.messaging.utils import send_and_save_interactive_buttons, send_and_save_message, process_external_media_url
                     
-                    # Dispatch additional videos as standalone messages
-                    for vid_url in additional_video_urls:
+                    # Dispatch all videos as standalone messages
+                    for vid_url in all_video_urls:
                         try:
                             proc_url, proc_path = process_external_media_url(vid_url, "video", phone=self.conv.contact.phone)
                             send_and_save_message(
@@ -1276,20 +1276,16 @@ class AutomationEngine(BaseChatbotEngine):
                         except Exception as img_exc:
                             logger.error("[SendListing] Conv %s — image fail: %s", self.conv.id, img_exc)
 
-                    # Prepare and send the main interactive card
+                    # Prepare and send the main interactive card with image header
                     proc_header_url = ""
-                    proc_header_video_url = ""
-                    if header_video_url:
-                        proc_header_video_url, _ = process_external_media_url(header_video_url, "video", phone=self.conv.contact.phone)
-                    elif header_url:
+                    if header_url:
                         proc_header_url, _ = process_external_media_url(header_url, "image", phone=self.conv.contact.phone)
 
                     send_and_save_interactive_buttons(
                         self.conv, 
                         body_text=card_text[:1024], 
                         options=options,
-                        header_image_url=proc_header_url,
-                        header_video_url=proc_header_video_url
+                        header_image_url=proc_header_url
                     )
                     logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
                 except Exception as exc:
