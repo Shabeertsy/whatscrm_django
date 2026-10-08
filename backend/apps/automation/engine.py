@@ -1070,8 +1070,10 @@ class AutomationEngine(BaseChatbotEngine):
             "max_results":    int(c.get("maxResults", 10)),
             "card_template":  c.get("cardTemplate",  ""),
             "card_image_template": c.get("cardImageTemplate", ""),
+            "card_image_templates": c.get("cardImageTemplates", []),
+            "card_image_limits": c.get("cardImageLimits", []),
             "enableImages":   c.get("enableImages", True),
-            "imageLimit":     int(c.get("imageLimit", 4) or 4),
+            "imageLimit":     c.get("imageLimit", 4),
             "enable_next":    c.get("enableNext",    True),
             "next_label":     c.get("nextLabel",     " Next"),
             "enable_book":    c.get("enableBook",    True),
@@ -1167,20 +1169,97 @@ class AutomationEngine(BaseChatbotEngine):
 
             # Parse header image URL and additional album images if enabled
             header_url, additional_urls = "", []
-            if cfg.get("enableImages", True) and cfg.get("card_image_template"):
-                raw_url_str = self._interpolate_text(cfg["card_image_template"], card_vars).strip()
-                urls = self._parse_image_urls(raw_url_str)
-                if urls:
+            if cfg.get("enableImages", True):
+                all_raw_urls = []
+                
+                # Use array if available, otherwise fallback to single string
+                if cfg.get("card_image_templates"):
+                    limits = cfg.get("card_image_limits") or []
+                    for idx, template in enumerate(cfg["card_image_templates"]):
+                        if template:
+                            try:
+                                limit = int(limits[idx]) if idx < len(limits) and limits[idx] != "" else 4
+                            except (ValueError, TypeError):
+                                limit = 4
+                                
+                            raw = self._interpolate_text(template, card_vars).strip()
+                            urls = self._parse_image_urls(raw)
+                            all_raw_urls.extend(urls[:limit])
+                            
+                elif cfg.get("card_image_template"):
                     try:
                         limit = int(cfg.get("imageLimit", 4))
                     except (ValueError, TypeError):
                         limit = 4
-                    header_url, *additional_urls = urls[:limit]
+                    raw = self._interpolate_text(cfg["card_image_template"], card_vars).strip()
+                    all_raw_urls = self._parse_image_urls(raw)[:limit]
+                    
+                if all_raw_urls:
+                    # Deduplicate urls while preserving order
+                    seen = set()
+                    unique_urls = []
+                    for u in all_raw_urls:
+                        if u not in seen:
+                            seen.add(u)
+                            unique_urls.append(u)
+                            
+                    if unique_urls:
+                        header_url = unique_urls[0]
+                        additional_urls = unique_urls[1:]
+
+            # Parse header video URL and additional album videos if enabled
+            header_video_url, additional_video_urls = "", []
+            if cfg.get("enableVideos", False):
+                all_raw_video_urls = []
+                
+                if cfg.get("card_video_templates"):
+                    limits = cfg.get("card_video_limits") or []
+                    for idx, template in enumerate(cfg["card_video_templates"]):
+                        if template:
+                            try:
+                                limit = int(limits[idx]) if idx < len(limits) and limits[idx] != "" else 1
+                            except (ValueError, TypeError):
+                                limit = 1
+                                
+                            raw = self._interpolate_text(template, card_vars).strip()
+                            urls = self._parse_image_urls(raw)
+                            all_raw_video_urls.extend(urls[:limit])
+
+                elif cfg.get("card_video_template"):
+                    try:
+                        limit = int(cfg.get("videoLimit", 1))
+                    except (ValueError, TypeError):
+                        limit = 1
+                    raw = self._interpolate_text(cfg["card_video_template"], card_vars).strip()
+                    all_raw_video_urls = self._parse_image_urls(raw)[:limit]
+                    
+                if all_raw_video_urls:
+                    seen = set()
+                    unique_urls = []
+                    for u in all_raw_video_urls:
+                        if u not in seen:
+                            seen.add(u)
+                            unique_urls.append(u)
+                            
+                    if unique_urls:
+                        header_video_url = unique_urls[0]
+                        additional_video_urls = unique_urls[1:]
 
             if self.conv.instance and self.conv.instance.is_active:
                 try:
                     from apps.messaging.utils import send_and_save_interactive_buttons, send_and_save_message, process_external_media_url
                     
+                    # Dispatch additional videos as standalone messages
+                    for vid_url in additional_video_urls:
+                        try:
+                            proc_url, proc_path = process_external_media_url(vid_url, "video", phone=self.conv.contact.phone)
+                            send_and_save_message(
+                                self.conv, msg_type="video", media_url=proc_url, 
+                                storage_path=proc_path, sent_by=None
+                            )
+                        except Exception as vid_exc:
+                            logger.error("[SendListing] Conv %s — video fail: %s", self.conv.id, vid_exc)
+
                     # Dispatch additional images as standalone messages (WhatsApp will group them as an album)
                     for img_url in additional_urls:
                         try:
@@ -1194,14 +1273,18 @@ class AutomationEngine(BaseChatbotEngine):
 
                     # Prepare and send the main interactive card
                     proc_header_url = ""
-                    if header_url:
+                    proc_header_video_url = ""
+                    if header_video_url:
+                        proc_header_video_url, _ = process_external_media_url(header_video_url, "video", phone=self.conv.contact.phone)
+                    elif header_url:
                         proc_header_url, _ = process_external_media_url(header_url, "image", phone=self.conv.contact.phone)
 
                     send_and_save_interactive_buttons(
                         self.conv, 
                         body_text=card_text[:1024], 
                         options=options,
-                        header_image_url=proc_header_url
+                        header_image_url=proc_header_url,
+                        header_video_url=proc_header_video_url
                     )
                     logger.info("[SendListing] Conv %s — card %d/%d sent.", self.conv.id, index + 1, total)
                 except Exception as exc:

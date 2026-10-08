@@ -512,7 +512,7 @@ def send_and_save_interactive_list(conversation, *, body_text, button_label, opt
     return msg
 
 
-def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, body_text, options, header_text="", footer_text="", header_image_url=""):
+def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, body_text, options, header_text="", footer_text="", header_image_url="", header_video_url=""):
     """
     Sends a WhatsApp Interactive Reply Buttons message via the Meta Cloud API.
     `options` is a list of dicts: [{"id": "...", "label": "..."}]
@@ -541,7 +541,12 @@ def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, b
         "action": {"buttons": buttons},
     }
     
-    if header_image_url:
+    if header_video_url:
+        interactive["header"] = {
+            "type": "video",
+            "video": {"link": header_video_url}
+        }
+    elif header_image_url:
         # WhatsApp requires a direct media link
         interactive["header"] = {
             "type": "image",
@@ -569,7 +574,7 @@ def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, b
     return response.json()
 
 
-def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", header_image_url="", sent_by=None):
+def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", header_image_url="", header_video_url="", sent_by=None):
     """
     Send a WhatsApp interactive reply-buttons message, save to DB, and broadcast.
     Returns the saved Message instance.
@@ -594,6 +599,7 @@ def send_and_save_interactive_buttons(conversation, *, body_text, options, heade
                 header_text=header_text,
                 footer_text=footer_text,
                 header_image_url=header_image_url,
+                header_video_url=header_video_url,
             )
             if wa_resp.get("messages"):
                 wa_message_id = wa_resp["messages"][0]["id"]

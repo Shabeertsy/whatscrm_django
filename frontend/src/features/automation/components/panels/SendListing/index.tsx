@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, RefreshCw, CheckCircle, AlertCircle, Loader, Braces, X, Copy, ClipboardCheck, Info, ChevronRight, ChevronDown, Folder, FileJson } from "lucide-react";
+import { Plus, Trash2, RefreshCw, CheckCircle, AlertCircle, Loader, Braces, X, Copy, ClipboardCheck, Info, ChevronRight, ChevronDown, ChevronUp, Folder, FileJson } from "lucide-react";
 import { FieldGroup, FieldInput, FieldTextarea, FieldSelect } from "../../ui/FormFields";
 import { flowsApi } from "../../../../../api/flows";
 
@@ -44,18 +44,71 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
   const [apiKeyError, setApiKeyError] = useState("");
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [activeInput, setActiveInput] = useState<"cardTemplate" | "cardImageTemplate">("cardTemplate");
+  const [activeInput, setActiveInput] = useState<string>("cardTemplate");
+
+  const imageTemplates = Array.isArray(data.cardImageTemplates)
+    ? (data.cardImageTemplates as string[])
+    : [(data.cardImageTemplate as string) || ""];
+
+  const imageLimits = Array.isArray(data.cardImageLimits)
+    ? (data.cardImageLimits as (number | string)[])
+    : [data.imageLimit !== undefined ? (data.imageLimit as number | string) : 4];
+
+  const handleImageTemplatesChange = (newTemplates: string[], newLimits?: (number | string)[]) => {
+    const limits = newLimits || [...imageLimits];
+    while (limits.length < newTemplates.length) limits.push(4);
+    if (limits.length > newTemplates.length) limits.length = newTemplates.length;
+
+    update(nodeId, {
+      cardImageTemplates: newTemplates,
+      cardImageTemplate: newTemplates[0] || "",
+      cardImageLimits: limits,
+      imageLimit: limits[0] !== undefined ? limits[0] : 4
+    });
+  };
+
+  const videoTemplates = Array.isArray(data.cardVideoTemplates)
+    ? (data.cardVideoTemplates as string[])
+    : [(data.cardVideoTemplate as string) || ""];
+
+  const videoLimits = Array.isArray(data.cardVideoLimits)
+    ? (data.cardVideoLimits as (number | string)[])
+    : [data.videoLimit !== undefined ? (data.videoLimit as number | string) : 1];
+
+  const handleVideoTemplatesChange = (newTemplates: string[], newLimits?: (number | string)[]) => {
+    const limits = newLimits || [...videoLimits];
+    while (limits.length < newTemplates.length) limits.push(1);
+    if (limits.length > newTemplates.length) limits.length = newTemplates.length;
+
+    update(nodeId, {
+      cardVideoTemplates: newTemplates,
+      cardVideoTemplate: newTemplates[0] || "",
+      cardVideoLimits: limits,
+      videoLimit: limits[0] !== undefined ? limits[0] : 1
+    });
+  };
 
   const insertKeyIntoTemplate = (key: string) => {
     const toInsert = `{{${key}}}`;
 
-    if (activeInput === "cardImageTemplate") {
-      const currentImgVal = (data.cardImageTemplate as string) || "";
-      if (currentImgVal === toInsert) {
-        set({ cardImageTemplate: "" });
-      } else {
-        set({ cardImageTemplate: toInsert });
+    if (activeInput.startsWith("cardImageTemplate") || activeInput.startsWith("cardVideoTemplate")) {
+      const isVideo = activeInput.startsWith("cardVideoTemplate");
+      let idx = 0;
+      if (activeInput.includes("_")) {
+        idx = parseInt(activeInput.split("_")[1], 10) || 0;
       }
+      
+      const currentTemplates = isVideo ? [...videoTemplates] : [...imageTemplates];
+      while (currentTemplates.length <= idx) currentTemplates.push("");
+      
+      const currentImgVal = currentTemplates[idx] || "";
+      if (currentImgVal === toInsert) {
+        currentTemplates[idx] = "";
+      } else {
+        currentTemplates[idx] = toInsert;
+      }
+      if (isVideo) handleVideoTemplatesChange(currentTemplates);
+      else handleImageTemplatesChange(currentTemplates);
       return;
     }
 
@@ -491,53 +544,258 @@ export function SendListingPanel({ nodeId, data, update, flowVariables = [], waF
         </div>
       </FieldGroup>
 
-      {/* Card Image Template */}
+      {/* Card Image Templates */}
       <FieldGroup
         label={
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={data.enableImages !== false}
-              onChange={(e) => set({ enableImages: e.target.checked })}
-              className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a1f2e] text-amber-500 focus:ring-amber-500/20"
-            />
-            <span className={data.enableImages === false ? "opacity-50" : ""}>Enable Images & Albums</span>
-          </label>
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.enableImages !== false}
+                onChange={(e) => set({ enableImages: e.target.checked })}
+                className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a1f2e] text-amber-500 focus:ring-amber-500/20"
+              />
+              <span className={data.enableImages === false ? "opacity-50" : ""}>Enable Images & Albums</span>
+            </label>
+            {data.enableImages !== false && (
+              <button
+                type="button"
+                onClick={() => handleImageTemplatesChange([...imageTemplates, ""])}
+                className="flex items-center gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-700 dark:hover:text-amber-300 transition-colors"
+              >
+                <Plus className="h-3 w-3" /> Add Image
+              </button>
+            )}
+          </div>
         }
       >
-        <div className="flex gap-2">
-          <FieldInput
-            disabled={data.enableImages === false}
-            value={(data.cardImageTemplate as string) || ""}
-            onChange={(e) => set({ cardImageTemplate: e.target.value })}
-            onFocus={() => setActiveInput("cardImageTemplate")}
-            placeholder="e.g. {{images.url}}"
-            focus="focusAmber"
-            mono
-            className="flex-1 min-w-0"
-          />
-          <FieldInput
-            type="number"
-            disabled={data.enableImages === false}
-            value={data.imageLimit === undefined ? 4 : (data.imageLimit as any)}
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "") {
-                set({ imageLimit: "" });
-              } else {
-                const parsed = parseInt(val);
-                if (!isNaN(parsed)) set({ imageLimit: Math.max(1, parsed) });
-              }
-            }}
-            title="Maximum images per item"
-            className="!w-20 flex-none text-center"
-          />
-        </div>
-        {data.enableImages !== false && (
-          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-            Click this field, then select an image key from API Response below.
+        <div className="space-y-2">
+          {imageTemplates.map((template, idx) => (
+            <div key={idx} className="flex gap-2 items-center">
+              <FieldInput
+                disabled={data.enableImages === false}
+                value={template}
+                onChange={(e) => {
+                  const newTemplates = [...imageTemplates];
+                  newTemplates[idx] = e.target.value;
+                  handleImageTemplatesChange(newTemplates, imageLimits);
+                }}
+                onFocus={() => setActiveInput(`cardImageTemplate_${idx}`)}
+                placeholder={`e.g. {{image_${idx + 1}}}`}
+                focus="focusAmber"
+                mono
+                className="flex-1 min-w-0"
+              />
+              
+              {data.enableImages !== false && (
+                <>
+                  <FieldInput
+                    type="number"
+                    value={imageLimits[idx] === undefined ? "" : imageLimits[idx]}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const newLimits = [...imageLimits];
+                      if (val === "") {
+                        newLimits[idx] = "";
+                      } else {
+                        const parsed = parseInt(val);
+                        if (!isNaN(parsed)) newLimits[idx] = Math.max(1, parsed);
+                      }
+                      handleImageTemplatesChange(imageTemplates, newLimits);
+                    }}
+                    title="Maximum images for this field"
+                    className="!w-16 flex-none text-center !py-1.5 !text-xs"
+                    placeholder="Limit"
+                  />
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (idx > 0) {
+                          const newTemplates = [...imageTemplates];
+                          [newTemplates[idx - 1], newTemplates[idx]] = [newTemplates[idx], newTemplates[idx - 1]];
+                          const newLimits = [...imageLimits];
+                          [newLimits[idx - 1], newLimits[idx]] = [newLimits[idx], newLimits[idx - 1]];
+                          handleImageTemplatesChange(newTemplates, newLimits);
+                        }
+                      }}
+                      disabled={idx === 0}
+                      className="p-1 text-slate-400 hover:text-amber-500 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (idx < imageTemplates.length - 1) {
+                          const newTemplates = [...imageTemplates];
+                          [newTemplates[idx + 1], newTemplates[idx]] = [newTemplates[idx], newTemplates[idx + 1]];
+                          const newLimits = [...imageLimits];
+                          [newLimits[idx + 1], newLimits[idx]] = [newLimits[idx], newLimits[idx + 1]];
+                          handleImageTemplatesChange(newTemplates, newLimits);
+                        }
+                      }}
+                      disabled={idx === imageTemplates.length - 1}
+                      className="p-1 text-slate-400 hover:text-amber-500 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newTemplates = imageTemplates.filter((_, i) => i !== idx);
+                        const newLimits = imageLimits.filter((_, i) => i !== idx);
+                        if (newTemplates.length === 0) {
+                          newTemplates.push("");
+                          newLimits.push(4);
+                        }
+                        handleImageTemplatesChange(newTemplates, newLimits);
+                      }}
+                      className="p-1 text-slate-400 hover:text-rose-500 transition-colors ml-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+          
+          <div className="flex items-center justify-between mt-1">
+            {data.enableImages !== false && (
+              <div className="text-xs text-slate-400 dark:text-slate-500">
+                Click a field, then select an image key from API Response below.
+              </div>
+            )}
           </div>
-        )}
+        </div>
+      </FieldGroup>
+
+      {/* Card Video Templates */}
+      <FieldGroup
+        label={
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-1.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.enableVideos === true}
+                onChange={(e) => set({ enableVideos: e.target.checked })}
+                className="rounded border-slate-300 dark:border-slate-600 bg-white dark:bg-[#1a1f2e] text-indigo-500 focus:ring-indigo-500/20"
+              />
+              <span className={data.enableVideos !== true ? "opacity-50" : ""}>Enable Videos</span>
+            </label>
+            {data.enableVideos === true && (
+              <button
+                type="button"
+                onClick={() => handleVideoTemplatesChange([...videoTemplates, ""])}
+                className="flex items-center gap-1 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-colors"
+              >
+                <Plus className="h-3 w-3" /> Add Video
+              </button>
+            )}
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          {videoTemplates.map((template, idx) => (
+            <div key={idx} className="flex gap-2 items-center">
+              <FieldInput
+                disabled={data.enableVideos !== true}
+                value={template}
+                onChange={(e) => {
+                  const newTemplates = [...videoTemplates];
+                  newTemplates[idx] = e.target.value;
+                  handleVideoTemplatesChange(newTemplates, videoLimits);
+                }}
+                onFocus={() => setActiveInput(`cardVideoTemplate_${idx}`)}
+                placeholder={`e.g. {{video_${idx + 1}}}`}
+                focus="focusIndigo"
+                mono
+                className="flex-1 min-w-0"
+              />
+              
+              {data.enableVideos === true && (
+                <>
+                  <FieldInput
+                    type="number"
+                    value={videoLimits[idx] === undefined ? "" : videoLimits[idx]}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const newLimits = [...videoLimits];
+                      if (val === "") {
+                        newLimits[idx] = "";
+                      } else {
+                        const parsed = parseInt(val);
+                        if (!isNaN(parsed)) newLimits[idx] = Math.max(1, parsed);
+                      }
+                      handleVideoTemplatesChange(videoTemplates, newLimits);
+                    }}
+                    title="Maximum videos for this field"
+                    className="!w-16 flex-none text-center !py-1.5 !text-xs"
+                    placeholder="Limit"
+                  />
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (idx > 0) {
+                          const newTemplates = [...videoTemplates];
+                          [newTemplates[idx - 1], newTemplates[idx]] = [newTemplates[idx], newTemplates[idx - 1]];
+                          const newLimits = [...videoLimits];
+                          [newLimits[idx - 1], newLimits[idx]] = [newLimits[idx], newLimits[idx - 1]];
+                          handleVideoTemplatesChange(newTemplates, newLimits);
+                        }
+                      }}
+                      disabled={idx === 0}
+                      className="p-1 text-slate-400 hover:text-indigo-500 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (idx < videoTemplates.length - 1) {
+                          const newTemplates = [...videoTemplates];
+                          [newTemplates[idx + 1], newTemplates[idx]] = [newTemplates[idx], newTemplates[idx + 1]];
+                          const newLimits = [...videoLimits];
+                          [newLimits[idx + 1], newLimits[idx]] = [newLimits[idx], newLimits[idx + 1]];
+                          handleVideoTemplatesChange(newTemplates, newLimits);
+                        }
+                      }}
+                      disabled={idx === videoTemplates.length - 1}
+                      className="p-1 text-slate-400 hover:text-indigo-500 disabled:opacity-30 transition-colors"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newTemplates = videoTemplates.filter((_, i) => i !== idx);
+                        const newLimits = videoLimits.filter((_, i) => i !== idx);
+                        if (newTemplates.length === 0) {
+                          newTemplates.push("");
+                          newLimits.push(1);
+                        }
+                        handleVideoTemplatesChange(newTemplates, newLimits);
+                      }}
+                      className="p-1 text-slate-400 hover:text-rose-500 transition-colors ml-1"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+          
+          <div className="flex items-center justify-between mt-1">
+            {data.enableVideos === true && (
+              <div className="text-xs text-slate-400 dark:text-slate-500">
+                Click a field, then select a video key from API Response below.
+              </div>
+            )}
+          </div>
+        </div>
       </FieldGroup>
 
       {/* Card template section */}
