@@ -694,6 +694,15 @@ class FlowDataExchangeView(View):
                 return
 
             # Merge all submitted form data into execution variables
+            whatsapp_flow = self._find_flow_by_token_cached(flow_token)
+            if whatsapp_flow:
+                flow_fields = self._get_all_flow_fields(whatsapp_flow)
+                for field in flow_fields:
+                    execution.variables.pop(field, None)
+                    execution.variables.pop(f"{field}_label", None)
+                    execution.variables.pop(f"{field}_labels", None)
+                    execution.variables.pop(f"{field}_uuid", None)
+            
             execution.variables.update(screen_data)
             execution.variables.pop("__wa_flow_token", None)
             execution.variables.pop("__wa_flow_node_id", None)
@@ -753,3 +762,26 @@ class FlowDataExchangeView(View):
         """Fallback: find the WhatsappFlow from a FlowSubmission record."""
         sub = FlowSubmission.objects.filter(flow_token=flow_token).first()
         return sub.flow if sub else None
+
+    def _get_all_flow_fields(self, whatsapp_flow) -> set:
+        """Extract all form field names from the WhatsappFlow's flow_json."""
+        fields = set()
+        if not whatsapp_flow or not whatsapp_flow.flow_json:
+            return fields
+        fj = whatsapp_flow.flow_json
+        for screen in fj.get("screens", []):
+            layout = screen.get("layout", {})
+            self._walk_children_for_fields(layout.get("children", []), fields)
+        return fields
+
+    def _walk_children_for_fields(self, children, fields: set):
+        FIELD_TYPES = {"TextInput", "TextArea", "Dropdown", "RadioButtonsGroup", "CheckboxGroup", "DatePicker"}
+        for comp in children:
+            if not isinstance(comp, dict):
+                continue
+            if comp.get("type") in FIELD_TYPES:
+                name = comp.get("name") or comp.get("id", "")
+                if name:
+                    fields.add(name)
+            self._walk_children_for_fields(comp.get("children", []), fields)
+

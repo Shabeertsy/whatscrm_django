@@ -1425,6 +1425,15 @@ class AutomationEngine(BaseChatbotEngine):
                                     from apps.flows.views import FlowDataExchangeView
                                     view = FlowDataExchangeView()
                                     resp_data = view._enrich_with_labels(resp_data, flow_token)
+                                    
+                                    whatsapp_flow = view._find_flow_by_token_cached(flow_token)
+                                    if whatsapp_flow:
+                                        flow_fields = view._get_all_flow_fields(whatsapp_flow)
+                                        for field in flow_fields:
+                                            execution.variables.pop(field, None)
+                                            execution.variables.pop(f"{field}_label", None)
+                                            execution.variables.pop(f"{field}_labels", None)
+                                            execution.variables.pop(f"{field}_uuid", None)
                                 except Exception as e:
                                     logger.error("[AutomationEngine] Failed to enrich flow labels: %s", e)
 
