@@ -212,3 +212,84 @@ class MediaLibraryItem(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class PropertyShareConfig(BaseModel):
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="property_share_configs",
+    )
+
+    # Button Labels & Actions (Max 20 chars per Meta rule)
+    book_button_enabled = models.BooleanField(default=True)
+    book_button_label = models.CharField(max_length=20, default="Book Now")
+    book_action_type = models.CharField(
+        max_length=50,
+        choices=[("flow", "WhatsApp Flow"), ("agent", "Notify Agent"), ("link", "Checkout URL")],
+        default="agent",
+    )
+    book_flow_id = models.CharField(max_length=255, blank=True, default="")
+
+    details_button_enabled = models.BooleanField(default=True)
+    details_button_label = models.CharField(max_length=20, default="More Details")
+    next_button_enabled = models.BooleanField(default=True)
+    next_button_label = models.CharField(max_length=20, default="Next")
+    exit_button_enabled = models.BooleanField(default=False)
+    exit_button_label = models.CharField(max_length=20, default="Exit")
+
+    # "More Details" Images & Media Rules
+    details_send_room_images = models.BooleanField(default=True)
+    details_room_image_limit = models.PositiveIntegerField(default=4)
+    details_send_property_images = models.BooleanField(default=False)
+    details_property_image_limit = models.PositiveIntegerField(default=2)
+    details_send_videos = models.BooleanField(default=False)
+    details_video_limit = models.PositiveIntegerField(default=1)
+    details_text_template = models.TextField(blank=True, default="")
+    details_selected_fields = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Selected fields/categories for More Details message generation",
+    )
+
+    # Initial Share Media Rules (When sharing from hotel search page)
+    initial_send_room_images = models.BooleanField(default=True)
+    initial_room_image_limit = models.PositiveIntegerField(default=4)
+    initial_send_property_images = models.BooleanField(default=False)
+    initial_property_image_limit = models.PositiveIntegerField(default=2)
+    initial_send_videos = models.BooleanField(default=False)
+    initial_video_limit = models.PositiveIntegerField(default=1)
+
+    # "Next" Button Navigation & Media Rules
+    next_include_hero_image = models.BooleanField(default=True)
+    next_send_extra_album = models.BooleanField(default=False)
+    next_album_limit = models.PositiveIntegerField(default=2)
+    no_more_results_text = models.CharField(
+        max_length=255, default="You have viewed all available options."
+    )
+    exit_message_text = models.CharField(
+        max_length=255, default="Thank you! Let us know if you need anything else."
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Property Share Config"
+        verbose_name_plural = "Property Share Configs"
+
+    def __str__(self):
+        return f"PropertyShareConfig ({self.owner or 'Global'})"
+
+    @classmethod
+    def get_effective_config(cls, user=None):
+        """Retrieve user's config or global fallback singleton."""
+        if user and user.is_authenticated:
+            cfg = cls.objects.filter(owner=user).first()
+            if cfg:
+                return cfg
+        cfg = cls.objects.filter(owner__isnull=True).first()
+        if not cfg:
+            cfg = cls.objects.create(owner=None)
+        return cfg

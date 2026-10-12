@@ -21,6 +21,8 @@ interface InteractiveButtonsPayload {
   body: string;
   header?: string;
   footer?: string;
+  header_image_url?: string;
+  related_room_uuid?: string;
   options: Option[];
 }
 
@@ -113,6 +115,16 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
 function InteractiveButtonsOutbound({ data }: { data: InteractiveButtonsPayload }) {
   return (
     <div className="flex flex-col w-full min-w-[200px] max-w-[300px]">
+      {data.header_image_url && (
+        <div className="w-full h-32 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden mb-2 relative">
+          <img
+            src={data.header_image_url}
+            alt="Property Header"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
       {data.header && (
         <div className="font-semibold text-[12px] text-slate-800 dark:text-slate-100 mb-1">
           {data.header}

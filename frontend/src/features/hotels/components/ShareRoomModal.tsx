@@ -1,6 +1,7 @@
 import React from 'react';
-import { X, Bed, ChevronRight, ChevronLeft, Search, Share2 } from 'lucide-react';
+import { X, Bed, ChevronRight, ChevronLeft, Search, Share2, Settings as SettingsIcon, ExternalLink } from 'lucide-react';
 import { generateShareText } from '../utils/generateShareText';
+import { useRouter } from '../../../router';
 
 
 
@@ -24,6 +25,10 @@ interface ShareRoomModalProps {
   filters?: any;
   amenityOptions?: any[];
   propertyTypeOptions?: any[];
+  buttonConfig?: any;
+  setButtonConfig?: React.Dispatch<React.SetStateAction<any>>;
+  useInteractiveButtons?: boolean;
+  setUseInteractiveButtons?: (val: boolean) => void;
 }
 
 
@@ -31,8 +36,10 @@ export function ShareRoomModal({
   selectedShareRoom, shareOptions, setShareOptions, expandedShareCategory, setExpandedShareCategory,
   shareStep, setShareStep, selectedChats, setSelectedChats, isSendingShare,
   chatSearchTerm, setChatSearchTerm, filteredConversations, loadConversations, handleSendShare, closeShare,
-  filters, amenityOptions, propertyTypeOptions
+  filters, amenityOptions, propertyTypeOptions,
+  buttonConfig, setButtonConfig, useInteractiveButtons = true, setUseInteractiveButtons
 }: ShareRoomModalProps) {
+  const { navigate } = useRouter();
   if (!selectedShareRoom) return null;
 
   const isMultiRoom = Array.isArray(selectedShareRoom);
@@ -143,18 +150,7 @@ export function ShareRoomModal({
                       { subKey: 'contactDetails_phone', label: `Phone: ${firstRoom.owner_phone || 'N/A'}` }
                   ]});
 
-                // 6. Room Images (use first room as reference)
-                const roomImgs = firstRoom.room_images || [];
-                shareItemsList.push({ 
-                    key: 'images_room', 
-                    label: isMultiRoom ? 'Room Images (per room)' : 'Room Images', 
-                    subItems: roomImgs.map((img: any, i: number) => ({
-                        subKey: `images_room_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
-                    })),
-                    emptyMessage: roomImgs.length === 0 ? 'No media available' : undefined
-                });
-
-                // 7. Property Images
+                // 6. Property Images
                 const propImages = firstRoom.property_details?.property_images || firstRoom.property_images || firstRoom.property?.images || [];
                 shareItemsList.push({ 
                     key: 'images_property', 
@@ -163,6 +159,17 @@ export function ShareRoomModal({
                         subKey: `images_property_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
                     })),
                     emptyMessage: propImages.length === 0 ? 'No media available' : undefined
+                });
+
+                // 7. Room Images (use first room as reference)
+                const roomImgs = firstRoom.room_images || [];
+                shareItemsList.push({ 
+                    key: 'images_room', 
+                    label: isMultiRoom ? 'Room Images (per room)' : 'Room Images', 
+                    subItems: roomImgs.map((img: any, i: number) => ({
+                        subKey: `images_room_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
+                    })),
+                    emptyMessage: roomImgs.length === 0 ? 'No media available' : undefined
                 });
 
                 // 8. Property Videos
@@ -244,6 +251,62 @@ export function ShareRoomModal({
               ))})()}
             </div>
           </div>
+
+          {/* WhatsApp Interactive Action Buttons Card */}
+          {buttonConfig && (
+            <div className="mb-4 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl p-3 space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={useInteractiveButtons}
+                    onChange={(e) => setUseInteractiveButtons?.(e.target.checked)}
+                    className="rounded accent-amber-500 text-amber-500"
+                  />
+                  Attach WhatsApp Action Buttons
+                </label>
+                
+                {useInteractiveButtons && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      closeShare();
+                      navigate('/settings?tab=property_share');
+                    }}
+                    className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    Customize Buttons
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {useInteractiveButtons && (
+                <div className="flex flex-wrap gap-1.5 pt-0.5">
+                  {buttonConfig.book_button_enabled && (
+                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
+                      {buttonConfig.book_button_label || 'Book Now'}
+                    </span>
+                  )}
+                  {buttonConfig.details_button_enabled && (
+                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
+                      {buttonConfig.details_button_label || 'More Details'}
+                    </span>
+                  )}
+                  {isMultiRoom && buttonConfig.next_button_enabled && (
+                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
+                      {buttonConfig.next_button_label || 'Next'}
+                    </span>
+                  )}
+                  {buttonConfig.exit_button_enabled && (
+                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                      {buttonConfig.exit_button_label || 'Exit'}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <button 

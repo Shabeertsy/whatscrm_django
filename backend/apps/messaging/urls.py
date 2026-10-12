@@ -9,6 +9,7 @@ from .views import (
     GlobalActiveFlowsAPIView, GlobalCancelFlowAPIView, GlobalCancelAllFlowsAPIView,
     MessageDeleteAPIView, WebhookView, MediaUploadAPIView,
     CustomMessageViewSet, MediaLibraryViewSet,
+    PropertyShareConfigAPIView,
 )
 
 router = DefaultRouter()
@@ -19,6 +20,9 @@ router.register(r'media-library', MediaLibraryViewSet, basename='media-library')
 urlpatterns = [
     # Contacts & ViewSets
     path('', include(router.urls)),
+
+    # Property Share Config 
+    path('share-settings/', PropertyShareConfigAPIView.as_view(), name='property-share-settings'),
 
     # Conversations
     path('conversations/', ConversationListAPIView.as_view(), name='conversation-list'),

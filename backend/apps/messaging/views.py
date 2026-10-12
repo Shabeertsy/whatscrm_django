@@ -25,7 +25,7 @@ from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
 
 from apps.whatsapp.models import WhatsappInstance
-from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem
+from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem, PropertyShareConfig
 from .serializers import (
     ContactSerializer,
     ConversationListSerializer,
@@ -35,6 +35,7 @@ from .serializers import (
     SendMessageSerializer,
     CustomMessageSerializer,
     MediaLibraryItemSerializer,
+    PropertyShareConfigSerializer,
 )
 
 from .utils import (
@@ -42,6 +43,7 @@ from .utils import (
     broadcast_delete_message, 
     send_whatsapp_message, 
     send_and_save_message,
+    send_and_save_interactive_buttons,
     broadcast_conversation_update, 
     save_whatsapp_media
 )
@@ -304,6 +306,42 @@ class ConversationSendMessageAPIView(APIView):
             conv.last_message_at = msg.timestamp
             conv.save(update_fields=['last_message_at'])
             broadcast_new_message(conv, msg)
+        elif msg_type == 'interactive':
+            interactive_options = serializer.validated_data.get('interactive_options', [])
+            header_image_url = serializer.validated_data.get('header_image_url', '') or media_url
+            footer_text = serializer.validated_data.get('footer_text', '')
+            share_context = serializer.validated_data.get('share_context') or {}
+            msg = send_and_save_interactive_buttons(
+                conv,
+                body_text=body,
+                options=interactive_options,
+                header_image_url=header_image_url,
+                footer_text=footer_text,
+                sent_by=request.user,
+                related_room_uuid=related_room_uuid or None,
+            )
+            # Persist share context (filters + selected fields) so webhook handlers
+            # can hydrate "More Details" / "Next" responses with the right data.
+            if share_context:
+                from django.core.cache import cache as _cache
+                queue = share_context.get("queue") or []
+                if related_room_uuid:
+                    _cache.set(
+                        f"share_ctx:{conv.id}:{related_room_uuid}",
+                        share_context,
+                        timeout=86400,  # 24 hours
+                    )
+                _cache.set(
+                    f"share_ctx:{conv.id}:latest",
+                    share_context,
+                    timeout=86400,
+                )
+                # Resets the conversation's active Next queue to the newly shared search results
+                _cache.set(
+                    f"share_ctx:{conv.id}:queue",
+                    queue,
+                    timeout=86400,
+                )
         else:
             msg = send_and_save_message(
                 conv,
@@ -753,6 +791,17 @@ class WebhookView(APIView):
         broadcast_new_message(conv, msg)
         broadcast_conversation_update(conv)
 
+        # Handle manual share interactive button clicks directly (More Details, Next, Book, Exit)
+        if msg_type == 'interactive':
+            interactive_obj = msg_data.get('interactive', {})
+            if interactive_obj.get('type') == 'button_reply':
+                b_reply = interactive_obj.get('button_reply', {})
+                b_id = b_reply.get('id', '')
+                b_title = b_reply.get('title', '')
+                if b_id and b_id.startswith('share_'):
+                    from apps.messaging.share_responder import handle_share_button_reply
+                    handle_share_button_reply(conv, b_id, b_title)
+
         # Auto-create pipeline deal on first inbound message 
         self._maybe_create_pipeline_deal(contact, conv, instance)
         
@@ -974,5 +1023,24 @@ class MediaLibraryViewSet(viewsets.ModelViewSet):
             return Response({"url": file_url})
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+## property config view
+class PropertyShareConfigAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        config = PropertyShareConfig.get_effective_config(user=request.user)
+        return Response(PropertyShareConfigSerializer(config).data)
+
+    def put(self, request):
+        return self.patch(request)
+
+    def patch(self, request):
+        config = PropertyShareConfig.get_effective_config(user=request.user)
+        serializer = PropertyShareConfigSerializer(config, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(serializer.data)
 
 

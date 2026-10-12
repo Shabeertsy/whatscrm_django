@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem
+from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem, PropertyShareConfig
 from .storage_backends import get_whatsapp_storage
 from django.conf import settings
 from apps.messaging.storage_backends import get_whatsapp_storage
@@ -211,11 +211,16 @@ class SendMessageSerializer(serializers.Serializer):
     related_room_uuid   = serializers.CharField(max_length=255, allow_blank=True, required=False, default='')
     reply_to_message_id = serializers.IntegerField(required=False, allow_null=True)
     msg_type            = serializers.ChoiceField(
-        choices=['text', 'template', 'image', 'document', 'video', 'audio', 'sticker'],
+        choices=['text', 'template', 'image', 'document', 'video', 'audio', 'sticker', 'interactive'],
         default='text',
     )
     template_name       = serializers.CharField(max_length=255, required=False, allow_blank=True, default='')
     template_language   = serializers.CharField(max_length=50, required=False, allow_blank=True, default='en')
+    interactive_options = serializers.ListField(child=serializers.DictField(), required=False, default=list)
+    header_image_url    = serializers.URLField(max_length=1024, required=False, allow_blank=True, default='')
+    footer_text         = serializers.CharField(max_length=60, required=False, allow_blank=True, default='')
+    # Context saved alongside interactive share cards so button handlers can re-use filters
+    share_context       = serializers.DictField(required=False, allow_null=True, default=dict)
 
 
 class CustomMessageSerializer(serializers.ModelSerializer):
@@ -252,3 +257,11 @@ class MediaLibraryItemSerializer(serializers.ModelSerializer):
             except Exception:
                 pass
         return obj.file_url
+
+
+class PropertyShareConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PropertyShareConfig
+        fields = '__all__'
+        read_only_fields = ['id', 'created_at', 'updated_at', 'owner']
+

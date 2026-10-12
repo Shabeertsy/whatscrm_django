@@ -33,7 +33,7 @@ export function Hotels() {
   } = useHotels(filters, setPage, page);
 
   const [showFilters, setShowFilters] = useState(false);
-  const shareState = useShareRoom(filters, amenityOptions, propertyTypeOptions);
+  const shareState = useShareRoom(filters, amenityOptions, propertyTypeOptions, rooms);
   const [selectedRoomIds, setSelectedRoomIds] = useState<Set<string>>(new Set());
 
   const toggleRoomSelection = (uuid: string, e: React.MouseEvent) => {

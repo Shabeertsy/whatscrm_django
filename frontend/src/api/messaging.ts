@@ -133,8 +133,30 @@ export const messagingApi = {
   },
 
   /** Send an outbound message */
-  sendMessage(conversationId: string, payload: { body?: string; msg_type?: string; media_url?: string; storage_path?: string; related_room_uuid?: string | null; reply_to_message_id?: string | null }) {
+  sendMessage(conversationId: string, payload: {
+    body?: string;
+    msg_type?: string;
+    media_url?: string;
+    storage_path?: string;
+    related_room_uuid?: string | null;
+    reply_to_message_id?: string | null;
+    interactive_options?: { id: string; label: string; action_type?: string }[];
+    header_image_url?: string;
+    footer_text?: string;
+    /** Context (filters, selected options) saved server-side for button callbacks */
+    share_context?: Record<string, any>;
+  }) {
     return apiClient.post<Message>(`${BASE}/conversations/${conversationId}/send/`, payload);
+  },
+
+  /** Get property share configuration */
+  getPropertyShareConfig() {
+    return apiClient.get<import('../features/settings/types/shareSettings').PropertyShareConfig>(`${BASE}/share-settings/`);
+  },
+
+  /** Update property share configuration */
+  updatePropertyShareConfig(payload: Partial<import('../features/settings/types/shareSettings').PropertyShareConfig>) {
+    return apiClient.patch<import('../features/settings/types/shareSettings').PropertyShareConfig>(`${BASE}/share-settings/`, payload);
   },
 
   /** Mark conversation as read (reset unread_count) */

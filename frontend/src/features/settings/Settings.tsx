@@ -1,5 +1,5 @@
 import React from 'react';
-import { MessageSquare, Globe, Bot, Building2, MapPin, Users, ShieldCheck } from 'lucide-react';
+import { MessageSquare, Globe, Bot, Building2, MapPin, Users, ShieldCheck, Share2 } from 'lucide-react';
 import type { SettingsTab, TabMeta } from './types';
 import { useSettings } from './hooks/useSettings';
 import { useAuthStore } from '../../store/authStore';
@@ -13,6 +13,7 @@ import { LocationsTab } from './components/tabs/LocationsTab';
 import { DepartmentsTab } from './components/tabs/DepartmentsTab';
 import { UsersTab } from './components/tabs/UsersTab';
 import { PermissionsTab } from './components/tabs/PermissionsTab';
+import { PropertyShareTab } from './components/tabs/PropertyShareTab';
 
 
 
@@ -71,6 +72,13 @@ export function Settings() {
       icon: <ShieldCheck className="h-4 w-4 flex-shrink-0" />,
       permitted: !!(permissions.canManageRolePermissions ?? permissions.canAccessSettings),
     },
+    {
+      id: 'property_share',
+      label: 'Room & Property Share',
+      subtitle: 'Button copy, More Details media & Next card navigation',
+      icon: <Share2 className="h-4 w-4 flex-shrink-0" />,
+      permitted: true,
+    },
   ];
 
   const tabs = allTabs.filter((t) => t.permitted) as TabMeta[];
@@ -100,6 +108,7 @@ export function Settings() {
           {activeTab === 'departments' && <DepartmentsTab />}
           {activeTab === 'users' && <UsersTab />}
           {activeTab === 'permissions' && <PermissionsTab />}
+          {activeTab === 'property_share' && <PropertyShareTab />}
         </div>
       </div>
     </div>

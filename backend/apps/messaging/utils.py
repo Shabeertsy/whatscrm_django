@@ -574,7 +574,7 @@ def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, b
     return response.json()
 
 
-def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", header_image_url="", header_video_url="", sent_by=None):
+def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", header_image_url="", header_video_url="", sent_by=None, related_room_uuid=None):
     """
     Send a WhatsApp interactive reply-buttons message, save to DB, and broadcast.
     Returns the saved Message instance.
@@ -612,7 +612,9 @@ def send_and_save_interactive_buttons(conversation, *, body_text, options, heade
         "body": body_text,
         "header": header_text,
         "footer": footer_text,
-        "options": [{"id": o.get("id", ""), "label": o.get("label", "")} for o in options[:3]],
+        "header_image_url": header_image_url,
+        "related_room_uuid": related_room_uuid or "",
+        "options": [{"id": o.get("id", ""), "label": o.get("label", ""), "action_type": o.get("action_type", "")} for o in options[:3]],
     })
 
     msg = Message.objects.create(
@@ -620,7 +622,8 @@ def send_and_save_interactive_buttons(conversation, *, body_text, options, heade
         direction="outbound",
         msg_type="interactive",
         body=stored_body,
-        media_url="",
+        media_url=header_image_url or "",
+        related_room_uuid=related_room_uuid or None,
         sent_by=sent_by,
         status=msg_status,
         wa_message_id=wa_message_id,
