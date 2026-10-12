@@ -799,8 +799,9 @@ class WebhookView(APIView):
                 b_id = b_reply.get('id', '')
                 b_title = b_reply.get('title', '')
                 if b_id and b_id.startswith('share_'):
-                    from apps.messaging.share_responder import handle_share_button_reply
-                    handle_share_button_reply(conv, b_id, b_title)
+                    from apps.messaging.share_responder import dispatch_share_button_reply_async
+                    dispatch_share_button_reply_async(conv, b_id, b_title)
+                    return  
 
         # Auto-create pipeline deal on first inbound message 
         self._maybe_create_pipeline_deal(contact, conv, instance)

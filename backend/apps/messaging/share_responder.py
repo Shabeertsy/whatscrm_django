@@ -184,6 +184,29 @@ def handle_share_button_reply(conversation, button_id: str, button_title: str = 
     return False
 
 
+def dispatch_share_button_reply_async(conversation, button_id: str, button_title: str = ""):
+    """
+    Executes share button replies (More Details, Next, Book, Exit) in a background
+    thread so Meta's webhook can respond with 200 OK immediately without timing out,
+    allowing all images, videos, and interactive cards to send smoothly.
+    """
+    import threading
+    from django.db import connection
+
+    def _worker():
+        try:
+            connection.close()
+            handle_share_button_reply(conversation, button_id, button_title)
+        except Exception as exc:
+            logger.error("[share_responder] Async error handling button %s: %s", button_id, exc)
+        finally:
+            connection.close()
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
+
+
+
 def _resolve_room_vars(room: dict, ctx: dict) -> dict:
     """
     Build a flat dict of all interpolation variables from the room payload and
@@ -210,6 +233,7 @@ def _resolve_room_vars(room: dict, ctx: dict) -> dict:
         return result
 
     vars_map: dict = {}
+
     # Flatten full room
     vars_map.update(_flatten(room))
 
@@ -219,11 +243,13 @@ def _resolve_room_vars(room: dict, ctx: dict) -> dict:
     vars_map.setdefault("room_type", (room.get("room_type") or {}).get("name", ""))
     vars_map.setdefault("max_occupancy", str(room.get("max_occupancy", "")))
     vars_map.setdefault("occupancy", str(room.get("max_occupancy", "")))
+    
     amenities_list = [a.get("name", "") for a in (room.get("amenities") or []) if isinstance(a, dict)]
     vars_map["amenities"] = ", ".join(amenities_list) if amenities_list else "Standard amenities included"
     price = room.get("price") or room.get("grand_total") or ""
     vars_map["price"] = f"₹{price:,}" if isinstance(price, (int, float)) else (f"₹{price}" if price else "")
     prop_loc = room.get("property_location") or {}
+    
     vars_map.setdefault("location", ", ".join(filter(None, [prop_loc.get("name"), prop_loc.get("city"), prop_loc.get("state")])))
     vars_map.setdefault("city", prop_loc.get("city", ""))
     vars_map.setdefault("state", prop_loc.get("state", ""))
@@ -243,10 +269,12 @@ def _resolve_room_vars(room: dict, ctx: dict) -> dict:
         vars_map["children"] = str(filters["children"])
     if filters.get("rooms"):
         vars_map["rooms_count"] = vars_map["rooms"] = str(filters["rooms"])
+   
     nights = room.get("price_summary", {}).get("nights") or filters.get("nights", 1)
     vars_map["nights"] = str(nights)
     rooms_n = filters.get("rooms", 1)
     grand_total = room.get("price_summary", {}).get("grand_total") or room.get("grand_total") or ""
+   
     if grand_total:
         vars_map["grand_total"] = f"₹{grand_total:,}" if isinstance(grand_total, (int, float)) else f"₹{grand_total}"
         vars_map["total_price"] = vars_map["grand_total"]
@@ -671,20 +699,40 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                     header_url, "image", phone=conversation.contact.phone
                 )
 
-    # 4. Extra album media (Property images first, room images second; deduplicated)
-    if config.next_send_extra_album:
-        sent_keys = _get_previously_sent_media_keys(conversation)
-        if header_url:
-            sent_keys.update(_extract_media_keys(header_url))
+    # 4. Send media matching Initial Share settings for the next room
+    # (Hotel/Property photos first, Room photos second, Videos third; deduplicated)
+    sent_keys = _get_previously_sent_media_keys(conversation)
+    if header_url:
+        sent_keys.update(_extract_media_keys(header_url))
 
-        album_limit = max(1, config.next_album_limit)
-        sent_album_count = 0
+    # Check whether to send property photos, room photos, and videos
+    send_prop_imgs = (
+        config.initial_send_property_images or config.next_send_extra_album
+    )
+    if share_options and "images_property" in share_options:
+        send_prop_imgs = bool(share_options.get("images_property"))
 
-        # First send property images
+    send_room_imgs = (
+        config.initial_send_room_images or config.next_send_extra_album
+    )
+    if share_options and "images_room" in share_options:
+        send_room_imgs = bool(share_options.get("images_room"))
+
+    send_videos = config.initial_send_videos
+    if share_options and "videos_property" in share_options:
+        send_videos = bool(share_options.get("videos_property"))
+
+    prop_limit = max(1, config.initial_property_image_limit)
+    room_limit = max(1, config.initial_room_image_limit)
+    video_limit = max(1, getattr(config, "initial_video_limit", 1) or 1)
+
+    # 1. First send property images
+    if send_prop_imgs:
         prop_details = room.get("property_details") or room.get("property") or {}
         prop_images = prop_details.get("property_images") or prop_details.get("images") or []
+        sent_prop_count = 0
         for img_obj in prop_images:
-            if sent_album_count >= album_limit:
+            if sent_prop_count >= prop_limit:
                 break
             img_url = img_obj.get("url") or img_obj.get("image") or ""
             if not img_url:
@@ -707,14 +755,16 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                 sent_keys.update(_extract_media_keys(proc_url))
                 if proc_path:
                     sent_keys.update(_extract_media_keys(proc_path))
-                sent_album_count += 1
+                sent_prop_count += 1
             except Exception as e:
-                logger.error("[share_responder] Fail sending next property album image: %s", e)
+                logger.error("[share_responder] Fail sending next property image: %s", e)
 
-        # Then send room images
+    # 2. Then send room images
+    if send_room_imgs:
         room_images = room.get("room_images") or []
+        sent_room_count = 0
         for img_obj in room_images:
-            if sent_album_count >= album_limit:
+            if sent_room_count >= room_limit:
                 break
             img_url = img_obj.get("url") or img_obj.get("image") or ""
             if not img_url:
@@ -737,9 +787,48 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                 sent_keys.update(_extract_media_keys(proc_url))
                 if proc_path:
                     sent_keys.update(_extract_media_keys(proc_path))
-                sent_album_count += 1
+                sent_room_count += 1
             except Exception as e:
-                logger.error("[share_responder] Fail sending next room album image: %s", e)
+                logger.error("[share_responder] Fail sending next room image: %s", e)
+
+    # 3. Then send video walkthrough if enabled
+    if send_videos:
+        prop_details = room.get("property_details") or room.get("property") or {}
+        prop_videos = (
+            prop_details.get("property_videos")
+            or prop_details.get("videos")
+            or room.get("room_videos")
+            or room.get("videos")
+            or []
+        )
+        sent_vid_count = 0
+        for vid_obj in prop_videos:
+            if sent_vid_count >= video_limit:
+                break
+            vid_url = vid_obj.get("url") or vid_obj.get("video") or ""
+            if not vid_url:
+                continue
+            cand_keys = _extract_media_keys(vid_url)
+            if cand_keys & sent_keys:
+                continue
+            try:
+                proc_url, proc_path = process_external_media_url(
+                    vid_url, "video", phone=conversation.contact.phone
+                )
+                send_and_save_message(
+                    conversation,
+                    msg_type="video",
+                    media_url=proc_url,
+                    storage_path=proc_path,
+                    related_room_uuid=next_room_uuid,
+                )
+                sent_keys.update(cand_keys)
+                sent_keys.update(_extract_media_keys(proc_url))
+                if proc_path:
+                    sent_keys.update(_extract_media_keys(proc_path))
+                sent_vid_count += 1
+            except Exception as e:
+                logger.error("[share_responder] Fail sending next video: %s", e)
 
     options = []
     if config.book_button_enabled:
