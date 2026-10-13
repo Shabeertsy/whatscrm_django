@@ -164,6 +164,23 @@ def fetch_room_by_uuid(room_uuid: str, user=None, filters: dict = None) -> dict:
             return data
     except Exception as exc:
         logger.error("[share_responder] Error fetching room %s from %s: %s", room_uuid, url, exc)
+        # If querying with query params failed (e.g. 404 due to date/rate restrictions),
+        # retry once without query params
+        if qs:
+            fallback_url = f"{base}/crm/rooms/{room_uuid}/"
+            logger.info("[share_responder] Retrying room %s without params from %s", room_uuid, fallback_url)
+            try:
+                fallback_req = urllib.request.Request(fallback_url, headers={"User-Agent": "Mozilla/5.0"})
+                with urllib.request.urlopen(fallback_req, timeout=8) as fb_resp:
+                    data = json.loads(fb_resp.read().decode())
+                    cache.set(cache_key, data, timeout=300)
+                    return data
+            except Exception as fb_exc:
+                logger.error("[share_responder] Fallback fetch failed for room %s: %s", room_uuid, fb_exc)
+
+        cached_room = cache.get(f"share_ctx_room_{room_uuid}")
+        if cached_room:
+            return cached_room
         return {}
 
 
@@ -460,6 +477,11 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
 
     # Pass the cached filters so the CRM can return room pricing/availability
     room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent, filters=ctx.get("filters") or {})
+    if not room and ctx.get("rooms_map", {}).get(room_uuid):
+        room = ctx["rooms_map"][room_uuid]
+    if not room and ctx.get("room_data"):
+        room = ctx.get("room_data")
+
     if not room:
         send_and_save_message(
             conversation,
@@ -674,27 +696,37 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
         if next_room_uuid in queue:
             queue.remove(next_room_uuid)
 
+    #  Forward search filters and share options
+    ctx = _cache.get(f"share_ctx:{conversation.id}:{current_room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
+    filters = ctx.get("filters") or {}
+    share_options = ctx.get("share_options") or {}
+
+    # Pass filters so the CRM can return room with correct pricing
+    room = fetch_room_by_uuid(next_room_uuid, user=conversation.assigned_agent, filters=filters)
+    if not room and ctx.get("rooms_map", {}).get(next_room_uuid):
+        room = ctx["rooms_map"][next_room_uuid]
+
+    # If the target room failed to fetch (e.g. 404 from CRM API), advance to next room in queue
+    while not room and queue:
+        next_room_uuid = queue.pop(0)
+        room = fetch_room_by_uuid(next_room_uuid, user=conversation.assigned_agent, filters=filters)
+        if not room and ctx.get("rooms_map", {}).get(next_room_uuid):
+            room = ctx["rooms_map"][next_room_uuid]
+
+    if not room:
+        send_and_save_message(conversation, msg_type="text", body=config.no_more_results_text)
+        return
+
     # The subsequent room after this one
     subsequent_room_uuid = queue[0] if queue else ""
     # Update active queue in cache
     _cache.set(f"share_ctx:{conversation.id}:queue", queue, timeout=86400)
 
-    #  Forward search filters and share options
-    ctx = _cache.get(f"share_ctx:{conversation.id}:{current_room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
     if ctx:
         _cache.set(f"share_ctx:{conversation.id}:{next_room_uuid}", ctx, timeout=86400)
         _cache.set(f"share_ctx:{conversation.id}:latest", ctx, timeout=86400)
 
-    # Pass filters so the CRM can return room with correct pricing
-    room = fetch_room_by_uuid(next_room_uuid, user=conversation.assigned_agent, filters=filters)
-    if not room:
-        send_and_save_message(conversation, msg_type="text", body=config.no_more_results_text)
-        return
-
     # Build next card text matching initial share selection & search filters
-    filters = ctx.get("filters") or {}
-    share_options = ctx.get("share_options") or {}
-
     body_text = build_share_text(room, share_options, filters=filters) if share_options else ""
     if not body_text:
         name = room.get("name") or "Room Option"
@@ -913,7 +945,13 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
 
 def _handle_book_action(conversation, room_uuid: str, config: PropertyShareConfig):
     """Acknowledges booking and notifies agent or starts flow."""
-    room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent)
+    from django.core.cache import cache as _cache
+    ctx = _cache.get(f"share_ctx:{conversation.id}:{room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
+    room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent, filters=ctx.get("filters") or {})
+    if not room and ctx.get("rooms_map", {}).get(room_uuid):
+        room = ctx["rooms_map"][room_uuid]
+    if not room and ctx.get("room_data"):
+        room = ctx.get("room_data")
     room_name = room.get("name") if room else "Room"
 
     reply_text = f"Thank you! Your booking interest for *{room_name}* has been received. Our team will contact you right away with confirmation details."

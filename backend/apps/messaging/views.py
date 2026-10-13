@@ -331,12 +331,21 @@ class ConversationSendMessageAPIView(APIView):
             if share_context:
                 from django.core.cache import cache as _cache
                 queue = share_context.get("queue") or []
+                rooms_map = share_context.get("rooms_map") or {}
                 if related_room_uuid:
                     _cache.set(
                         f"share_ctx:{conv.id}:{related_room_uuid}",
                         share_context,
                         timeout=86400,  # 24 hours
                     )
+                    if share_context.get("room_data"):
+                        _cache.set(f"share_ctx_room_{related_room_uuid}", share_context["room_data"], timeout=86400)
+
+                for r_uuid, r_data in rooms_map.items():
+                    r_ctx = {**share_context, "room_uuid": r_uuid, "room_data": r_data}
+                    _cache.set(f"share_ctx:{conv.id}:{r_uuid}", r_ctx, timeout=86400)
+                    _cache.set(f"share_ctx_room_{r_uuid}", r_data, timeout=86400)
+
                 _cache.set(
                     f"share_ctx:{conv.id}:latest",
                     share_context,

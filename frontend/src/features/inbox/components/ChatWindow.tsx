@@ -58,12 +58,6 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
     // Show button if we are scrolled up by more than 100px from the bottom
     setShowScrollButton(distanceFromBottom > 100);
 
-    // Only load more if:
-    // 1. Initial scroll to bottom has settled
-    // 2. Not currently loading older messages
-    // 3. User actively scrolled near the top (< 50px)
-    // 4. The container is actually scrollable (scrollHeight > clientHeight + 50)
-    // 5. hasMore is true
     if (
       !isInitialLoadRef.current &&
       !isLoadingOlderRef.current &&

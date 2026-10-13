@@ -125,6 +125,7 @@ export function useShareRoom(
           // If interactive buttons are enabled, prepare the buttons
           let interactiveOpts: { id: string; label: string; action_type: string }[] = [];
           let remainingQueueUuids: string[] = [];
+          let candidateNextRooms: any[] = [];
           const heroUrl = (room.room_images && room.room_images[0])
             ? (room.room_images[0].url || room.room_images[0].image || '')
             : '';
@@ -147,7 +148,7 @@ export function useShareRoom(
             // Candidate next rooms:
             // 1. If multiple rooms were selected to share, take subsequent selected rooms.
             // 2. If a single room was shared, take all other rooms from the filtered search.
-            const candidateNextRooms = (rooms.length > 1 && idx < rooms.length - 1)
+            candidateNextRooms = (rooms.length > 1 && idx < rooms.length - 1)
               ? rooms.slice(idx + 1)
               : (availableRooms || []).filter((r: any) => r.uuid !== room.uuid);
 
@@ -208,6 +209,11 @@ export function useShareRoom(
 
           // Then send either interactive card or standard text
           if (useInteractiveButtons && interactiveOpts.length > 0) {
+            const roomsMap: Record<string, any> = { [room.uuid]: room };
+            (candidateNextRooms || []).slice(0, 15).forEach((r: any) => {
+              if (r && r.uuid) roomsMap[r.uuid] = r;
+            });
+
             const interactiveRes = await messagingApi.sendMessage(chatId, {
               body: text.slice(0, 1024),
               msg_type: 'interactive',
@@ -220,6 +226,8 @@ export function useShareRoom(
                 filters: filters || {},
                 share_options: shareOptions,
                 room_uuid: room.uuid,
+                room_data: room,
+                rooms_map: roomsMap,
                 queue: remainingQueueUuids,
               },
             });
