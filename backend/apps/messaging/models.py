@@ -257,9 +257,9 @@ class PropertyShareConfig(BaseModel):
 
     # Initial Share Media Rules (When sharing from hotel search page)
     initial_send_room_images = models.BooleanField(default=True)
-    initial_room_image_limit = models.PositiveIntegerField(default=4)
-    initial_send_property_images = models.BooleanField(default=False)
-    initial_property_image_limit = models.PositiveIntegerField(default=2)
+    initial_room_image_limit = models.PositiveIntegerField(default=1)
+    initial_send_property_images = models.BooleanField(default=True)
+    initial_property_image_limit = models.PositiveIntegerField(default=1)
     initial_send_videos = models.BooleanField(default=False)
     initial_video_limit = models.PositiveIntegerField(default=1)
 

@@ -67,9 +67,9 @@ export const DEFAULT_PROPERTY_SHARE_CONFIG: PropertyShareConfig = {
   details_text_template: '',
 
   initial_send_room_images: true,
-  initial_room_image_limit: 4,
-  initial_send_property_images: false,
-  initial_property_image_limit: 2,
+  initial_room_image_limit: 1,
+  initial_send_property_images: true,
+  initial_property_image_limit: 1,
   initial_send_videos: false,
   initial_video_limit: 1,
   details_selected_fields: {

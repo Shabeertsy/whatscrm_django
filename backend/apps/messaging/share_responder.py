@@ -108,6 +108,9 @@ def _get_previously_sent_media_keys(conversation) -> set:
                     msg.raw_data.get("media_url"),
                     msg.raw_data.get("link"),
                     msg.raw_data.get("url"),
+                    msg.raw_data.get("original_url"),
+                    msg.raw_data.get("source_url"),
+                    msg.raw_data.get("image_url"),
                 ]:
                     if val and isinstance(val, str):
                         sent_keys.update(_extract_media_keys(val))
@@ -504,16 +507,25 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
     prop_details = room.get("property_details") or room.get("property") or {}
     prop_images = prop_details.get("property_images") or prop_details.get("images") or []
     prop_initial_count = sum(1 for k, v in share_options.items() if k.startswith("images_property_") and v is True)
-    if prop_initial_count == 0 and share_options.get("images_property"):
-        prop_initial_count = 1
-    elif not share_options and config.initial_send_property_images:
-        prop_initial_count = config.initial_property_image_limit or 1
+    if prop_initial_count == 0 and (share_options.get("images_property") or config.initial_send_property_images):
+        prop_initial_count = max(1, config.initial_property_image_limit or 1)
 
     for i, img_obj in enumerate(prop_images):
         if (share_options and share_options.get(f"images_property_{i}")) or (i < prop_initial_count):
             u = img_obj.get("url") or img_obj.get("image") or ""
             if u:
                 sent_media_keys.update(_extract_media_keys(u))
+
+    # Any outbound image previously dispatched in this conversation means the primary property
+    # image (prop_images[0]) was already sent and must never be repeated in More Details.
+    from apps.messaging.models import Message
+    has_prior_image_msgs = Message.objects.filter(
+        conversation=conversation, direction="outbound", msg_type="image"
+    ).exists()
+    if (has_prior_image_msgs or config.initial_send_property_images or share_options.get("images_property")) and prop_images:
+        u0 = prop_images[0].get("url") or prop_images[0].get("image") or ""
+        if u0:
+            sent_media_keys.update(_extract_media_keys(u0))
 
     images = room.get("room_images") or []
     room_initial_count = sum(1 for k, v in share_options.items() if k.startswith("images_room_") and v is True)
@@ -860,6 +872,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                 sent_prop_count += 1
             except Exception as e:
                 logger.error("[share_responder] Fail sending next property image: %s", e)
+
 
     #  Then send room images up to room_limit (or 1 cover photo if room images was not selected but next_include_hero_image is on)
     effective_room_limit = room_limit if send_room_imgs else (1 if config.next_include_hero_image else 0)

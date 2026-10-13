@@ -34,7 +34,7 @@ export function InitialMediaCard({ config, onChange }: InitialMediaCardProps) {
               Hotel / Property Photos
             </label>
             <span className="text-[11px] font-semibold text-[#007e3a]">
-              {config.initial_property_image_limit || 2} Photo{(config.initial_property_image_limit || 2) !== 1 ? 's' : ''}
+              {config.initial_property_image_limit ?? 1} Photo{(config.initial_property_image_limit ?? 1) !== 1 ? 's' : ''}
             </span>
           </div>
           <div className="space-y-1">
@@ -44,7 +44,7 @@ export function InitialMediaCard({ config, onChange }: InitialMediaCardProps) {
             <input
               type="range" min={1} max={30}
               disabled={!config.initial_send_property_images}
-              value={config.initial_property_image_limit || 2}
+              value={config.initial_property_image_limit ?? 1}
               onChange={(e) => onChange({ initial_property_image_limit: parseInt(e.target.value, 10) })}
               className="w-full accent-[#007e3a] disabled:opacity-40 cursor-pointer"
             />
@@ -65,7 +65,7 @@ export function InitialMediaCard({ config, onChange }: InitialMediaCardProps) {
               Room Photos
             </label>
             <span className="text-[11px] font-semibold text-[#007e3a]">
-              {config.initial_room_image_limit || 4} Photo{(config.initial_room_image_limit || 4) !== 1 ? 's' : ''}
+              {config.initial_room_image_limit ?? 1} Photo{(config.initial_room_image_limit ?? 1) !== 1 ? 's' : ''}
             </span>
           </div>
           <div className="space-y-1">
@@ -75,7 +75,7 @@ export function InitialMediaCard({ config, onChange }: InitialMediaCardProps) {
             <input
               type="range" min={1} max={30}
               disabled={!config.initial_send_room_images}
-              value={config.initial_room_image_limit || 4}
+              value={config.initial_room_image_limit ?? 1}
               onChange={(e) => onChange({ initial_room_image_limit: parseInt(e.target.value, 10) })}
               className="w-full accent-[#007e3a] disabled:opacity-40 cursor-pointer"
             />

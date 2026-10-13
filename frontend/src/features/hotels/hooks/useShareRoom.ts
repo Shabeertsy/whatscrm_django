@@ -32,10 +32,10 @@ export function useShareRoom(
 
   const buildInitialOptions = (room: any, cfg: PropertyShareConfig = buttonConfig): Record<string, boolean> => {
     const initialSendRoom = cfg.initial_send_room_images ?? true;
-    const initialSendProp = cfg.initial_send_property_images ?? false;
+    const initialSendProp = cfg.initial_send_property_images ?? true;
     const initialSendVideo = cfg.initial_send_videos ?? false;
-    const roomLimit = cfg.initial_room_image_limit ?? 4;
-    const propLimit = cfg.initial_property_image_limit ?? 2;
+    const roomLimit = cfg.initial_room_image_limit ?? 1;
+    const propLimit = cfg.initial_property_image_limit ?? 1;
     const videoLimit = cfg.initial_video_limit ?? 1;
 
     const initial: Record<string, boolean> = {
@@ -109,26 +109,45 @@ export function useShareRoom(
           const textOptions = { ...shareOptions };
           const text = generateShareText(room, textOptions, filters, amenityOptions, propertyTypeOptions);
 
+          const heroUrl = (room.room_images && room.room_images[0])
+            ? (room.room_images[0].url || room.room_images[0].image || '')
+            : '';
+          const heroClean = (heroUrl || '').split('?')[0].toLowerCase();
+
           const mediaToInclude: any[] = [];
           if (shareOptions.images_property) {
+            const propLimit = Math.max(1, buttonConfig.initial_property_image_limit ?? 1);
             const propImages = room.property_details?.property_images || room.property_images || room.property?.images || [];
-            mediaToInclude.push(...propImages.filter((_: any, i: number) => shareOptions[`images_property_${i}`]).map((img: any) => ({ ...img, msg_type: 'image' })));
+            const selectedPropImages = propImages.filter((_: any, i: number) => shareOptions[`images_property_${i}`]);
+            mediaToInclude.push(...selectedPropImages.slice(0, propLimit).map((img: any) => ({ ...img, msg_type: 'image' })));
           }
           if (shareOptions.images_room && room.room_images) {
-            mediaToInclude.push(...room.room_images.filter((_: any, i: number) => shareOptions[`images_room_${i}`]).map((img: any) => ({ ...img, msg_type: 'image' })));
+            const roomLimit = Math.max(1, buttonConfig.initial_room_image_limit ?? 1);
+            const selectedRoomImages = room.room_images.filter((_: any, i: number) => shareOptions[`images_room_${i}`]);
+            if (useInteractiveButtons) {
+              // The heroUrl is already attached as the header image on the interactive button card.
+              // So the card itself is 1 room photo. Any extra room photo attachments should be capped at (roomLimit - 1).
+              const extraLimit = Math.max(0, roomLimit - 1);
+              const extraRoomImages = selectedRoomImages.filter((img: any) => {
+                const u = (img.url || img.image || '').trim().split('?')[0].toLowerCase();
+                return u !== heroClean;
+              });
+              mediaToInclude.push(...extraRoomImages.slice(0, extraLimit).map((img: any) => ({ ...img, msg_type: 'image' })));
+            } else {
+              mediaToInclude.push(...selectedRoomImages.slice(0, roomLimit).map((img: any) => ({ ...img, msg_type: 'image' })));
+            }
           }
           if (shareOptions.videos_property) {
+            const videoLimit = Math.max(1, buttonConfig.initial_video_limit ?? 1);
             const propVideos = room.property_details?.property_videos || room.property_videos || room.property?.videos || [];
-            mediaToInclude.push(...propVideos.filter((_: any, i: number) => shareOptions[`videos_property_${i}`]).map((vid: any) => ({ ...vid, msg_type: 'video' })));
+            const selectedVideos = propVideos.filter((_: any, i: number) => shareOptions[`videos_property_${i}`]);
+            mediaToInclude.push(...selectedVideos.slice(0, videoLimit).map((vid: any) => ({ ...vid, msg_type: 'video' })));
           }
 
           // If interactive buttons are enabled, prepare the buttons
           let interactiveOpts: { id: string; label: string; action_type: string }[] = [];
           let remainingQueueUuids: string[] = [];
           let candidateNextRooms: any[] = [];
-          const heroUrl = (room.room_images && room.room_images[0])
-            ? (room.room_images[0].url || room.room_images[0].image || '')
-            : '';
 
           if (useInteractiveButtons) {
             if (buttonConfig.book_button_enabled) {
@@ -171,7 +190,6 @@ export function useShareRoom(
           }
 
           // Avoid duplicating hero image as an extra attachment if heroUrl is already sent on the card header
-          const heroClean = (heroUrl || '').split('?')[0].toLowerCase();
           const seenMediaKeys = new Set<string>();
           if (useInteractiveButtons && heroClean) {
             seenMediaKeys.add(heroClean);

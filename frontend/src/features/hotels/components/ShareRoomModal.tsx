@@ -195,9 +195,23 @@ export function ShareRoomModal({
                           setShareOptions(prev => {
                             const newOpts: Record<string, boolean> = { ...prev, [opt.key as string]: isChecked };
                             if (opt.subItems) {
-                              opt.subItems.forEach((sub: any) => {
-                                newOpts[sub.subKey as string] = isChecked;
-                              });
+                              if (!isChecked) {
+                                opt.subItems.forEach((sub: any) => {
+                                  newOpts[sub.subKey as string] = false;
+                                });
+                              } else {
+                                let maxCount = opt.subItems.length;
+                                if (opt.key === 'images_property') {
+                                  maxCount = Math.max(1, buttonConfig?.initial_property_image_limit ?? 1);
+                                } else if (opt.key === 'images_room') {
+                                  maxCount = Math.max(1, buttonConfig?.initial_room_image_limit ?? 1);
+                                } else if (opt.key === 'videos_property') {
+                                  maxCount = Math.max(1, buttonConfig?.initial_video_limit ?? 1);
+                                }
+                                opt.subItems.forEach((sub: any, idx: number) => {
+                                  newOpts[sub.subKey as string] = idx < maxCount;
+                                });
+                              }
                             }
                             return newOpts;
                           });
