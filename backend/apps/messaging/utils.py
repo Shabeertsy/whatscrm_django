@@ -566,12 +566,31 @@ def send_whatsapp_interactive_buttons(phone_number_id, access_token, to_phone, b
         "interactive": interactive,
     }
 
-    logger.info(f"[send_whatsapp_interactive_buttons] Sending buttons to {to_phone} | {len(buttons)} buttons")
+    import json as _json
+    logger.info(
+        "[send_whatsapp_interactive_buttons] Sending to=%s | buttons=%d | payload=%s",
+        to_phone, len(buttons), _json.dumps(data)
+    )
     response = requests.post(url, headers=headers, json=data, timeout=10)
+    logger.info(
+        "[send_whatsapp_interactive_buttons] Response status=%s | body=%s",
+        response.status_code, response.text[:1000]
+    )
     if response.status_code >= 400:
-        logger.error(f"[send_whatsapp_interactive_buttons] Meta API Error {response.status_code}: {response.text}")
+        logger.error(
+            "[send_whatsapp_interactive_buttons] Meta API Error %s: %s",
+            response.status_code, response.text
+        )
     response.raise_for_status()
-    return response.json()
+    resp_json = response.json()
+    
+    # Meta sometimes returns 200 OK with an error body — catch and log it
+    if "error" in resp_json and "messages" not in resp_json:
+        logger.error(
+            "[send_whatsapp_interactive_buttons] Meta 200-OK but error body: %s",
+            resp_json
+        )
+    return resp_json
 
 
 def send_and_save_interactive_buttons(conversation, *, body_text, options, header_text="", footer_text="", header_image_url="", header_video_url="", sent_by=None, related_room_uuid=None):
