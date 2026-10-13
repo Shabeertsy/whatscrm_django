@@ -601,10 +601,13 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
     if config.exit_button_enabled and len(options) < 3:
         options.append({"id": f"share_exit:{room_uuid}", "label": config.exit_button_label[:20]})
 
+    # Strip leading/trailing whitespace — Meta rejects body_text that starts with newlines
+    safe_body = details_body.strip()[:1024] or "Room details"
+
     if options:
         send_and_save_interactive_buttons(
             conversation,
-            body_text=details_body[:1024],
+            body_text=safe_body,
             options=options,
             related_room_uuid=room_uuid,
         )
@@ -612,7 +615,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
         send_and_save_message(
             conversation,
             msg_type="text",
-            body=details_body[:1024],
+            body=safe_body,
             related_room_uuid=room_uuid,
         )
 
@@ -684,25 +687,37 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
         if filters.get("adults"):
             body_text += f"👤 Guests: {filters.get('adults', 1)} Adults\n"
 
-    # Header image
-    header_url = ""
+    # Hero image — send as a standalone image message BEFORE the card.
+    # We do NOT pass it as header_image_url to the interactive API call because
+    # Meta fetches the header URL from its own servers; presigned R2 URLs and
+    # other private/short-lived URLs are inaccessible to Meta and cause a 400.
+    # Standalone image sends upload the file directly to WhatsApp (via storage_path)
+    # so they always succeed regardless of URL accessibility.
     if config.next_include_hero_image:
         images = room.get("room_images") or []
         if not images:
             prop_details = room.get("property_details") or room.get("property") or {}
             images = prop_details.get("property_images") or prop_details.get("images") or []
         if images:
-            header_url = images[0].get("url") or images[0].get("image") or ""
-            if header_url:
-                header_url, _ = process_external_media_url(
-                    header_url, "image", phone=conversation.contact.phone
-                )
+            hero_raw_url = images[0].get("url") or images[0].get("image") or ""
+            if hero_raw_url:
+                try:
+                    hero_proc_url, hero_proc_path = process_external_media_url(
+                        hero_raw_url, "image", phone=conversation.contact.phone
+                    )
+                    send_and_save_message(
+                        conversation,
+                        msg_type="image",
+                        media_url=hero_proc_url,
+                        storage_path=hero_proc_path,
+                        related_room_uuid=next_room_uuid,
+                    )
+                except Exception as _hero_err:
+                    logger.error("[share_responder] Fail sending next hero image: %s", _hero_err)
 
     # Send media matching Initial Share settings for the next room
     # (Hotel/Property photos first, Room photos second, Videos third; deduplicated)
     sent_keys = _get_previously_sent_media_keys(conversation)
-    if header_url:
-        sent_keys.update(_extract_media_keys(header_url))
 
     # Check whether to send property photos, room photos, and videos
     send_prop_imgs = (
@@ -843,13 +858,28 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
     elif config.exit_button_enabled and len(options) < 3:
         options.append({"id": f"share_exit:{next_room_uuid}", "label": config.exit_button_label[:20]})
 
-    send_and_save_interactive_buttons(
-        conversation,
-        body_text=body_text[:1024],
-        options=options,
-        header_image_url=header_url,
-        related_room_uuid=next_room_uuid,
-    )
+    # Strip leading/trailing whitespace — Meta rejects body_text that starts with newlines
+    safe_body = body_text.strip()[:1024] or "Room details"
+
+    # Guard: Meta rejects interactive messages with 0 buttons — fall back to plain text
+    if options:
+        send_and_save_interactive_buttons(
+            conversation,
+            body_text=safe_body,
+            options=options,
+            # NOTE: Do NOT pass header_image_url here.
+            # Meta fetches the URL from its own servers; presigned/private R2 URLs
+            # are inaccessible to Meta and cause the entire interactive send to fail.
+            # The hero image is already sent as a standalone message above.
+            related_room_uuid=next_room_uuid,
+        )
+    else:
+        send_and_save_message(
+            conversation,
+            msg_type="text",
+            body=safe_body,
+            related_room_uuid=next_room_uuid,
+        )
 
 
 def _handle_book_action(conversation, room_uuid: str, config: PropertyShareConfig):
