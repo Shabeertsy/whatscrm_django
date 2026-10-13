@@ -118,17 +118,44 @@ def _get_previously_sent_media_keys(conversation) -> set:
 
 
 
-def fetch_room_by_uuid(room_uuid: str, user=None) -> dict:
-    """Fetch room payload from proxy/CRM API with 5-minute cache."""
+def fetch_room_by_uuid(room_uuid: str, user=None, filters: dict = None) -> dict:
+    """
+    Fetch room payload from proxy/CRM API with 5-minute cache.
+    Pass `filters` (checkIn, checkOut, adults, children, rooms) so the CRM
+    can return the room with correct availability and pricing — without date
+    params many CRM endpoints return 404.
+    """
     if not room_uuid:
         return {}
-    cache_key = f"share_responder_room_{room_uuid}"
+
+    # Build query string from filters so the CRM can price the room
+    filters = filters or {}
+    params = {}
+    if filters.get("checkIn"):
+        params["check_in"] = filters["checkIn"]
+    if filters.get("checkOut"):
+        params["check_out"] = filters["checkOut"]
+    if filters.get("adults"):
+        params["adults"] = str(filters["adults"])
+    if filters.get("children") is not None:
+        params["children"] = str(filters["children"])
+    if filters.get("rooms"):
+        params["rooms"] = str(filters["rooms"])
+
+    # Include params in cache key so different date ranges cache separately
+    from urllib.parse import urlencode
+    qs = urlencode(params)
+    cache_key = f"share_responder_room_{room_uuid}" + (f"_{qs}" if qs else "")
     cached = cache.get(cache_key)
     if cached:
         return cached
 
     base = get_proxy_url(user)
     url = f"{base}/crm/rooms/{room_uuid}/"
+    if qs:
+        url = f"{url}?{qs}"
+
+    logger.info("[share_responder] Fetching room %s from %s", room_uuid, url)
     try:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=8) as response:
@@ -136,7 +163,7 @@ def fetch_room_by_uuid(room_uuid: str, user=None) -> dict:
             cache.set(cache_key, data, timeout=300)
             return data
     except Exception as exc:
-        logger.error("[share_responder] Error fetching room %s: %s", room_uuid, exc)
+        logger.error("[share_responder] Error fetching room %s from %s: %s", room_uuid, url, exc)
         return {}
 
 
@@ -431,7 +458,8 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
     from django.core.cache import cache as _cache
     ctx = _cache.get(f"share_ctx:{conversation.id}:{room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
 
-    room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent)
+    # Pass the cached filters so the CRM can return room pricing/availability
+    room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent, filters=ctx.get("filters") or {})
     if not room:
         send_and_save_message(
             conversation,
@@ -657,7 +685,8 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
         _cache.set(f"share_ctx:{conversation.id}:{next_room_uuid}", ctx, timeout=86400)
         _cache.set(f"share_ctx:{conversation.id}:latest", ctx, timeout=86400)
 
-    room = fetch_room_by_uuid(next_room_uuid, user=conversation.assigned_agent)
+    # Pass filters so the CRM can return room with correct pricing
+    room = fetch_room_by_uuid(next_room_uuid, user=conversation.assigned_agent, filters=filters)
     if not room:
         send_and_save_message(conversation, msg_type="text", body=config.no_more_results_text)
         return
