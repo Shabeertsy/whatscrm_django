@@ -308,7 +308,13 @@ class ConversationSendMessageAPIView(APIView):
             broadcast_new_message(conv, msg)
         elif msg_type == 'interactive':
             interactive_options = serializer.validated_data.get('interactive_options', [])
+
             header_image_url = serializer.validated_data.get('header_image_url', '') or media_url
+            # WhatsApp does not support .webp in interactive card headers — strip it
+            # so the card is sent cleanly without a broken/missing header image
+            if header_image_url and header_image_url.lower().endswith('.webp'):
+                header_image_url = ''
+
             footer_text = serializer.validated_data.get('footer_text', '')
             share_context = serializer.validated_data.get('share_context') or {}
             msg = send_and_save_interactive_buttons(
