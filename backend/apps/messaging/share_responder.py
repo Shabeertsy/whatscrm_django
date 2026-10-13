@@ -328,7 +328,7 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
     filters = filters or {}
     text_blocks = []
 
-    # 1. Basic Details
+    # Basic Details
     if options.get("basicDetails", True):
         b_lines = []
         name = room.get("name")
@@ -352,7 +352,7 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
         if b_lines:
             text_blocks.append("\n".join(b_lines))
 
-    # 2. Search Requirements
+    # Search Requirements
     if options.get("searchFilters", True) and filters:
         filter_parts = []
         cin = filters.get("checkIn")
@@ -372,7 +372,7 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
         if filter_parts:
             text_blocks.append("*Requirements:*\n" + "\n".join(filter_parts))
 
-    # 3. Property Details
+    # Property Details
     if options.get("propertyDetails", True):
         p_lines = []
         p_name = room.get("owner_brand_name") or room.get("owner_username")
@@ -384,7 +384,7 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
         if p_lines:
             text_blocks.append("\n".join(p_lines))
 
-    # 4. Price & Rate Plans
+    # Price & Rate Plans
     if options.get("price", True):
         price_lines = []
         nights = (room.get("price_summary") or {}).get("nights") or filters.get("nights", 1)
@@ -407,7 +407,7 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
         if price_lines:
             text_blocks.append("\n".join(price_lines))
 
-    # 5. Location
+    # Location
     if options.get("location", True):
         loc = room.get("property_location") or {}
         loc_name = loc.get("name") if options.get("location_name", True) else ""
@@ -417,7 +417,7 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
         if loc_str:
             text_blocks.append(f"*Location:* {loc_str}")
 
-    # 6. Contact Details
+    # Contact Details
     if options.get("contactDetails", False):
         phone = room.get("owner_phone")
         if options.get("contactDetails_phone", True) and phone:
@@ -428,7 +428,6 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
 
 def _handle_details_action(conversation, room_uuid: str, config: PropertyShareConfig):
     """Dispatches media album and extended details configured in Settings."""
-    # Load share context saved when this card was originally sent
     from django.core.cache import cache as _cache
     ctx = _cache.get(f"share_ctx:{conversation.id}:{room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
 
@@ -444,7 +443,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
     # Collect previously sent media in this conversation to avoid duplicates
     sent_media_keys = _get_previously_sent_media_keys(conversation)
 
-    # 1. Property Photos FIRST (Deduplicated)
+    #  Property Photos FIRST (Deduplicated)
     if config.details_send_property_images:
         prop_details = room.get("property_details") or room.get("property") or {}
         prop_images = prop_details.get("property_images") or prop_details.get("images") or []
@@ -481,7 +480,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
             except Exception as e:
                 logger.error("[share_responder] Fail sending prop image: %s", e)
 
-    # 2. Room Photos SECOND (Deduplicated against hero cover photo & earlier shares)
+    #  Room Photos SECOND (Deduplicated against hero cover photo & earlier shares)
     if config.details_send_room_images:
         images = room.get("room_images") or []
         limit = max(1, config.details_room_image_limit)
@@ -517,7 +516,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
             except Exception as e:
                 logger.error("[share_responder] Fail sending room image: %s", e)
 
-    # 3. Property Video THIRD (Deduplicated)
+    #  Property Video THIRD (Deduplicated)
     if config.details_send_videos:
         prop_details = room.get("property_details") or room.get("property") or {}
         prop_videos = (
@@ -560,7 +559,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
             except Exception as e:
                 logger.error("[share_responder] Fail sending prop video: %s", e)
 
-    # 4. Details Text
+    #  Details Text
     if config.details_text_template:
         vars_map = _resolve_room_vars(room, ctx)
         details_body = _interpolate_template(config.details_text_template, vars_map)
@@ -574,7 +573,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
 
     details_body += "\n\nTap *Book Now* below to reserve this room."
 
-    # 5. Send with Book / Next / Exit buttons
+    #  Send with Book / Next / Exit buttons
     options = []
     if config.book_button_enabled:
         options.append({"id": f"share_book:{room_uuid}", "label": config.book_button_label[:20]})
@@ -622,7 +621,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
     """Sends the next room card with hero image and buttons, advancing the filtered room queue."""
     from django.core.cache import cache as _cache
 
-    # 1. Resolve queue of remaining filtered rooms for this conversation
+    # Resolve queue of remaining filtered rooms for this conversation
     cached_queue = _cache.get(f"share_ctx:{conversation.id}:queue")
     if cached_queue is not None:
         queue = list(cached_queue)
@@ -649,7 +648,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
     # Update active queue in cache
     _cache.set(f"share_ctx:{conversation.id}:queue", queue, timeout=86400)
 
-    # 2. Forward search filters and share options
+    #  Forward search filters and share options
     ctx = _cache.get(f"share_ctx:{conversation.id}:{current_room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
     if ctx:
         _cache.set(f"share_ctx:{conversation.id}:{next_room_uuid}", ctx, timeout=86400)
@@ -660,7 +659,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
         send_and_save_message(conversation, msg_type="text", body=config.no_more_results_text)
         return
 
-    # 3. Build next card text matching initial share selection & search filters
+    # Build next card text matching initial share selection & search filters
     filters = ctx.get("filters") or {}
     share_options = ctx.get("share_options") or {}
 
@@ -699,7 +698,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                     header_url, "image", phone=conversation.contact.phone
                 )
 
-    # 4. Send media matching Initial Share settings for the next room
+    # Send media matching Initial Share settings for the next room
     # (Hotel/Property photos first, Room photos second, Videos third; deduplicated)
     sent_keys = _get_previously_sent_media_keys(conversation)
     if header_url:
@@ -726,7 +725,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
     room_limit = max(1, config.initial_room_image_limit)
     video_limit = max(1, getattr(config, "initial_video_limit", 1) or 1)
 
-    # 1. First send property images
+    #  First send property images
     if send_prop_imgs:
         prop_details = room.get("property_details") or room.get("property") or {}
         prop_images = prop_details.get("property_images") or prop_details.get("images") or []
@@ -759,7 +758,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
             except Exception as e:
                 logger.error("[share_responder] Fail sending next property image: %s", e)
 
-    # 2. Then send room images
+    #  Then send room images
     if send_room_imgs:
         room_images = room.get("room_images") or []
         sent_room_count = 0
@@ -791,7 +790,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
             except Exception as e:
                 logger.error("[share_responder] Fail sending next room image: %s", e)
 
-    # 3. Then send video walkthrough if enabled
+    #  Then send video walkthrough if enabled
     if send_videos:
         prop_details = room.get("property_details") or room.get("property") or {}
         prop_videos = (
@@ -858,7 +857,7 @@ def _handle_book_action(conversation, room_uuid: str, config: PropertyShareConfi
     room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent)
     room_name = room.get("name") if room else "Room"
 
-    reply_text = f"✅ Thank you! Your booking interest for *{room_name}* has been received. Our team will contact you right away with confirmation details."
+    reply_text = f"Thank you! Your booking interest for *{room_name}* has been received. Our team will contact you right away with confirmation details."
     send_and_save_message(
         conversation,
         msg_type="text",
