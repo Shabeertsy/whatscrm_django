@@ -671,6 +671,7 @@ def send_and_save_message(
     template_media_type: str = "",
     sent_by=None,
     related_room_uuid=None,
+    raw_data=None,
 ):
     """
     1. Calls the Meta WhatsApp Cloud API.
@@ -723,6 +724,7 @@ def send_and_save_message(
         status=msg_status,
         wa_message_id=wa_message_id,
         timestamp=tz.now(),
+        raw_data=raw_data,
     )
 
     conversation.last_message_at = msg.timestamp

@@ -373,23 +373,27 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
     text_blocks = []
 
     # Basic Details
-    if options.get("basicDetails", True):
+    if options.get("basicDetails"):
         b_lines = []
         name = room.get("name")
-        if options.get("basicDetails_roomName", True) and name:
+        if options.get("basicDetails_roomName") and name:
             b_lines.append(f"*{name}*")
 
-        room_type = (room.get("room_type") or {}).get("name")
-        if options.get("basicDetails_roomType", True) and room_type:
+        room_type = (room.get("room_type") or {}).get("name") if isinstance(room.get("room_type"), dict) else room.get("room_type")
+        if options.get("basicDetails_roomType") and room_type:
             b_lines.append(f"*Room Type:* {room_type}")
 
         occupancy = room.get("max_occupancy")
-        if options.get("basicDetails_occupancy", True) and occupancy:
+        if options.get("basicDetails_occupancy") and occupancy:
             b_lines.append(f"*Max Occupancy:* {occupancy} Guests")
 
         amenities = room.get("amenities") or []
-        if options.get("basicDetails_amenities", True) and amenities:
-            a_names = ", ".join(a.get("name", "") for a in amenities if isinstance(a, dict) and a.get("name"))
+        if options.get("basicDetails_amenities") and amenities:
+            a_names = ", ".join(
+                a.get("name", "") if isinstance(a, dict) else str(a)
+                for a in amenities
+                if (isinstance(a, dict) and a.get("name")) or isinstance(a, str)
+            )
             if a_names:
                 b_lines.append(f"*Amenities:* {a_names}")
 
@@ -397,52 +401,53 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
             text_blocks.append("\n".join(b_lines))
 
     # Search Requirements
-    if options.get("searchFilters", True) and filters:
+    if options.get("searchFilters") and filters:
         filter_parts = []
         cin = filters.get("checkIn")
         cout = filters.get("checkOut")
-        if options.get("filters_dates", True) and (cin or cout):
+        if options.get("filters_dates") and (cin or cout):
             filter_parts.append(f"Dates: {cin or 'Any'} to {cout or 'Any'}")
 
         adults = filters.get("adults")
         children = filters.get("children")
-        if options.get("filters_guests", True) and (adults or children):
+        if options.get("filters_guests") and (adults or children):
             filter_parts.append(f"Guests: {adults or 1} Adults, {children or 0} Children")
 
         rooms_count = filters.get("rooms")
-        if options.get("filters_rooms", True) and rooms_count:
+        if options.get("filters_rooms") and rooms_count:
             filter_parts.append(f"Rooms Needed: {rooms_count}")
 
         if filter_parts:
             text_blocks.append("*Requirements:*\n" + "\n".join(filter_parts))
 
     # Property Details
-    if options.get("propertyDetails", True):
+    if options.get("propertyDetails"):
         p_lines = []
         p_name = room.get("owner_brand_name") or room.get("owner_username")
-        p_type = (room.get("property_type") or {}).get("name")
-        if options.get("propertyDetails_name", True) and p_name:
+        p_type = (room.get("property_type") or {}).get("name") if isinstance(room.get("property_type"), dict) else room.get("property_type")
+        if options.get("propertyDetails_name") and p_name:
             p_lines.append(f"*Property Name:* {p_name}")
-        if options.get("propertyDetails_type", True) and p_type:
+        if options.get("propertyDetails_type") and p_type:
             p_lines.append(f"*Property Type:* {p_type}")
         if p_lines:
             text_blocks.append("\n".join(p_lines))
 
     # Price & Rate Plans
-    if options.get("price", True):
+    if options.get("price") and options.get("price_amount"):
         price_lines = []
         nights = (room.get("price_summary") or {}).get("nights") or filters.get("nights", 1)
         rooms_count = filters.get("rooms", 1)
         price_val = (room.get("price_summary") or {}).get("grand_total") or room.get("grand_total") or room.get("price")
-        if options.get("price_amount", True) and price_val is not None:
+        if price_val is not None:
             formatted_price = f"₹{price_val:,}" if isinstance(price_val, (int, float)) else f"₹{price_val}"
             price_lines.append(f"*Price:* {formatted_price} (for {nights} night{'s' if nights != 1 else ''}, {rooms_count} room{'s' if rooms_count != 1 else ''})")
 
         rate_plans = room.get("rate_plans") or []
-        if options.get("price_meal_plans", True) and rate_plans:
+        if options.get("price_meal_plans") and rate_plans:
             plans = []
             for rp in rate_plans:
-                mp_name = (rp.get("meal_plan") or {}).get("name") or (rp.get("meal_plan") or {}).get("code") or "Meal Plan"
+                mp = rp.get("meal_plan") or {}
+                mp_name = mp.get("name") if isinstance(mp, dict) else str(mp) or "Meal Plan"
                 bp = rp.get("base_price", 0)
                 plans.append(f"{mp_name}: ₹{bp:,} extra" if isinstance(bp, (int, float)) else f"{mp_name}: ₹{bp} extra")
             if plans:
@@ -452,19 +457,19 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
             text_blocks.append("\n".join(price_lines))
 
     # Location
-    if options.get("location", True):
+    if options.get("location"):
         loc = room.get("property_location") or {}
-        loc_name = loc.get("name") if options.get("location_name", True) else ""
-        city = loc.get("city") if options.get("location_city", True) else ""
-        state = loc.get("state") if options.get("location_state", True) else ""
+        loc_name = loc.get("name") if options.get("location_name") else ""
+        city = loc.get("city") if options.get("location_city") else ""
+        state = loc.get("state") if options.get("location_state") else ""
         loc_str = ", ".join(filter(None, [loc_name, city, state]))
         if loc_str:
             text_blocks.append(f"*Location:* {loc_str}")
 
     # Contact Details
-    if options.get("contactDetails", False):
+    if options.get("contactDetails"):
         phone = room.get("owner_phone")
-        if options.get("contactDetails_phone", True) and phone:
+        if options.get("contactDetails_phone") and phone:
             text_blocks.append(f"*Phone:* {phone}")
 
     return "\n\n".join(text_blocks).strip()
@@ -493,10 +498,50 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
     # Collect previously sent media in this conversation to avoid duplicates
     sent_media_keys = _get_previously_sent_media_keys(conversation)
 
-    #  Property Photos FIRST (Deduplicated)
+    # Explicitly register all media that were sent initially or with the room card so they are never re-sent
+    share_options = ctx.get("share_options") or {}
+
+    prop_details = room.get("property_details") or room.get("property") or {}
+    prop_images = prop_details.get("property_images") or prop_details.get("images") or []
+    prop_initial_count = sum(1 for k, v in share_options.items() if k.startswith("images_property_") and v is True)
+    if prop_initial_count == 0 and share_options.get("images_property"):
+        prop_initial_count = 1
+    elif not share_options and config.initial_send_property_images:
+        prop_initial_count = config.initial_property_image_limit or 1
+
+    for i, img_obj in enumerate(prop_images):
+        if (share_options and share_options.get(f"images_property_{i}")) or (i < prop_initial_count):
+            u = img_obj.get("url") or img_obj.get("image") or ""
+            if u:
+                sent_media_keys.update(_extract_media_keys(u))
+
+    images = room.get("room_images") or []
+    room_initial_count = sum(1 for k, v in share_options.items() if k.startswith("images_room_") and v is True)
+    if room_initial_count == 0 and (share_options.get("images_room") or config.initial_send_room_images or True):
+        # Index 0 is always the initial cover / hero room photo
+        room_initial_count = 1
+
+    for i, img_obj in enumerate(images):
+        if (share_options and share_options.get(f"images_room_{i}")) or (i < room_initial_count):
+            u = img_obj.get("url") or img_obj.get("image") or ""
+            if u:
+                sent_media_keys.update(_extract_media_keys(u))
+
+    # Also register previously sent videos
+    prop_videos = (
+        prop_details.get("property_videos")
+        or prop_details.get("videos")
+        or room.get("room_videos")
+        or room.get("videos")
+        or []
+    )
+    if prop_videos and (share_options.get("videos_property") or config.initial_send_videos):
+        v_url = prop_videos[0].get("url") or prop_videos[0].get("video") or ""
+        if v_url:
+            sent_media_keys.update(_extract_media_keys(v_url))
+
+    # 1. Property Photos FIRST (Only send NEW, unsent photos)
     if config.details_send_property_images:
-        prop_details = room.get("property_details") or room.get("property") or {}
-        prop_images = prop_details.get("property_images") or prop_details.get("images") or []
         limit = max(1, config.details_property_image_limit)
         sent_prop_count = 0
         for img_obj in prop_images:
@@ -521,6 +566,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
                     media_url=proc_url,
                     storage_path=proc_path,
                     related_room_uuid=room_uuid,
+                    raw_data={"original_url": img_url},
                 )
                 sent_media_keys.update(cand_keys)
                 sent_media_keys.update(_extract_media_keys(proc_url))
@@ -530,9 +576,8 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
             except Exception as e:
                 logger.error("[share_responder] Fail sending prop image: %s", e)
 
-    #  Room Photos SECOND (Deduplicated against hero cover photo & earlier shares)
+    # 2. Room Photos SECOND (Only send NEW, unsent photos)
     if config.details_send_room_images:
-        images = room.get("room_images") or []
         limit = max(1, config.details_room_image_limit)
         sent_room_count = 0
         for img_obj in images:
@@ -557,6 +602,7 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
                     media_url=proc_url,
                     storage_path=proc_path,
                     related_room_uuid=room_uuid,
+                    raw_data={"original_url": img_url},
                 )
                 sent_media_keys.update(cand_keys)
                 sent_media_keys.update(_extract_media_keys(proc_url))
@@ -748,61 +794,41 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
         if filters.get("adults"):
             body_text += f"👤 Guests: {filters.get('adults', 1)} Adults\n"
 
-    # Hero image — send as a standalone image message BEFORE the card.
-    # We do NOT pass it as header_image_url to the interactive API call because
-    # Meta fetches the header URL from its own servers; presigned R2 URLs and
-    # other private/short-lived URLs are inaccessible to Meta and cause a 400.
-    # Standalone image sends upload the file directly to WhatsApp (via storage_path)
-    # so they always succeed regardless of URL accessibility.
-    if config.next_include_hero_image:
-        images = room.get("room_images") or []
-        if not images:
-            prop_details = room.get("property_details") or room.get("property") or {}
-            images = prop_details.get("property_images") or prop_details.get("images") or []
-        if images:
-            hero_raw_url = images[0].get("url") or images[0].get("image") or ""
-            if hero_raw_url:
-                try:
-                    hero_proc_url, hero_proc_path = process_external_media_url(
-                        hero_raw_url, "image", phone=conversation.contact.phone
-                    )
-                    send_and_save_message(
-                        conversation,
-                        msg_type="image",
-                        media_url=hero_proc_url,
-                        storage_path=hero_proc_path,
-                        related_room_uuid=next_room_uuid,
-                    )
-                except Exception as _hero_err:
-                    logger.error("[share_responder] Fail sending next hero image: %s", _hero_err)
-
-    # Send media matching Initial Share settings for the next room
-    # (Hotel/Property photos first, Room photos second, Videos third; deduplicated)
-    sent_keys = _get_previously_sent_media_keys(conversation)
-
-    # Check whether to send property photos, room photos, and videos
-    send_prop_imgs = (
-        config.initial_send_property_images or config.next_send_extra_album
-    )
+    # Determine media rules from share_options (initial popup selection) or fallback to config
+    send_prop_imgs = False
+    prop_limit = 0
     if share_options and "images_property" in share_options:
         send_prop_imgs = bool(share_options.get("images_property"))
+        sel_prop = sum(1 for k, v in share_options.items() if k.startswith("images_property_") and v is True)
+        prop_limit = sel_prop if sel_prop > 0 else (config.initial_property_image_limit or 1)
+    else:
+        send_prop_imgs = config.initial_send_property_images or config.next_send_extra_album
+        prop_limit = config.initial_property_image_limit or 1
 
-    send_room_imgs = (
-        config.initial_send_room_images or config.next_send_extra_album
-    )
+    send_room_imgs = False
+    room_limit = 0
     if share_options and "images_room" in share_options:
         send_room_imgs = bool(share_options.get("images_room"))
+        sel_room = sum(1 for k, v in share_options.items() if k.startswith("images_room_") and v is True)
+        room_limit = sel_room if sel_room > 0 else (config.initial_room_image_limit or 1)
+    else:
+        send_room_imgs = config.initial_send_room_images or config.next_send_extra_album
+        room_limit = config.initial_room_image_limit or 1
 
-    send_videos = config.initial_send_videos
+    send_videos = False
+    video_limit = 0
     if share_options and "videos_property" in share_options:
         send_videos = bool(share_options.get("videos_property"))
+        video_limit = getattr(config, "initial_video_limit", 1) or 1
+    else:
+        send_videos = config.initial_send_videos
+        video_limit = getattr(config, "initial_video_limit", 1) or 1
 
-    prop_limit = max(1, config.initial_property_image_limit)
-    room_limit = max(1, config.initial_room_image_limit)
-    video_limit = max(1, getattr(config, "initial_video_limit", 1) or 1)
+    # Track media keys within this room dispatch to prevent duplicates in the same message batch
+    batch_sent_keys = set()
 
-    #  First send property images
-    if send_prop_imgs:
+    #  First send property images (hotel photos) up to prop_limit
+    if send_prop_imgs and prop_limit > 0:
         prop_details = room.get("property_details") or room.get("property") or {}
         prop_images = prop_details.get("property_images") or prop_details.get("images") or []
         sent_prop_count = 0
@@ -813,7 +839,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
             if not img_url:
                 continue
             cand_keys = _extract_media_keys(img_url)
-            if cand_keys & sent_keys:
+            if cand_keys & batch_sent_keys:
                 continue
             try:
                 proc_url, proc_path = process_external_media_url(
@@ -825,27 +851,32 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                     media_url=proc_url,
                     storage_path=proc_path,
                     related_room_uuid=next_room_uuid,
+                    raw_data={"original_url": img_url},
                 )
-                sent_keys.update(cand_keys)
-                sent_keys.update(_extract_media_keys(proc_url))
+                batch_sent_keys.update(cand_keys)
+                batch_sent_keys.update(_extract_media_keys(proc_url))
                 if proc_path:
-                    sent_keys.update(_extract_media_keys(proc_path))
+                    batch_sent_keys.update(_extract_media_keys(proc_path))
                 sent_prop_count += 1
             except Exception as e:
                 logger.error("[share_responder] Fail sending next property image: %s", e)
 
-    #  Then send room images
-    if send_room_imgs:
+    #  Then send room images up to room_limit (or 1 cover photo if room images was not selected but next_include_hero_image is on)
+    effective_room_limit = room_limit if send_room_imgs else (1 if config.next_include_hero_image else 0)
+    if effective_room_limit > 0:
         room_images = room.get("room_images") or []
+        if not room_images and not send_prop_imgs:
+            prop_details = room.get("property_details") or room.get("property") or {}
+            room_images = prop_details.get("property_images") or prop_details.get("images") or []
         sent_room_count = 0
         for img_obj in room_images:
-            if sent_room_count >= room_limit:
+            if sent_room_count >= effective_room_limit:
                 break
             img_url = img_obj.get("url") or img_obj.get("image") or ""
             if not img_url:
                 continue
             cand_keys = _extract_media_keys(img_url)
-            if cand_keys & sent_keys:
+            if cand_keys & batch_sent_keys:
                 continue
             try:
                 proc_url, proc_path = process_external_media_url(
@@ -857,17 +888,18 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                     media_url=proc_url,
                     storage_path=proc_path,
                     related_room_uuid=next_room_uuid,
+                    raw_data={"original_url": img_url},
                 )
-                sent_keys.update(cand_keys)
-                sent_keys.update(_extract_media_keys(proc_url))
+                batch_sent_keys.update(cand_keys)
+                batch_sent_keys.update(_extract_media_keys(proc_url))
                 if proc_path:
-                    sent_keys.update(_extract_media_keys(proc_path))
+                    batch_sent_keys.update(_extract_media_keys(proc_path))
                 sent_room_count += 1
             except Exception as e:
                 logger.error("[share_responder] Fail sending next room image: %s", e)
 
-    #  Then send video walkthrough if enabled
-    if send_videos:
+    # Then send video walkthrough if enabled
+    if send_videos and video_limit > 0:
         prop_details = room.get("property_details") or room.get("property") or {}
         prop_videos = (
             prop_details.get("property_videos")
@@ -884,7 +916,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
             if not vid_url:
                 continue
             cand_keys = _extract_media_keys(vid_url)
-            if cand_keys & sent_keys:
+            if cand_keys & batch_sent_keys:
                 continue
             try:
                 proc_url, proc_path = process_external_media_url(
@@ -896,11 +928,12 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
                     media_url=proc_url,
                     storage_path=proc_path,
                     related_room_uuid=next_room_uuid,
+                    raw_data={"original_url": vid_url},
                 )
-                sent_keys.update(cand_keys)
-                sent_keys.update(_extract_media_keys(proc_url))
+                batch_sent_keys.update(cand_keys)
+                batch_sent_keys.update(_extract_media_keys(proc_url))
                 if proc_path:
-                    sent_keys.update(_extract_media_keys(proc_path))
+                    batch_sent_keys.update(_extract_media_keys(proc_path))
                 sent_vid_count += 1
             except Exception as e:
                 logger.error("[share_responder] Fail sending next video: %s", e)
@@ -922,7 +955,7 @@ def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: st
     # Strip leading/trailing whitespace — Meta rejects body_text that starts with newlines
     safe_body = body_text.strip()[:1024] or "Room details"
 
-    # Guard: Meta rejects interactive messages with 0 buttons — fall back to plain text
+    # Guard: Meta rejects interactive messages with 0 buttons 
     if options:
         send_and_save_interactive_buttons(
             conversation,

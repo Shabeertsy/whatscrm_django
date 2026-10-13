@@ -278,6 +278,7 @@ class ConversationSendMessageAPIView(APIView):
                 
         storage_path = serializer.validated_data.get('storage_path', '')
 
+        original_media_url = media_url
         # Process external media URLs (download, convert webp, save locally)
         if media_url and not storage_path:
             from apps.messaging.utils import process_external_media_url
@@ -301,6 +302,7 @@ class ConversationSendMessageAPIView(APIView):
                 sent_by=request.user,
                 status='pending',
                 timestamp=django_tz.now(),
+                raw_data={"original_url": original_media_url} if original_media_url else None,
             )
             compress_chat_video.delay(msg.id)
             conv.last_message_at = msg.timestamp
@@ -336,7 +338,7 @@ class ConversationSendMessageAPIView(APIView):
                     _cache.set(
                         f"share_ctx:{conv.id}:{related_room_uuid}",
                         share_context,
-                        timeout=86400,  # 24 hours
+                        timeout=86400,  
                     )
                     if share_context.get("room_data"):
                         _cache.set(f"share_ctx_room_{related_room_uuid}", share_context["room_data"], timeout=86400)
@@ -371,6 +373,7 @@ class ConversationSendMessageAPIView(APIView):
                 template_language=template_language,
                 sent_by=request.user,
                 related_room_uuid=related_room_uuid,
+                raw_data={"original_url": original_media_url} if original_media_url else None,
             )
 
         return Response(MessageSerializer(msg).data, status=status.HTTP_201_CREATED)
