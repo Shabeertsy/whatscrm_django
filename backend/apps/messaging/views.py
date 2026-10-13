@@ -683,7 +683,7 @@ class WebhookView(APIView):
             conv = Conversation.objects.filter(
                 contact=contact,
                 instance=instance
-            ).order_by('-updated_at').first()
+            ).order_by('-last_message_at').first()
 
             if not conv:
                 conv = Conversation.objects.create(
