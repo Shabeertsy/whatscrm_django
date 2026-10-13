@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, memo } from "react";
+import React, { useEffect, useRef, useState, memo, useCallback } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { useMessagingStore, messagingStore } from "../../../store/messagingStore";
@@ -21,6 +21,8 @@ interface ChatWindowProps {
 
 export const ChatWindow = memo(function ChatWindow({ conversation, messages, isLoading, isAiActive, onReply }: ChatWindowProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -31,24 +33,58 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
   const hasMore = hasMoreMessages[conversation.id];
   const offset = messageOffsets[conversation.id] || 0;
 
-  const handleScroll = () => {
-    if (scrollRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      // Show button if we are scrolled up by more than 100px from the bottom
-      setShowScrollButton(scrollHeight - scrollTop - clientHeight > 100);
+  const isInitialLoadRef = useRef(true);
+  const isAtBottomRef = useRef(true);
+  const isLoadingOlderRef = useRef(false);
+  const activeConvIdRef = useRef(conversation.id);
 
-      if (scrollTop < 50 && hasMore && !isLoadingMoreMessages) {
-        handleLoadMore();
-      }
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = 'auto') => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({
+        top: scrollRef.current.scrollHeight,
+        behavior,
+      });
+      isAtBottomRef.current = true;
+    }
+  }, []);
+
+  const handleScroll = () => {
+    if (!scrollRef.current) return;
+    const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+    const isNearBottom = distanceFromBottom < 150;
+
+    isAtBottomRef.current = isNearBottom;
+    // Show button if we are scrolled up by more than 100px from the bottom
+    setShowScrollButton(distanceFromBottom > 100);
+
+    // Only load more if:
+    // 1. Initial scroll to bottom has settled
+    // 2. Not currently loading older messages
+    // 3. User actively scrolled near the top (< 50px)
+    // 4. The container is actually scrollable (scrollHeight > clientHeight + 50)
+    // 5. hasMore is true
+    if (
+      !isInitialLoadRef.current &&
+      !isLoadingOlderRef.current &&
+      !isLoadingMoreMessages &&
+      hasMore &&
+      scrollHeight > clientHeight + 50 &&
+      scrollTop < 50
+    ) {
+      handleLoadMore();
     }
   };
 
   const handleLoadMore = async () => {
+    if (isLoadingMoreMessages || isLoadingOlderRef.current) return;
     messagingStore.setState({ isLoadingMoreMessages: true });
+    isLoadingOlderRef.current = true;
+
     try {
       const oldScrollHeight = scrollRef.current?.scrollHeight || 0;
       const limit = 50;
-      
+
       const res = await messagingApi.getConversationMessages(conversation.id, limit, offset);
       const newMessages = [...res.data.results].reverse();
       const nextHasMore = !!res.data.next;
@@ -57,26 +93,66 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
       messagingStore.prependMessages(conversation.id, newMessages, nextHasMore, nextOffset);
 
       // Restore scroll position after DOM updates
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         if (scrollRef.current) {
           const newScrollHeight = scrollRef.current.scrollHeight;
           scrollRef.current.scrollTop = newScrollHeight - oldScrollHeight;
         }
-      }, 0);
+        setTimeout(() => {
+          isLoadingOlderRef.current = false;
+        }, 150);
+      });
     } catch (err) {
       console.error('Failed to load older messages', err);
       messagingStore.setState({ isLoadingMoreMessages: false });
+      isLoadingOlderRef.current = false;
     }
   };
 
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTo({
-        top: scrollRef.current.scrollHeight,
-        behavior: 'smooth'
-      });
+  // Reset to initial load whenever active conversation ID changes
+  useEffect(() => {
+    if (activeConvIdRef.current !== conversation.id) {
+      activeConvIdRef.current = conversation.id;
+      isInitialLoadRef.current = true;
+      isAtBottomRef.current = true;
     }
-  };
+  }, [conversation.id]);
+
+  // Handle messages change and auto-scroll
+  useEffect(() => {
+    if (isLoadingOlderRef.current) return;
+
+    if (isInitialLoadRef.current || isAtBottomRef.current) {
+      scrollToBottom('auto');
+    }
+
+    const timer = setTimeout(() => {
+      isInitialLoadRef.current = false;
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [messages, scrollToBottom]);
+
+  // ResizeObserver to keep pinned to bottom as media/images/interactive cards expand
+  useEffect(() => {
+    const contentEl = contentRef.current;
+    if (!contentEl) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      if (isLoadingOlderRef.current) return;
+
+      if (isInitialLoadRef.current || isAtBottomRef.current) {
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      }
+    });
+
+    resizeObserver.observe(contentEl);
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   const confirmDelete = async () => {
     if (!deleteId) return;
@@ -92,37 +168,6 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
       setIsDeleting(false);
     }
   };
-
-  const prevConvId = useRef(conversation.id);
-  const prevMessagesLength = useRef(messages.length);
-
-  // Auto-scroll logic
-  useEffect(() => {
-    if (scrollRef.current) {
-      const isNewConversation = prevConvId.current !== conversation.id;
-      const { scrollTop, scrollHeight, clientHeight } = scrollRef.current;
-      const wasNearBottom = scrollHeight - scrollTop - clientHeight < 150;
-      
-      // Scroll to bottom if:
-      // 1. It's a new conversation being loaded
-      // 2. Initial messages just finished loading (length went from 0 to > 0)
-      // 3. We were already near the bottom (new incoming message)
-      // 4. User just sent a message (new message at the end, and we assume they want to see it)
-      if (
-        isNewConversation || 
-        (prevMessagesLength.current === 0 && messages.length > 0) ||
-        (messages.length > prevMessagesLength.current && wasNearBottom) ||
-        (messages.length === 0) 
-      ) {
-        scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      }
-      
-      if (isNewConversation) {
-        prevConvId.current = conversation.id;
-      }
-      prevMessagesLength.current = messages.length;
-    }
-  }, [messages, conversation.id]);
 
   const handleToggleStatus = async () => {
     const nextStatus: 'open' | 'resolved' = conversation.status === 'resolved' ? 'open' : 'resolved';
@@ -215,46 +260,53 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
       {/* Messages Area */}
       <div
         ref={scrollRef}
-        onScroll={handleScroll} className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#efeae2] dark:bg-slate-950/50 relative">
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 bg-[#efeae2] dark:bg-slate-950/50 relative"
+      >
+        <div
+          className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
+          style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/r_QPEkMbpXb.png")' }}
+        />
 
-        <div className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none" style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/r_QPEkMbpXb.png")' }}></div>
-
-        {isLoading ? (
-          <div className="flex justify-center p-4">
-            <span className="px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-[10px] text-slate-500 shadow-sm">
-              Loading messages...
-            </span>
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex justify-center p-4">
-            <span className="px-3 py-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full text-[10px] text-slate-500 shadow-sm">
-              No messages in this conversation yet. Send one below to start.
-            </span>
-          </div>
-        ) : (
-          <>
-            {isLoadingMoreMessages && (
-              <div className="flex justify-center py-2">
-                <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
-              </div>
-            )}
-            {messages.map((m) => (
-              <MessageBubble
-                key={m.id}
-                message={m}
-                isOutbound={m.direction === 'outbound'}
-                onReply={onReply}
-                onDelete={setDeleteId}
-              />
-            ))}
-          </>
-        )}
+        <div ref={contentRef} className="space-y-4 relative z-0">
+          {isLoading ? (
+            <div className="flex justify-center p-4">
+              <span className="px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-[10px] text-slate-500 shadow-sm">
+                Loading messages...
+              </span>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex justify-center p-4">
+              <span className="px-3 py-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full text-[10px] text-slate-500 shadow-sm">
+                No messages in this conversation yet. Send one below to start.
+              </span>
+            </div>
+          ) : (
+            <>
+              {isLoadingMoreMessages && (
+                <div className="flex justify-center py-2">
+                  <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />
+                </div>
+              )}
+              {messages.map((m) => (
+                <MessageBubble
+                  key={m.id}
+                  message={m}
+                  isOutbound={m.direction === 'outbound'}
+                  onReply={onReply}
+                  onDelete={setDeleteId}
+                />
+              ))}
+              <div ref={bottomRef} className="h-px w-full pointer-events-none" />
+            </>
+          )}
+        </div>
       </div>
 
       {/* Scroll to Bottom Button */}
       {showScrollButton && (
         <button
-          onClick={scrollToBottom}
+          onClick={() => scrollToBottom('smooth')}
           className="absolute bottom-6 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full shadow-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all z-20 flex items-center justify-center group"
           title="Scroll to bottom"
         >
