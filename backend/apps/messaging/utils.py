@@ -333,9 +333,18 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
         data["text"] = {"preview_url": False, "body": message_text}
         
     elif msg_type in ["image", "video", "document", "audio", "sticker"]:
-        # Try to upload the file directly if we have a local storage path
+        # Try to upload the file directly if we have a local storage path, or reuse cached media_id
         media_id = None
-        if storage_path:
+        from django.core.cache import cache
+        import hashlib
+        media_key = storage_path or media_url
+        cache_key = f"wa_uploaded_media_id:{phone_number_id}:{hashlib.md5(media_key.encode()).hexdigest()}"
+        cached_id = cache.get(cache_key)
+      
+        if cached_id:
+            media_id = cached_id
+       
+        elif storage_path:
             import mimetypes
             mime_type, _ = mimetypes.guess_type(storage_path)
             if not mime_type:
@@ -343,6 +352,8 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
                 
             try:
                 media_id = upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type)
+                if media_id:
+                    cache.set(cache_key, media_id, timeout=86400 * 20)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error(f"Failed to upload media to Meta: {e}")
@@ -769,19 +780,28 @@ def process_external_media_url(media_url, msg_type, phone="general"):
             import logging
             logging.getLogger(__name__).error(f"Failed to parse R2 URL: {e}")
 
-    #  Check if it's a .webp that needs conversion
+    # Check cache for previously processed external media
+    from django.core.cache import cache
+    import hashlib
+    url_hash = hashlib.md5(media_url.encode()).hexdigest()
+    cache_key = f"wa_proc_media_url:{url_hash}"
+    cached_proc = cache.get(cache_key)
+    if cached_proc and isinstance(cached_proc, dict):
+        return cached_proc["url"], cached_proc["path"]
+
+    # Check if it's a .webp that needs conversion or a video for direct Meta upload
     filename = os.path.basename(media_url.split('?')[0])
     is_webp = filename.lower().endswith('.webp')
     
-    # If it's not a webp, let Meta fetch it directly
-    if not (msg_type == 'image' and is_webp):
+    # Process if image is webp OR if msg_type is video
+    if not ((msg_type == 'image' and is_webp) or msg_type == 'video'):
         return media_url, ""
         
     import requests
     from django.core.files.base import ContentFile
     
     try:
-        res = requests.get(media_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=20)
+        res = requests.get(media_url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=25)
         if not res.ok:
             return media_url, ""
             
@@ -808,7 +828,7 @@ def process_external_media_url(media_url, msg_type, phone="general"):
                 logging.getLogger(__name__).error(f"Failed to convert webp to jpeg: {e}")
                 
         file_obj = ContentFile(content, name=filename)
-        file_obj.content_type = content_type
+        file_obj.content_type = content_type or ('video/mp4' if msg_type == 'video' else 'image/jpeg')
         
         saved_data = save_whatsapp_media(file_obj, phone)
         saved_path = saved_data['path']
@@ -819,6 +839,7 @@ def process_external_media_url(media_url, msg_type, phone="general"):
         except Exception:
             new_media_url = f"{settings.MEDIA_URL}{saved_path}" if hasattr(settings, 'MEDIA_URL') else f"/media/{saved_path}"
             
+        cache.set(cache_key, {"url": new_media_url, "path": saved_path}, timeout=86400 * 14)
         return new_media_url, saved_path
     except Exception as e:
         import logging

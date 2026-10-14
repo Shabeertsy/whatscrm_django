@@ -608,8 +608,11 @@ def _send_media_batch(
             if proc_path:
                 sent_keys.update(_extract_media_keys(proc_path))
             sent_count += 1
-            # Brief delay so WhatsApp ingests media in proper sequence
-            time.sleep(0.4)
+            # Inter-media pacing: give WhatsApp gateway and the recipient device time to digest media in order
+            if msg_type == "video":
+                time.sleep(2.0)
+            else:
+                time.sleep(1.0)
         except Exception as e:
             logger.error("[share_responder] Failed sending %s: %s", msg_type, e)
 
@@ -646,10 +649,11 @@ def _dispatch_room_media(
     share_options: dict,
     sent_keys: set,
     is_initial: bool = False,
-) -> int:
+) -> dict:
     """
     Sends property images, room images, and videos in that exact order,
     honoring user selections or config limits.
+    Returns stats dict: {"images_sent": int, "videos_sent": int, "total_sent": int}
     """
     prop_details = room.get("property_details") or room.get("property") or {}
     prop_images = prop_details.get("property_images") or prop_details.get("images") or []
@@ -662,31 +666,37 @@ def _dispatch_room_media(
         or []
     )
 
-    total_sent = 0
+    prop_sent = 0
+    room_sent = 0
+    video_sent = 0
 
-    #  Property Images
+    # 1. Property Images
     send_prop_imgs = share_options.get("images_property", config.initial_send_property_images)
     prop_limit = max(1, config.initial_property_image_limit or 1)
     selected_prop = _filter_selected_media(prop_images, "images_property", send_prop_imgs, prop_limit, share_options)
     if selected_prop:
-        total_sent += _send_media_batch(conversation, selected_prop, "image", len(selected_prop), sent_keys, room_uuid, is_initial=is_initial)
+        prop_sent = _send_media_batch(conversation, selected_prop, "image", len(selected_prop), sent_keys, room_uuid, is_initial=is_initial)
 
-    #  Room Images
+    # 2. Room Images
     send_room_imgs = share_options.get("images_room", config.initial_send_room_images)
     room_limit = max(1, config.initial_room_image_limit or 1)
     fallback_room_imgs = room_images or (prop_images if not send_prop_imgs else [])
     selected_room = _filter_selected_media(fallback_room_imgs, "images_room", send_room_imgs, room_limit, share_options)
     if selected_room:
-        total_sent += _send_media_batch(conversation, selected_room, "image", len(selected_room), sent_keys, room_uuid, is_initial=is_initial)
+        room_sent = _send_media_batch(conversation, selected_room, "image", len(selected_room), sent_keys, room_uuid, is_initial=is_initial)
 
-    #  Property Videos
+    # 3. Property Videos
     send_videos = share_options.get("videos_property", config.initial_send_videos)
     video_limit = max(1, getattr(config, "initial_video_limit", 1) or 1)
     selected_vids = _filter_selected_media(prop_videos, "videos_property", send_videos, video_limit, share_options)
     if selected_vids:
-        total_sent += _send_media_batch(conversation, selected_vids, "video", len(selected_vids), sent_keys, room_uuid, is_initial=is_initial)
+        video_sent = _send_media_batch(conversation, selected_vids, "video", len(selected_vids), sent_keys, room_uuid, is_initial=is_initial)
 
-    return total_sent
+    return {
+        "images_sent": prop_sent + room_sent,
+        "videos_sent": video_sent,
+        "total_sent": prop_sent + room_sent + video_sent,
+    }
 
 
 def _register_initial_sent_media(
@@ -821,16 +831,24 @@ def execute_initial_share(
     for idx, room in enumerate(rooms):
         room_uuid = room.get("uuid", "")
         is_last_room = (idx == total_rooms - 1)
-        is_interactive = use_interactive and is_last_room
+        is_interactive = use_interactive
 
         # Step A: Send all images and videos FIRST
+        dispatch_res = {}
         try:
-            _dispatch_room_media(conversation, room, room_uuid, config, share_options, sent_media_keys, is_initial=True)
+            dispatch_res = _dispatch_room_media(conversation, room, room_uuid, config, share_options, sent_media_keys, is_initial=True)
         except Exception as media_err:
             logger.error("[share_responder] Error sending room media: %s", media_err)
 
-        # Pause slightly so WhatsApp processes all media before the text/interactive message
-        time.sleep(1.0)
+        # Dynamic delivery buffer before sending the text/interactive buttons:
+        # If a video was sent, wait 2.5s for WhatsApp CDN to route it to the device before sending text.
+        # If images were sent, wait 1.2s.
+        if isinstance(dispatch_res, dict) and dispatch_res.get("videos_sent", 0) > 0:
+            time.sleep(2.5)
+        elif isinstance(dispatch_res, dict) and dispatch_res.get("total_sent", 0) > 0:
+            time.sleep(1.2)
+        elif not isinstance(dispatch_res, dict) and dispatch_res:
+            time.sleep(1.2)
 
         # Step B: Build room details text
         body_text = build_share_text(room, share_options, filters=filters)
@@ -845,12 +863,13 @@ def execute_initial_share(
         }
 
         if is_interactive:
-            next_room_uuid = queue[0] if queue else ""
+            next_room_uuid = (queue[0] if queue else "") if is_last_room else ""
             options = _build_action_buttons(
                 config,
                 room_uuid,
                 next_room_uuid=next_room_uuid,
                 include_details=config.details_button_enabled,
+                allow_exit=is_last_room,
             )
             safe_body = body_text.strip()[:1024] or "Room details"
             if options:
@@ -958,6 +977,7 @@ def _build_action_buttons(
     *,
     next_room_uuid: str = "",
     include_details: bool = False,
+    allow_exit: bool = True,
 ) -> list:
     buttons = []
     if config.book_button_enabled:
@@ -971,7 +991,7 @@ def _build_action_buttons(
             "id": f"share_next:{room_uuid}:{next_room_uuid}",
             "label": config.next_button_label[:20],
         })
-    elif config.exit_button_enabled and len(buttons) < 3:
+    elif allow_exit and config.exit_button_enabled and len(buttons) < 3:
         buttons.append({"id": f"share_exit:{room_uuid}", "label": config.exit_button_label[:20]})
 
     return buttons
@@ -1063,12 +1083,19 @@ def _handle_next_action(
         cache.set(f"share_ctx:{conversation.id}:latest", ctx, timeout=86400)
 
     # Dispatch media first (images & videos)
+    dispatch_res = {}
     try:
         batch_sent_keys = _get_previously_sent_media_keys(conversation)
-        _dispatch_room_media(conversation, room, next_room_uuid, config, share_options, batch_sent_keys)
+        dispatch_res = _dispatch_room_media(conversation, room, next_room_uuid, config, share_options, batch_sent_keys)
     except Exception as media_err:
         logger.error("[share_responder] Error dispatching next room media: %s", media_err)
-    time.sleep(1.0)
+
+    if isinstance(dispatch_res, dict) and dispatch_res.get("videos_sent", 0) > 0:
+        time.sleep(2.5)
+    elif isinstance(dispatch_res, dict) and dispatch_res.get("total_sent", 0) > 0:
+        time.sleep(1.2)
+    elif not isinstance(dispatch_res, dict) and dispatch_res:
+        time.sleep(1.2)
 
     # Dispatch room details with interactive action buttons AFTER all images and videos
     body_text = _build_next_card_text(room, share_options, filters)

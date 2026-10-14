@@ -268,36 +268,40 @@ export function HotelRooms() {
 
           {/* Image Gallery */}
           {images.length > 0 ? (
-            <div className="relative rounded-md overflow-hidden bg-slate-100 dark:bg-slate-800" style={{ height: 300 }}>
-              <img src={images[imgIdx]?.url || images[imgIdx]?.image} alt={room.name}
-                className="w-full h-full object-cover transition-all duration-500" />
+            <div className="relative rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner" style={{ minHeight: 380, maxHeight: 480, height: 430 }}>
+              {/* Blurred ambient backdrop to fill any letterboxing smoothly */}
+              <div
+                className="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-110 pointer-events-none"
+                style={{ backgroundImage: `url(${images[imgIdx]?.url || images[imgIdx]?.image})` }}
+              />
+
+              {/* Main fully visible image without any cropping */}
+              <img
+                src={images[imgIdx]?.url || images[imgIdx]?.image}
+                alt={room.name}
+                className="relative z-10 max-h-full max-w-full w-auto h-auto object-contain transition-all duration-300 mx-auto select-none"
+              />
+
               {images.length > 1 && (
                 <>
                   <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 p-2 rounded-full shadow-md hover:scale-110 transition">
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full shadow-lg backdrop-blur-sm hover:scale-110 transition">
                     <ChevronLeft className="h-5 w-5" />
                   </button>
                   <button onClick={() => setImgIdx(i => (i + 1) % images.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-slate-800/90 p-2 rounded-full shadow-md hover:scale-110 transition">
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full shadow-lg backdrop-blur-sm hover:scale-110 transition">
                     <ChevronRight className="h-5 w-5" />
                   </button>
-                  <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5">
-                    {images.map((_: any, i: number) => (
+
+                  {/* Thumbnails */}
+                  <div className="absolute bottom-0 left-0 right-0 p-3 flex gap-2 overflow-x-auto bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20 items-center justify-start">
+                    {images.map((img: any, i: number) => (
                       <button key={i} onClick={() => setImgIdx(i)}
-                        className={`h-2 rounded-full transition-all ${i === imgIdx ? 'w-5 bg-white' : 'w-2 bg-white/50'}`} />
+                        className={`h-12 w-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all shadow-md ${i === imgIdx ? 'border-white scale-105 ring-2 ring-emerald-500/50' : 'border-white/20 opacity-60 hover:opacity-100'}`}>
+                        <img src={img.url || img.image} alt="" className="h-full w-full object-cover" />
+                      </button>
                     ))}
                   </div>
-                  {/* Thumbnails */}
-                  {images.length > 1 && (
-                    <div className="absolute bottom-0 left-0 right-0 p-2 flex gap-2 overflow-x-auto bg-gradient-to-t from-black/40 to-transparent">
-                      {images.map((img: any, i: number) => (
-                        <button key={i} onClick={() => setImgIdx(i)}
-                          className={`h-12 w-16 flex-shrink-0 rounded-md overflow-hidden border-2 transition ${i === imgIdx ? 'border-white' : 'border-transparent opacity-60'}`}>
-                          <img src={img.url || img.image} alt="" className="h-full w-full object-cover" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </>
               )}
             </div>
