@@ -37,11 +37,16 @@ import hashlib
 
 
 
-def get_proxy_url(user):
-    active = UserActiveProxy.objects.filter(user=user).first()
-    if active:
-        return active.proxy.url.rstrip('/')
+def get_proxy_url(user=None):
+    if user:
+        active = UserActiveProxy.objects.filter(user=user).select_related('proxy').first()
+        if active and active.proxy and active.proxy.url:
+            return active.proxy.url.rstrip('/')
+    fallback_active = UserActiveProxy.objects.filter(proxy__isnull=False).select_related('proxy').first()
+    if fallback_active and fallback_active.proxy and fallback_active.proxy.url:
+        return fallback_active.proxy.url.rstrip('/')
     return settings.PROXY_API_BASE_URL.rstrip('/')
+
 
 class ProxyURLViewSet(viewsets.ModelViewSet):
     serializer_class = ProxyURLSerializer

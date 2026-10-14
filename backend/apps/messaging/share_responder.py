@@ -504,16 +504,17 @@ def _get_sent_room_uuids(conversation, current_uuid: str = "") -> set:
         if last_initial_msg:
             cutoff_dt = last_initial_msg.timestamp
 
-    qs = Message.objects.filter(
-        conversation=conversation,
-        direction="outbound",
-        related_room_uuid__isnull=False,
-    ).exclude(related_room_uuid="")
-
     if cutoff_dt:
-        qs = qs.filter(timestamp__gte=cutoff_dt)
+        qs = Message.objects.filter(
+            conversation=conversation,
+            direction="outbound",
+            timestamp__gte=cutoff_dt,
+            related_room_uuid__isnull=False,
+        ).exclude(related_room_uuid="")
+        sent = set(qs.values_list("related_room_uuid", flat=True))
+    else:
+        sent = set()
 
-    sent = set(qs.values_list("related_room_uuid", flat=True))
     if current_uuid:
         sent.add(current_uuid)
     return sent
@@ -856,6 +857,7 @@ def execute_initial_share(
                     options=options,
                     sent_by=sent_by,
                     related_room_uuid=room_uuid,
+                    raw_data=raw_meta,
                 )
             else:
                 send_and_save_message(
@@ -973,7 +975,7 @@ def _build_action_buttons(
     return buttons
 
 
-def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: str):
+def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: str, raw_data: dict = None):
     # Meta WhatsApp rejects body_text starting with newlines or exceeding 1024 characters
     safe_body = body.strip()[:1024] or "Room details"
     if options:
@@ -982,6 +984,7 @@ def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: st
             body_text=safe_body,
             options=options,
             related_room_uuid=room_uuid,
+            raw_data=raw_data or {},
         )
     else:
         send_and_save_message(
@@ -989,6 +992,7 @@ def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: st
             msg_type="text",
             body=safe_body,
             related_room_uuid=room_uuid,
+            raw_data=raw_data or {},
         )
 
 
@@ -1068,7 +1072,13 @@ def _handle_next_action(
     options = _build_action_buttons(
         config, next_room_uuid, next_room_uuid=subsequent_room_uuid, include_details=True
     )
-    _dispatch_card_or_text(conversation, body_text, options, next_room_uuid)
+    _dispatch_card_or_text(
+        conversation,
+        body_text,
+        options,
+        next_room_uuid,
+        raw_data={"is_next_share": True, "room_uuid": next_room_uuid},
+    )
 
 
 def _handle_book_action(conversation, room_uuid: str, config: PropertyShareConfig):
