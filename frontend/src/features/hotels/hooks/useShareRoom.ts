@@ -40,7 +40,7 @@ export function useShareRoom(
 
     const initial: Record<string, boolean> = {
       basicDetails: true,
-      basicDetails_roomName: false,
+      basicDetails_roomName: true,
       basicDetails_roomType: true,
       basicDetails_occupancy: true,
       basicDetails_amenities: true,
