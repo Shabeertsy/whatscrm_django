@@ -265,3 +265,25 @@ class PropertyShareConfigSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'created_at', 'updated_at', 'owner']
 
+
+class InitialShareSerializer(serializers.Serializer):
+    conversation_ids = serializers.ListField(
+        child=serializers.CharField(),
+        required=True,
+        allow_empty=False,
+    )
+    rooms = serializers.ListField(
+        child=serializers.DictField(),
+        required=True,
+        allow_empty=False,
+    )
+    filters = serializers.DictField(required=False, default=dict)
+    share_options = serializers.DictField(required=False, default=dict)
+    use_interactive = serializers.BooleanField(required=False, default=True)
+    available_room_uuids = serializers.ListField(
+        child=serializers.CharField(),
+        required=False,
+        default=list,
+    )
+
+

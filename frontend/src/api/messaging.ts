@@ -149,6 +149,21 @@ export const messagingApi = {
     return apiClient.post<Message>(`${BASE}/conversations/${conversationId}/send/`, payload);
   },
 
+  /** Trigger initial property share in background */
+  sendInitialShare(payload: {
+    conversation_ids: string[];
+    rooms: any[];
+    filters?: Record<string, any>;
+    share_options: Record<string, boolean>;
+    use_interactive?: boolean;
+    available_room_uuids?: string[];
+  }) {
+    return apiClient.post<{ status: string; message: string; conversation_count: number; room_count: number }>(
+      `${BASE}/initial-share/`,
+      payload
+    );
+  },
+
   /** Get property share configuration */
   getPropertyShareConfig() {
     return apiClient.get<import('../features/settings/types/shareSettings').PropertyShareConfig>(`${BASE}/share-settings/`);

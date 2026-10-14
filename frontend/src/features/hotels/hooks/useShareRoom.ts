@@ -99,202 +99,20 @@ export function useShareRoom(
   };
 
   const handleSendShare = async () => {
+    if (selectedChats.length === 0 || !selectedShareRoom) return;
     setIsSendingShare(true);
     try {
       const rooms = Array.isArray(selectedShareRoom) ? selectedShareRoom : [selectedShareRoom];
-      const allInitialRoomUuids = new Set(rooms.map((r: any) => r.uuid));
+      const availableUuids = (availableRooms || []).map((r: any) => r.uuid).filter(Boolean);
 
-      for (const chatId of selectedChats) {
-        for (let idx = 0; idx < rooms.length; idx++) {
-          const room = rooms[idx];
-          const isLastRoom = idx === rooms.length - 1;
-          const isInteractive = useInteractiveButtons && isLastRoom;
-
-          const textOptions = { ...shareOptions };
-          const text = generateShareText(room, textOptions, filters, amenityOptions, propertyTypeOptions);
-
-          const heroUrl = (room.room_images && room.room_images[0])
-            ? (room.room_images[0].url || room.room_images[0].image || '')
-            : '';
-          const heroClean = (heroUrl || '').split('?')[0].toLowerCase();
-
-          const mediaToInclude: any[] = [];
-          if (shareOptions.images_property) {
-            const propLimit = Math.max(1, buttonConfig.initial_property_image_limit ?? 1);
-            const propImages = room.property_details?.property_images || room.property_images || room.property?.images || [];
-            const selectedPropImages = propImages.filter((_: any, i: number) =>
-              shareOptions[`images_property_${i}`] !== undefined
-                ? shareOptions[`images_property_${i}`]
-                : (i < propLimit)
-            );
-            mediaToInclude.push(...selectedPropImages.slice(0, propLimit).map((img: any) => ({ ...img, msg_type: 'image' })));
-          }
-          if (shareOptions.images_room && room.room_images) {
-            const roomLimit = Math.max(1, buttonConfig.initial_room_image_limit ?? 1);
-            const selectedRoomImages = room.room_images.filter((_: any, i: number) =>
-              shareOptions[`images_room_${i}`] !== undefined
-                ? shareOptions[`images_room_${i}`]
-                : (i < roomLimit)
-            );
-            if (isInteractive) {
-              // The heroUrl is already attached as the header image on the interactive button card.
-              // So the card itself is 1 room photo. Any extra room photo attachments should be capped at (roomLimit - 1).
-              const extraLimit = Math.max(0, roomLimit - 1);
-              const extraRoomImages = selectedRoomImages.filter((img: any) => {
-                const u = (img.url || img.image || '').trim().split('?')[0].toLowerCase();
-                return u !== heroClean;
-              });
-              mediaToInclude.push(...extraRoomImages.slice(0, extraLimit).map((img: any) => ({ ...img, msg_type: 'image' })));
-            } else {
-              mediaToInclude.push(...selectedRoomImages.slice(0, roomLimit).map((img: any) => ({ ...img, msg_type: 'image' })));
-            }
-          }
-          if (shareOptions.videos_property) {
-            const videoLimit = Math.max(1, buttonConfig.initial_video_limit ?? 1);
-            const propVideos = room.property_details?.property_videos || room.property_videos || room.property?.videos || [];
-            const selectedVideos = propVideos.filter((_: any, i: number) =>
-              shareOptions[`videos_property_${i}`] !== undefined
-                ? shareOptions[`videos_property_${i}`]
-                : (i < videoLimit)
-            );
-            mediaToInclude.push(...selectedVideos.slice(0, videoLimit).map((vid: any) => ({ ...vid, msg_type: 'video' })));
-          }
-
-          // If interactive buttons are enabled and this is the last room, prepare the buttons
-          let interactiveOpts: { id: string; label: string; action_type: string }[] = [];
-          let remainingQueueUuids: string[] = [];
-          let candidateNextRooms: any[] = [];
-
-          if (isInteractive) {
-            if (buttonConfig.book_button_enabled) {
-              interactiveOpts.push({
-                id: `share_book:${room.uuid}`,
-                label: buttonConfig.book_button_label.slice(0, 20),
-                action_type: 'book',
-              });
-            }
-            if (buttonConfig.details_button_enabled) {
-              interactiveOpts.push({
-                id: `share_details:${room.uuid}`,
-                label: buttonConfig.details_button_label.slice(0, 20),
-                action_type: 'more_details',
-              });
-            }
-            // Candidate next rooms:
-            // Exclude ALL rooms that were selected / shared initially in this batch,
-            // so clicking "Next" never sends a previously shared property again!
-            candidateNextRooms = (availableRooms || []).filter(
-              (r: any) => r && r.uuid && !allInitialRoomUuids.has(r.uuid)
-            );
-
-            const nextRoom = candidateNextRooms.length > 0 ? candidateNextRooms[0] : null;
-            remainingQueueUuids = candidateNextRooms.map((r: any) => r.uuid);
-
-            if (nextRoom && buttonConfig.next_button_enabled && interactiveOpts.length < 3) {
-              interactiveOpts.push({
-                id: `share_next:${room.uuid}:${nextRoom.uuid}`,
-                label: buttonConfig.next_button_label.slice(0, 20),
-                action_type: 'next',
-              });
-            } else if (buttonConfig.exit_button_enabled && interactiveOpts.length < 3) {
-              interactiveOpts.push({
-                id: `share_exit:${room.uuid}`,
-                label: buttonConfig.exit_button_label.slice(0, 20),
-                action_type: 'exit',
-              });
-            }
-          }
-
-          // Avoid duplicating hero image as an extra attachment if heroUrl is already sent on the card header
-          const seenMediaKeys = new Set<string>();
-          if (isInteractive && heroClean) {
-            seenMediaKeys.add(heroClean);
-          }
-
-          const filteredMedia = mediaToInclude.filter((m: any) => {
-            const rawUrl = (m.url || m.image || m.video || '').trim();
-            if (!rawUrl) return false;
-            const cleanUrl = rawUrl.split('?')[0].toLowerCase();
-            if (seenMediaKeys.has(cleanUrl)) return false;
-            seenMediaKeys.add(cleanUrl);
-            return true;
-          });
-
-          // First send extra media attachments (property images first, room images second, videos third)
-          for (const media of filteredMedia) {
-            const url = media.url || media.image || media.video;
-            if (url) {
-              const msgType = media.msg_type || 'image';
-              const mediaRes = await messagingApi.sendMessage(chatId, {
-                body: '',
-                msg_type: msgType,
-                media_url: url,
-                related_room_uuid: room.uuid
-              });
-              import('../../../store/messagingStore').then(({ messagingStore }) => {
-                messagingStore.pushMessage(chatId, mediaRes.data);
-                messagingStore.updateConversationMeta(chatId, {
-                  last_message: { body: '', direction: 'outbound', msg_type: msgType, media_url: url, related_room_uuid: room.uuid },
-                  last_message_at: mediaRes.data.timestamp
-                });
-              });
-            }
-          }
-
-          // Then send either interactive card (only for the last room) or standard text
-          if (isInteractive && interactiveOpts.length > 0) {
-            const roomsMap: Record<string, any> = {};
-            // Include all initial rooms so details/booking works for any of them
-            rooms.forEach((r: any) => {
-              if (r && r.uuid) roomsMap[r.uuid] = r;
-            });
-            // Also include candidate next rooms
-            (candidateNextRooms || []).slice(0, 15).forEach((r: any) => {
-              if (r && r.uuid) roomsMap[r.uuid] = r;
-            });
-
-            const interactiveRes = await messagingApi.sendMessage(chatId, {
-              body: text.slice(0, 1024),
-              msg_type: 'interactive',
-              related_room_uuid: room.uuid,
-              header_image_url: heroUrl,
-              interactive_options: interactiveOpts.slice(0, 3),
-
-              // Persist filters + selected data and filtered room queue
-              share_context: {
-                filters: filters || {},
-                share_options: shareOptions,
-                room_uuid: room.uuid,
-                room_data: room,
-                rooms_map: roomsMap,
-                queue: remainingQueueUuids,
-              },
-            });
-
-            import('../../../store/messagingStore').then(({ messagingStore }) => {
-              messagingStore.pushMessage(chatId, interactiveRes.data);
-              messagingStore.updateConversationMeta(chatId, {
-                last_message: { body: interactiveRes.data.body, direction: 'outbound', msg_type: 'interactive', media_url: heroUrl, related_room_uuid: room.uuid },
-                last_message_at: interactiveRes.data.timestamp
-              });
-            });
-          } else {
-            const textRes = await messagingApi.sendMessage(chatId, {
-              body: text,
-              msg_type: 'text',
-              related_room_uuid: room.uuid
-            });
-
-            import('../../../store/messagingStore').then(({ messagingStore }) => {
-              messagingStore.pushMessage(chatId, textRes.data);
-              messagingStore.updateConversationMeta(chatId, {
-                last_message: { body: textRes.data.body, direction: 'outbound', msg_type: 'text', media_url: '', related_room_uuid: room.uuid },
-                last_message_at: textRes.data.timestamp
-              });
-            });
-          }
-        }
-      }
+      await messagingApi.sendInitialShare({
+        conversation_ids: selectedChats,
+        rooms,
+        filters: filters || {},
+        share_options: shareOptions,
+        use_interactive: useInteractiveButtons,
+        available_room_uuids: availableUuids,
+      });
 
       // If we shared to at least one chat, make the first one active so Inbox opens it
       if (selectedChats.length > 0) {
@@ -306,8 +124,8 @@ export function useShareRoom(
       closeShare();
       navigate('/messaging');
     } catch (err) {
-      console.error("Failed to send", err);
-      alert('Some messages failed to send. Please check your connection.');
+      console.error("Failed to send initial share", err);
+      alert('Failed to send share. Please check your connection and try again.');
     } finally {
       setIsSendingShare(false);
     }

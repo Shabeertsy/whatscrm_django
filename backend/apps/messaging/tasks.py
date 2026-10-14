@@ -338,3 +338,55 @@ def process_inbound_message(self, conversation_id: int):
                 logger.error(f"[Task] Failed to handle max retries fallback: {inner_exc}")
 
         raise self.retry(exc=exc)
+
+
+@shared_task(bind=True, max_retries=1)
+def initial_share_task(
+    self,
+    conversation_ids,
+    rooms,
+    filters,
+    share_options,
+    use_interactive=True,
+    available_room_uuids=None,
+    user_id=None,
+):
+    from django.contrib.auth import get_user_model
+    from apps.messaging.models import Conversation, PropertyShareConfig
+    from apps.messaging.share_responder import execute_initial_share
+
+    User = get_user_model()
+    user = User.objects.filter(id=user_id).first() if user_id else None
+    config = PropertyShareConfig.get_effective_config(user=user)
+
+    for conv_id in conversation_ids:
+        try:
+            conv = Conversation.objects.filter(id=conv_id).first()
+            if not conv:
+                continue
+            execute_initial_share(
+                conversation=conv,
+                rooms=rooms,
+                filters=filters,
+                share_options=share_options,
+                config=config,
+                use_interactive=use_interactive,
+                available_room_uuids=available_room_uuids,
+                sent_by=user,
+            )
+        except Exception as err:
+            logger.error("[initial_share_task] Error sharing to conv %s: %s", conv_id, err)
+
+
+@shared_task(bind=True, max_retries=1)
+def share_button_reply_task(self, conversation_id, button_id, button_title=""):
+    from apps.messaging.models import Conversation
+    from apps.messaging.share_responder import handle_share_button_reply
+
+    try:
+        conv = Conversation.objects.filter(id=conversation_id).first()
+        if conv:
+            handle_share_button_reply(conv, button_id, button_title)
+    except Exception as exc:
+        logger.error("[share_button_reply_task] Error handling button %s: %s", button_id, exc)
+

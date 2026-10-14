@@ -10,6 +10,7 @@ from .views import (
     MessageDeleteAPIView, WebhookView, MediaUploadAPIView,
     CustomMessageViewSet, MediaLibraryViewSet,
     PropertyShareConfigAPIView,
+    InitialShareAPIView,
 )
 
 router = DefaultRouter()
@@ -21,8 +22,9 @@ urlpatterns = [
     # Contacts & ViewSets
     path('', include(router.urls)),
 
-    # Property Share Config 
+    # Property Share Config & Initial Share
     path('share-settings/', PropertyShareConfigAPIView.as_view(), name='property-share-settings'),
+    path('initial-share/', InitialShareAPIView.as_view(), name='initial-share'),
 
     # Conversations
     path('conversations/', ConversationListAPIView.as_view(), name='conversation-list'),

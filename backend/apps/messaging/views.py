@@ -36,6 +36,7 @@ from .serializers import (
     CustomMessageSerializer,
     MediaLibraryItemSerializer,
     PropertyShareConfigSerializer,
+    InitialShareSerializer,
 )
 
 from .utils import (
@@ -1061,5 +1062,33 @@ class PropertyShareConfigAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+
+class InitialShareAPIView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        serializer = InitialShareSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        from apps.messaging.share_responder import dispatch_initial_share_async
+        dispatch_initial_share_async(
+            conversation_ids=data["conversation_ids"],
+            rooms=data["rooms"],
+            filters=data.get("filters", {}),
+            share_options=data.get("share_options", {}),
+            use_interactive=data.get("use_interactive", True),
+            available_room_uuids=data.get("available_room_uuids", []),
+            user=request.user,
+        )
+
+        return Response({
+            "status": "queued",
+            "message": "Initial share started in background.",
+            "conversation_count": len(data["conversation_ids"]),
+            "room_count": len(data["rooms"]),
+        }, status=status.HTTP_202_ACCEPTED)
+
 
 
