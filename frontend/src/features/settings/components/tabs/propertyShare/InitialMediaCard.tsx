@@ -14,7 +14,7 @@ export function InitialMediaCard({ config, onChange }: InitialMediaCardProps) {
         <div className="flex items-center gap-2">
           <Layers className="h-4 w-4 text-[#007e3a]" />
           <h4 className="text-sm font-bold text-slate-900 dark:text-white">
-            First-Time Share Media Settings (Hotel Page)
+            First-Time Share Media Settings
           </h4>
         </div>
       </div>

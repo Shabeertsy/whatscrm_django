@@ -24,8 +24,7 @@ export function Hotels() {
   const isSuperuser = currentUser?.is_superuser || currentUser?.role === 'Owner';
   const locationName = currentUser?.location_name || '';
 
-  const { filters, setFilters, updateFilter, toggleArrayFilter, clearFilters } = useRoomFilters();
-  const [page, setPage] = useState(1);
+  const { filters, setFilters, updateFilter, toggleArrayFilter, clearFilters, page, setPage } = useRoomFilters();
   const { 
     rooms, loading, error, totalPages, resultCount, 
     propertyTypeOptions, roomTypeOptions, amenityOptions,

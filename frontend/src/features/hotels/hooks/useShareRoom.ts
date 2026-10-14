@@ -102,10 +102,14 @@ export function useShareRoom(
     setIsSendingShare(true);
     try {
       const rooms = Array.isArray(selectedShareRoom) ? selectedShareRoom : [selectedShareRoom];
+      const allInitialRoomUuids = new Set(rooms.map((r: any) => r.uuid));
 
       for (const chatId of selectedChats) {
         for (let idx = 0; idx < rooms.length; idx++) {
           const room = rooms[idx];
+          const isLastRoom = idx === rooms.length - 1;
+          const isInteractive = useInteractiveButtons && isLastRoom;
+
           const textOptions = { ...shareOptions };
           const text = generateShareText(room, textOptions, filters, amenityOptions, propertyTypeOptions);
 
@@ -118,13 +122,21 @@ export function useShareRoom(
           if (shareOptions.images_property) {
             const propLimit = Math.max(1, buttonConfig.initial_property_image_limit ?? 1);
             const propImages = room.property_details?.property_images || room.property_images || room.property?.images || [];
-            const selectedPropImages = propImages.filter((_: any, i: number) => shareOptions[`images_property_${i}`]);
+            const selectedPropImages = propImages.filter((_: any, i: number) =>
+              shareOptions[`images_property_${i}`] !== undefined
+                ? shareOptions[`images_property_${i}`]
+                : (i < propLimit)
+            );
             mediaToInclude.push(...selectedPropImages.slice(0, propLimit).map((img: any) => ({ ...img, msg_type: 'image' })));
           }
           if (shareOptions.images_room && room.room_images) {
             const roomLimit = Math.max(1, buttonConfig.initial_room_image_limit ?? 1);
-            const selectedRoomImages = room.room_images.filter((_: any, i: number) => shareOptions[`images_room_${i}`]);
-            if (useInteractiveButtons) {
+            const selectedRoomImages = room.room_images.filter((_: any, i: number) =>
+              shareOptions[`images_room_${i}`] !== undefined
+                ? shareOptions[`images_room_${i}`]
+                : (i < roomLimit)
+            );
+            if (isInteractive) {
               // The heroUrl is already attached as the header image on the interactive button card.
               // So the card itself is 1 room photo. Any extra room photo attachments should be capped at (roomLimit - 1).
               const extraLimit = Math.max(0, roomLimit - 1);
@@ -140,16 +152,20 @@ export function useShareRoom(
           if (shareOptions.videos_property) {
             const videoLimit = Math.max(1, buttonConfig.initial_video_limit ?? 1);
             const propVideos = room.property_details?.property_videos || room.property_videos || room.property?.videos || [];
-            const selectedVideos = propVideos.filter((_: any, i: number) => shareOptions[`videos_property_${i}`]);
+            const selectedVideos = propVideos.filter((_: any, i: number) =>
+              shareOptions[`videos_property_${i}`] !== undefined
+                ? shareOptions[`videos_property_${i}`]
+                : (i < videoLimit)
+            );
             mediaToInclude.push(...selectedVideos.slice(0, videoLimit).map((vid: any) => ({ ...vid, msg_type: 'video' })));
           }
 
-          // If interactive buttons are enabled, prepare the buttons
+          // If interactive buttons are enabled and this is the last room, prepare the buttons
           let interactiveOpts: { id: string; label: string; action_type: string }[] = [];
           let remainingQueueUuids: string[] = [];
           let candidateNextRooms: any[] = [];
 
-          if (useInteractiveButtons) {
+          if (isInteractive) {
             if (buttonConfig.book_button_enabled) {
               interactiveOpts.push({
                 id: `share_book:${room.uuid}`,
@@ -165,11 +181,11 @@ export function useShareRoom(
               });
             }
             // Candidate next rooms:
-            // 1. If multiple rooms were selected to share, take subsequent selected rooms.
-            // 2. If a single room was shared, take all other rooms from the filtered search.
-            candidateNextRooms = (rooms.length > 1 && idx < rooms.length - 1)
-              ? rooms.slice(idx + 1)
-              : (availableRooms || []).filter((r: any) => r.uuid !== room.uuid);
+            // Exclude ALL rooms that were selected / shared initially in this batch,
+            // so clicking "Next" never sends a previously shared property again!
+            candidateNextRooms = (availableRooms || []).filter(
+              (r: any) => r && r.uuid && !allInitialRoomUuids.has(r.uuid)
+            );
 
             const nextRoom = candidateNextRooms.length > 0 ? candidateNextRooms[0] : null;
             remainingQueueUuids = candidateNextRooms.map((r: any) => r.uuid);
@@ -191,7 +207,7 @@ export function useShareRoom(
 
           // Avoid duplicating hero image as an extra attachment if heroUrl is already sent on the card header
           const seenMediaKeys = new Set<string>();
-          if (useInteractiveButtons && heroClean) {
+          if (isInteractive && heroClean) {
             seenMediaKeys.add(heroClean);
           }
 
@@ -225,9 +241,14 @@ export function useShareRoom(
             }
           }
 
-          // Then send either interactive card or standard text
-          if (useInteractiveButtons && interactiveOpts.length > 0) {
-            const roomsMap: Record<string, any> = { [room.uuid]: room };
+          // Then send either interactive card (only for the last room) or standard text
+          if (isInteractive && interactiveOpts.length > 0) {
+            const roomsMap: Record<string, any> = {};
+            // Include all initial rooms so details/booking works for any of them
+            rooms.forEach((r: any) => {
+              if (r && r.uuid) roomsMap[r.uuid] = r;
+            });
+            // Also include candidate next rooms
             (candidateNextRooms || []).slice(0, 15).forEach((r: any) => {
               if (r && r.uuid) roomsMap[r.uuid] = r;
             });

@@ -29,12 +29,12 @@ def _extract_media_keys(raw: str) -> set:
     if not clean:
         return keys
 
-    # 1. Base URL without query parameters or hash fragments
+    # Base URL without query parameters or hash fragments
     base_no_query = clean.split("?")[0].split("#")[0].rstrip("/").lower()
     if base_no_query:
         keys.add(base_no_query)
 
-    # 2. Parsed URL path and filename
+    # Parsed URL path and filename
     try:
         parsed = urlparse(clean)
         path = unquote(parsed.path or "").strip("/").lower()
@@ -51,7 +51,7 @@ def _extract_media_keys(raw: str) -> set:
     except Exception:
         pass
 
-    # 3. Direct basename fallback
+    # Direct basename fallback
     fname = os.path.basename(base_no_query)
     if fname and len(fname) > 3:
         keys.add(fname)
@@ -478,32 +478,116 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
     return "\n\n".join(text_blocks).strip()
 
 
-def _handle_details_action(conversation, room_uuid: str, config: PropertyShareConfig):
-    """Dispatches media album and extended details configured in Settings."""
-    from django.core.cache import cache as _cache
-    ctx = _cache.get(f"share_ctx:{conversation.id}:{room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
+def _get_sent_room_uuids(conversation, current_uuid: str = "") -> set:
+    from apps.messaging.models import Message
+    sent = set(
+        Message.objects.filter(
+            conversation=conversation,
+            direction="outbound",
+            related_room_uuid__isnull=False,
+        ).exclude(related_room_uuid="").values_list("related_room_uuid", flat=True)
+    )
+    if current_uuid:
+        sent.add(current_uuid)
+    return sent
 
-    # Pass the cached filters so the CRM can return room pricing/availability
-    room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent, filters=ctx.get("filters") or {})
+
+def _get_active_queue(conversation_id, fallback_uuids: list = None) -> list:
+    cached = cache.get(f"share_ctx:{conversation_id}:queue")
+    return list(cached) if cached is not None else list(fallback_uuids or [])
+
+
+def _filter_unsent_queue(queue: list, sent_uuids: set) -> list:
+    return [u for u in queue if u and u not in sent_uuids]
+
+
+def _resolve_room_data(room_uuid: str, user, ctx: dict) -> dict:
+    if not room_uuid:
+        return {}
+    room = fetch_room_by_uuid(room_uuid, user=user, filters=ctx.get("filters") or {})
     if not room and ctx.get("rooms_map", {}).get(room_uuid):
         room = ctx["rooms_map"][room_uuid]
     if not room and ctx.get("room_data"):
         room = ctx.get("room_data")
+    return room or {}
 
-    if not room:
-        send_and_save_message(
-            conversation,
-            msg_type="text",
-            body="Could not retrieve extra room details at the moment.",
-        )
-        return
 
-    # Collect previously sent media in this conversation to avoid duplicates
-    sent_media_keys = _get_previously_sent_media_keys(conversation)
+def _advance_to_next_room(
+    target_uuid: str,
+    queue: list,
+    sent_uuids: set,
+    user,
+    filters: dict,
+    rooms_map: dict,
+) -> tuple:
+    if not target_uuid or target_uuid in sent_uuids:
+        target_uuid = queue.pop(0) if queue else ""
+    elif target_uuid in queue:
+        queue.remove(target_uuid)
 
-    # Explicitly register all media that were sent initially or with the room card so they are never re-sent
-    share_options = ctx.get("share_options") or {}
+    room = None
+    while target_uuid:
+        room = fetch_room_by_uuid(target_uuid, user=user, filters=filters) or rooms_map.get(target_uuid)
+        if room:
+            break
+        target_uuid = queue.pop(0) if queue else ""
 
+    return target_uuid, room or {}, queue
+
+
+def _send_media_batch(
+    conversation,
+    media_list: list,
+    msg_type: str,
+    limit: int,
+    sent_keys: set,
+    room_uuid: str,
+) -> int:
+    if not media_list or limit <= 0:
+        return 0
+
+    sent_count = 0
+    phone = conversation.contact.phone if conversation.contact else ""
+
+    for item in media_list:
+        if sent_count >= limit:
+            break
+        raw_url = item.get("url") or item.get("image") or item.get("video") or ""
+        if not raw_url:
+            continue
+
+        cand_keys = _extract_media_keys(raw_url)
+        if cand_keys & sent_keys:
+            continue
+
+        try:
+            proc_url, proc_path = process_external_media_url(raw_url, msg_type, phone=phone)
+            send_and_save_message(
+                conversation,
+                msg_type=msg_type,
+                media_url=proc_url,
+                storage_path=proc_path,
+                related_room_uuid=room_uuid,
+                raw_data={"original_url": raw_url} if msg_type == "image" else None,
+            )
+            sent_keys.update(cand_keys)
+            sent_keys.update(_extract_media_keys(proc_url))
+            if proc_path:
+                sent_keys.update(_extract_media_keys(proc_path))
+            sent_count += 1
+        except Exception as e:
+            logger.error("[share_responder] Failed sending %s: %s", msg_type, e)
+
+    return sent_count
+
+
+def _register_initial_sent_media(
+    room: dict,
+    share_options: dict,
+    config: PropertyShareConfig,
+    conversation,
+    sent_keys: set,
+):
     prop_details = room.get("property_details") or room.get("property") or {}
     prop_images = prop_details.get("property_images") or prop_details.get("images") or []
     prop_initial_count = sum(1 for k, v in share_options.items() if k.startswith("images_property_") and v is True)
@@ -514,10 +598,8 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
         if (share_options and share_options.get(f"images_property_{i}")) or (i < prop_initial_count):
             u = img_obj.get("url") or img_obj.get("image") or ""
             if u:
-                sent_media_keys.update(_extract_media_keys(u))
+                sent_keys.update(_extract_media_keys(u))
 
-    # Any outbound image previously dispatched in this conversation means the primary property
-    # image (prop_images[0]) was already sent and must never be repeated in More Details.
     from apps.messaging.models import Message
     has_prior_image_msgs = Message.objects.filter(
         conversation=conversation, direction="outbound", msg_type="image"
@@ -525,21 +607,19 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
     if (has_prior_image_msgs or config.initial_send_property_images or share_options.get("images_property")) and prop_images:
         u0 = prop_images[0].get("url") or prop_images[0].get("image") or ""
         if u0:
-            sent_media_keys.update(_extract_media_keys(u0))
+            sent_keys.update(_extract_media_keys(u0))
 
     images = room.get("room_images") or []
     room_initial_count = sum(1 for k, v in share_options.items() if k.startswith("images_room_") and v is True)
     if room_initial_count == 0 and (share_options.get("images_room") or config.initial_send_room_images or True):
-        # Index 0 is always the initial cover / hero room photo
         room_initial_count = 1
 
     for i, img_obj in enumerate(images):
         if (share_options and share_options.get(f"images_room_{i}")) or (i < room_initial_count):
             u = img_obj.get("url") or img_obj.get("image") or ""
             if u:
-                sent_media_keys.update(_extract_media_keys(u))
+                sent_keys.update(_extract_media_keys(u))
 
-    # Also register previously sent videos
     prop_videos = (
         prop_details.get("property_videos")
         or prop_details.get("videos")
@@ -550,168 +630,136 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
     if prop_videos and (share_options.get("videos_property") or config.initial_send_videos):
         v_url = prop_videos[0].get("url") or prop_videos[0].get("video") or ""
         if v_url:
-            sent_media_keys.update(_extract_media_keys(v_url))
+            sent_keys.update(_extract_media_keys(v_url))
 
-    # 1. Property Photos FIRST (Only send NEW, unsent photos)
+
+def _dispatch_details_media(conversation, room: dict, room_uuid: str, config: PropertyShareConfig, sent_keys: set):
+    prop_details = room.get("property_details") or room.get("property") or {}
+    prop_images = prop_details.get("property_images") or prop_details.get("images") or []
+    room_images = room.get("room_images") or []
+    prop_videos = (
+        prop_details.get("property_videos")
+        or prop_details.get("videos")
+        or room.get("room_videos")
+        or room.get("videos")
+        or []
+    )
+
     if config.details_send_property_images:
-        limit = max(1, config.details_property_image_limit)
-        sent_prop_count = 0
-        for img_obj in prop_images:
-            if sent_prop_count >= limit:
-                break
-            img_url = img_obj.get("url") or img_obj.get("image") or ""
-            if not img_url:
-                continue
+        _send_media_batch(conversation, prop_images, "image", max(1, config.details_property_image_limit), sent_keys, room_uuid)
 
-            cand_keys = _extract_media_keys(img_url)
-            if cand_keys & sent_media_keys:
-                logger.info("[share_responder] Skipping previously sent property image: %s", img_url)
-                continue
-
-            try:
-                proc_url, proc_path = process_external_media_url(
-                    img_url, "image", phone=conversation.contact.phone
-                )
-                send_and_save_message(
-                    conversation,
-                    msg_type="image",
-                    media_url=proc_url,
-                    storage_path=proc_path,
-                    related_room_uuid=room_uuid,
-                    raw_data={"original_url": img_url},
-                )
-                sent_media_keys.update(cand_keys)
-                sent_media_keys.update(_extract_media_keys(proc_url))
-                if proc_path:
-                    sent_media_keys.update(_extract_media_keys(proc_path))
-                sent_prop_count += 1
-            except Exception as e:
-                logger.error("[share_responder] Fail sending prop image: %s", e)
-
-    # 2. Room Photos SECOND (Only send NEW, unsent photos)
     if config.details_send_room_images:
-        limit = max(1, config.details_room_image_limit)
-        sent_room_count = 0
-        for img_obj in images:
-            if sent_room_count >= limit:
-                break
-            img_url = img_obj.get("url") or img_obj.get("image") or ""
-            if not img_url:
-                continue
+        _send_media_batch(conversation, room_images, "image", max(1, config.details_room_image_limit), sent_keys, room_uuid)
 
-            cand_keys = _extract_media_keys(img_url)
-            if cand_keys & sent_media_keys:
-                logger.info("[share_responder] Skipping previously sent room image: %s", img_url)
-                continue
-
-            try:
-                proc_url, proc_path = process_external_media_url(
-                    img_url, "image", phone=conversation.contact.phone
-                )
-                send_and_save_message(
-                    conversation,
-                    msg_type="image",
-                    media_url=proc_url,
-                    storage_path=proc_path,
-                    related_room_uuid=room_uuid,
-                    raw_data={"original_url": img_url},
-                )
-                sent_media_keys.update(cand_keys)
-                sent_media_keys.update(_extract_media_keys(proc_url))
-                if proc_path:
-                    sent_media_keys.update(_extract_media_keys(proc_path))
-                sent_room_count += 1
-            except Exception as e:
-                logger.error("[share_responder] Fail sending room image: %s", e)
-
-    #  Property Video THIRD (Deduplicated)
     if config.details_send_videos:
-        prop_details = room.get("property_details") or room.get("property") or {}
-        prop_videos = (
-            prop_details.get("property_videos")
-            or prop_details.get("videos")
-            or room.get("room_videos")
-            or room.get("videos")
-            or []
-        )
-        limit = max(1, getattr(config, "details_video_limit", 1) or 1)
-        sent_vid_count = 0
-        for vid_obj in prop_videos:
-            if sent_vid_count >= limit:
-                break
-            vid_url = vid_obj.get("url") or vid_obj.get("video") or ""
-            if not vid_url:
-                continue
+        video_limit = max(1, getattr(config, "details_video_limit", 1) or 1)
+        _send_media_batch(conversation, prop_videos, "video", video_limit, sent_keys, room_uuid)
 
-            cand_keys = _extract_media_keys(vid_url)
-            if cand_keys & sent_media_keys:
-                logger.info("[share_responder] Skipping previously sent video: %s", vid_url)
-                continue
 
-            try:
-                proc_url, proc_path = process_external_media_url(
-                    vid_url, "video", phone=conversation.contact.phone
-                )
-                send_and_save_message(
-                    conversation,
-                    msg_type="video",
-                    media_url=proc_url,
-                    storage_path=proc_path,
-                    related_room_uuid=room_uuid,
-                )
-                sent_media_keys.update(cand_keys)
-                sent_media_keys.update(_extract_media_keys(proc_url))
-                if proc_path:
-                    sent_media_keys.update(_extract_media_keys(proc_path))
-                sent_vid_count += 1
-            except Exception as e:
-                logger.error("[share_responder] Fail sending prop video: %s", e)
+def _dispatch_next_media(conversation, room: dict, room_uuid: str, config: PropertyShareConfig, share_options: dict, sent_keys: set):
+    send_prop_imgs = share_options.get("images_property", config.initial_send_property_images or config.next_send_extra_album)
+    sel_prop = sum(1 for k, v in share_options.items() if k.startswith("images_property_") and v is True)
+    prop_limit = sel_prop if sel_prop > 0 else (config.initial_property_image_limit or 1)
 
-    #  Details Text
+    send_room_imgs = share_options.get("images_room", config.initial_send_room_images or config.next_send_extra_album)
+    sel_room = sum(1 for k, v in share_options.items() if k.startswith("images_room_") and v is True)
+    room_limit = sel_room if sel_room > 0 else (config.initial_room_image_limit or 1)
+    effective_room_limit = room_limit if send_room_imgs else (1 if config.next_include_hero_image else 0)
+
+    send_videos = share_options.get("videos_property", config.initial_send_videos)
+    video_limit = getattr(config, "initial_video_limit", 1) or 1
+
+    prop_details = room.get("property_details") or room.get("property") or {}
+    prop_images = prop_details.get("property_images") or prop_details.get("images") or []
+    room_images = room.get("room_images") or (prop_images if not send_prop_imgs else [])
+    prop_videos = (
+        prop_details.get("property_videos")
+        or prop_details.get("videos")
+        or room.get("room_videos")
+        or room.get("videos")
+        or []
+    )
+
+    if send_prop_imgs and prop_limit > 0:
+        _send_media_batch(conversation, prop_images, "image", prop_limit, sent_keys, room_uuid)
+
+    if effective_room_limit > 0:
+        _send_media_batch(conversation, room_images, "image", effective_room_limit, sent_keys, room_uuid)
+
+    if send_videos and video_limit > 0:
+        _send_media_batch(conversation, prop_videos, "video", video_limit, sent_keys, room_uuid)
+
+
+def _build_details_body(room: dict, ctx: dict, config: PropertyShareConfig) -> str:
     if config.details_text_template:
         vars_map = _resolve_room_vars(room, ctx)
-        details_body = _interpolate_template(config.details_text_template, vars_map)
+        body = _interpolate_template(config.details_text_template, vars_map)
     else:
         fields = config.details_selected_fields or DEFAULT_DETAILS_FIELDS
-        details_body = build_share_text(room, fields, filters=ctx.get("filters"))
-        if not details_body:
+        body = build_share_text(room, fields, filters=ctx.get("filters"))
+        if not body:
             vars_map = _resolve_room_vars(room, ctx)
             room_name = vars_map.get("name") or "Room Details"
-            details_body = f"🏨 *{room_name}*"
+            body = f"🏨 *{room_name}*"
 
-    details_body += "\n\nTap *Book Now* below to reserve this room."
+    return f"{body}\n\nTap *Book Now* below to reserve this room."
 
-    #  Send with Book / Next / Exit buttons
-    options = []
+
+def _build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
+    body = build_share_text(room, share_options, filters=filters) if share_options else ""
+    if body:
+        return body
+
+    name = room.get("name") or "Room Option"
+    prop_name = room.get("owner_brand_name") or room.get("owner_username") or "Property"
+    price = room.get("price") or room.get("grand_total") or ""
+    price_str = f"₹{price:,}" if isinstance(price, (int, float)) else (f"₹{price}" if price else "")
+    city = (room.get("property_location") or {}).get("city", "")
+
+    lines = [f" *{name}* ({prop_name})"]
+    if city:
+        lines.append(f" Location: {city}")
+    if price_str:
+        lines.append(f" Price: {price_str}")
+
+    cin = filters.get("checkIn")
+    cout = filters.get("checkOut")
+    if cin or cout:
+        lines.append(f" Dates: {cin or 'Any'} – {cout or 'Any'}")
+    if filters.get("adults"):
+        lines.append(f" Guests: {filters.get('adults', 1)} Adults")
+
+    return "\n".join(lines)
+
+
+def _build_action_buttons(
+    config: PropertyShareConfig,
+    room_uuid: str,
+    *,
+    next_room_uuid: str = "",
+    include_details: bool = False,
+) -> list:
+    buttons = []
     if config.book_button_enabled:
-        options.append({"id": f"share_book:{room_uuid}", "label": config.book_button_label[:20]})
+        buttons.append({"id": f"share_book:{room_uuid}", "label": config.book_button_label[:20]})
 
-    cached_queue = _cache.get(f"share_ctx:{conversation.id}:queue")
-    if cached_queue is not None:
-        queue = list(cached_queue)
-    else:
-        queue = list(ctx.get("queue") or [])
+    if include_details and config.details_button_enabled and len(buttons) < 3:
+        buttons.append({"id": f"share_details:{room_uuid}", "label": config.details_button_label[:20]})
 
-    remaining_queue = [u for u in queue if u != room_uuid]
-    next_room_uuid = remaining_queue[0] if remaining_queue else ""
-
-    if next_room_uuid and config.next_button_enabled and len(options) < 3:
-        options.append({
+    if next_room_uuid and config.next_button_enabled and len(buttons) < 3:
+        buttons.append({
             "id": f"share_next:{room_uuid}:{next_room_uuid}",
             "label": config.next_button_label[:20],
         })
-    elif config.next_button_enabled and len(options) < 3 and cached_queue is None:
-        options.append({
-            "id": f"share_next:{room_uuid}:",
-            "label": config.next_button_label[:20],
-        })
+    elif config.exit_button_enabled and len(buttons) < 3:
+        buttons.append({"id": f"share_exit:{room_uuid}", "label": config.exit_button_label[:20]})
 
-    if config.exit_button_enabled and len(options) < 3:
-        options.append({"id": f"share_exit:{room_uuid}", "label": config.exit_button_label[:20]})
+    return buttons
 
-    # Strip leading/trailing whitespace — Meta rejects body_text that starts with newlines
-    safe_body = details_body.strip()[:1024] or "Room details"
 
+def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: str):
+    # Meta WhatsApp rejects body_text starting with newlines or exceeding 1024 characters
+    safe_body = body.strip()[:1024] or "Room details"
     if options:
         send_and_save_interactive_buttons(
             conversation,
@@ -728,279 +776,94 @@ def _handle_details_action(conversation, room_uuid: str, config: PropertyShareCo
         )
 
 
-def _handle_next_action(conversation, current_room_uuid: str, next_room_uuid: str, remaining_uuids: list, config: PropertyShareConfig):
-    """Sends the next room card with hero image and buttons, advancing the filtered room queue."""
-    from django.core.cache import cache as _cache
+def _handle_details_action(conversation, room_uuid: str, config: PropertyShareConfig):
+    ctx = (
+        cache.get(f"share_ctx:{conversation.id}:{room_uuid}")
+        or cache.get(f"share_ctx:{conversation.id}:latest")
+        or {}
+    )
+    room = _resolve_room_data(room_uuid, conversation.assigned_agent, ctx)
+    if not room:
+        send_and_save_message(
+            conversation,
+            msg_type="text",
+            body="Could not retrieve extra room details at the moment.",
+        )
+        return
 
-    # Resolve queue of remaining filtered rooms for this conversation
-    cached_queue = _cache.get(f"share_ctx:{conversation.id}:queue")
-    if cached_queue is not None:
-        queue = list(cached_queue)
-    else:
-        queue = list(remaining_uuids)
+    sent_media_keys = _get_previously_sent_media_keys(conversation)
+    _register_initial_sent_media(room, ctx.get("share_options") or {}, config, conversation, sent_media_keys)
+    _dispatch_details_media(conversation, room, room_uuid, config, sent_media_keys)
 
-    # Resolve target next room
-    if not next_room_uuid:
-        if queue:
-            next_room_uuid = queue.pop(0)
-        else:
-            send_and_save_message(
-                conversation,
-                msg_type="text",
-                body=config.no_more_results_text,
-            )
-            return
-    else:
-        if next_room_uuid in queue:
-            queue.remove(next_room_uuid)
+    details_body = _build_details_body(room, ctx, config)
 
-    #  Forward search filters and share options
-    ctx = _cache.get(f"share_ctx:{conversation.id}:{current_room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
+    sent_room_uuids = _get_sent_room_uuids(conversation, current_uuid=room_uuid)
+    remaining_queue = _filter_unsent_queue(_get_active_queue(conversation.id), sent_room_uuids)
+    next_room_uuid = remaining_queue[0] if remaining_queue else ""
+
+    options = _build_action_buttons(config, room_uuid, next_room_uuid=next_room_uuid, include_details=False)
+    _dispatch_card_or_text(conversation, details_body, options, room_uuid)
+
+
+def _handle_next_action(
+    conversation,
+    current_room_uuid: str,
+    next_room_uuid: str,
+    remaining_uuids: list,
+    config: PropertyShareConfig,
+):
+    ctx = (
+        cache.get(f"share_ctx:{conversation.id}:{current_room_uuid}")
+        or cache.get(f"share_ctx:{conversation.id}:latest")
+        or {}
+    )
     filters = ctx.get("filters") or {}
     share_options = ctx.get("share_options") or {}
+    rooms_map = ctx.get("rooms_map") or {}
 
-    # Pass filters so the CRM can return room with correct pricing
-    room = fetch_room_by_uuid(next_room_uuid, user=conversation.assigned_agent, filters=filters)
-    if not room and ctx.get("rooms_map", {}).get(next_room_uuid):
-        room = ctx["rooms_map"][next_room_uuid]
+    sent_room_uuids = _get_sent_room_uuids(conversation, current_uuid=current_room_uuid)
+    queue = _filter_unsent_queue(
+        _get_active_queue(conversation.id, fallback_uuids=remaining_uuids),
+        sent_room_uuids,
+    )
 
-    # If the target room failed to fetch (e.g. 404 from CRM API), advance to next room in queue
-    while not room and queue:
-        next_room_uuid = queue.pop(0)
-        room = fetch_room_by_uuid(next_room_uuid, user=conversation.assigned_agent, filters=filters)
-        if not room and ctx.get("rooms_map", {}).get(next_room_uuid):
-            room = ctx["rooms_map"][next_room_uuid]
+    next_room_uuid, room, queue = _advance_to_next_room(
+        next_room_uuid, queue, sent_room_uuids, conversation.assigned_agent, filters, rooms_map
+    )
 
-    if not room:
+    if not room or not next_room_uuid:
         send_and_save_message(conversation, msg_type="text", body=config.no_more_results_text)
         return
 
-    # The subsequent room after this one
     subsequent_room_uuid = queue[0] if queue else ""
-    # Update active queue in cache
-    _cache.set(f"share_ctx:{conversation.id}:queue", queue, timeout=86400)
-
+    cache.set(f"share_ctx:{conversation.id}:queue", queue, timeout=86400)
     if ctx:
-        _cache.set(f"share_ctx:{conversation.id}:{next_room_uuid}", ctx, timeout=86400)
-        _cache.set(f"share_ctx:{conversation.id}:latest", ctx, timeout=86400)
+        cache.set(f"share_ctx:{conversation.id}:{next_room_uuid}", ctx, timeout=86400)
+        cache.set(f"share_ctx:{conversation.id}:latest", ctx, timeout=86400)
 
-    # Build next card text matching initial share selection & search filters
-    body_text = build_share_text(room, share_options, filters=filters) if share_options else ""
-    if not body_text:
-        name = room.get("name") or "Room Option"
-        prop_name = room.get("owner_brand_name") or room.get("owner_username") or "Property"
-        price = room.get("price") or room.get("grand_total") or ""
-        price_str = f"₹{price:,}" if isinstance(price, (int, float)) else (f"₹{price}" if price else "")
-        city = (room.get("property_location") or {}).get("city", "")
+    batch_sent_keys = _get_previously_sent_media_keys(conversation)
+    _dispatch_next_media(conversation, room, next_room_uuid, config, share_options, batch_sent_keys)
 
-        body_text = f"🏨 *{name}* ({prop_name})\n"
-        if city:
-            body_text += f"📍 Location: {city}\n"
-        if price_str:
-            body_text += f"💰 Price: {price_str}\n"
-
-        cin = filters.get("checkIn")
-        cout = filters.get("checkOut")
-        if cin or cout:
-            body_text += f"📅 Dates: {cin or 'Any'} – {cout or 'Any'}\n"
-        if filters.get("adults"):
-            body_text += f"👤 Guests: {filters.get('adults', 1)} Adults\n"
-
-    # Determine media rules from share_options (initial popup selection) or fallback to config
-    send_prop_imgs = False
-    prop_limit = 0
-    if share_options and "images_property" in share_options:
-        send_prop_imgs = bool(share_options.get("images_property"))
-        sel_prop = sum(1 for k, v in share_options.items() if k.startswith("images_property_") and v is True)
-        prop_limit = sel_prop if sel_prop > 0 else (config.initial_property_image_limit or 1)
-    else:
-        send_prop_imgs = config.initial_send_property_images or config.next_send_extra_album
-        prop_limit = config.initial_property_image_limit or 1
-
-    send_room_imgs = False
-    room_limit = 0
-    if share_options and "images_room" in share_options:
-        send_room_imgs = bool(share_options.get("images_room"))
-        sel_room = sum(1 for k, v in share_options.items() if k.startswith("images_room_") and v is True)
-        room_limit = sel_room if sel_room > 0 else (config.initial_room_image_limit or 1)
-    else:
-        send_room_imgs = config.initial_send_room_images or config.next_send_extra_album
-        room_limit = config.initial_room_image_limit or 1
-
-    send_videos = False
-    video_limit = 0
-    if share_options and "videos_property" in share_options:
-        send_videos = bool(share_options.get("videos_property"))
-        video_limit = getattr(config, "initial_video_limit", 1) or 1
-    else:
-        send_videos = config.initial_send_videos
-        video_limit = getattr(config, "initial_video_limit", 1) or 1
-
-    # Track media keys within this room dispatch to prevent duplicates in the same message batch
-    batch_sent_keys = set()
-
-    #  First send property images (hotel photos) up to prop_limit
-    if send_prop_imgs and prop_limit > 0:
-        prop_details = room.get("property_details") or room.get("property") or {}
-        prop_images = prop_details.get("property_images") or prop_details.get("images") or []
-        sent_prop_count = 0
-        for img_obj in prop_images:
-            if sent_prop_count >= prop_limit:
-                break
-            img_url = img_obj.get("url") or img_obj.get("image") or ""
-            if not img_url:
-                continue
-            cand_keys = _extract_media_keys(img_url)
-            if cand_keys & batch_sent_keys:
-                continue
-            try:
-                proc_url, proc_path = process_external_media_url(
-                    img_url, "image", phone=conversation.contact.phone
-                )
-                send_and_save_message(
-                    conversation,
-                    msg_type="image",
-                    media_url=proc_url,
-                    storage_path=proc_path,
-                    related_room_uuid=next_room_uuid,
-                    raw_data={"original_url": img_url},
-                )
-                batch_sent_keys.update(cand_keys)
-                batch_sent_keys.update(_extract_media_keys(proc_url))
-                if proc_path:
-                    batch_sent_keys.update(_extract_media_keys(proc_path))
-                sent_prop_count += 1
-            except Exception as e:
-                logger.error("[share_responder] Fail sending next property image: %s", e)
-
-
-    #  Then send room images up to room_limit (or 1 cover photo if room images was not selected but next_include_hero_image is on)
-    effective_room_limit = room_limit if send_room_imgs else (1 if config.next_include_hero_image else 0)
-    if effective_room_limit > 0:
-        room_images = room.get("room_images") or []
-        if not room_images and not send_prop_imgs:
-            prop_details = room.get("property_details") or room.get("property") or {}
-            room_images = prop_details.get("property_images") or prop_details.get("images") or []
-        sent_room_count = 0
-        for img_obj in room_images:
-            if sent_room_count >= effective_room_limit:
-                break
-            img_url = img_obj.get("url") or img_obj.get("image") or ""
-            if not img_url:
-                continue
-            cand_keys = _extract_media_keys(img_url)
-            if cand_keys & batch_sent_keys:
-                continue
-            try:
-                proc_url, proc_path = process_external_media_url(
-                    img_url, "image", phone=conversation.contact.phone
-                )
-                send_and_save_message(
-                    conversation,
-                    msg_type="image",
-                    media_url=proc_url,
-                    storage_path=proc_path,
-                    related_room_uuid=next_room_uuid,
-                    raw_data={"original_url": img_url},
-                )
-                batch_sent_keys.update(cand_keys)
-                batch_sent_keys.update(_extract_media_keys(proc_url))
-                if proc_path:
-                    batch_sent_keys.update(_extract_media_keys(proc_path))
-                sent_room_count += 1
-            except Exception as e:
-                logger.error("[share_responder] Fail sending next room image: %s", e)
-
-    # Then send video walkthrough if enabled
-    if send_videos and video_limit > 0:
-        prop_details = room.get("property_details") or room.get("property") or {}
-        prop_videos = (
-            prop_details.get("property_videos")
-            or prop_details.get("videos")
-            or room.get("room_videos")
-            or room.get("videos")
-            or []
-        )
-        sent_vid_count = 0
-        for vid_obj in prop_videos:
-            if sent_vid_count >= video_limit:
-                break
-            vid_url = vid_obj.get("url") or vid_obj.get("video") or ""
-            if not vid_url:
-                continue
-            cand_keys = _extract_media_keys(vid_url)
-            if cand_keys & batch_sent_keys:
-                continue
-            try:
-                proc_url, proc_path = process_external_media_url(
-                    vid_url, "video", phone=conversation.contact.phone
-                )
-                send_and_save_message(
-                    conversation,
-                    msg_type="video",
-                    media_url=proc_url,
-                    storage_path=proc_path,
-                    related_room_uuid=next_room_uuid,
-                    raw_data={"original_url": vid_url},
-                )
-                batch_sent_keys.update(cand_keys)
-                batch_sent_keys.update(_extract_media_keys(proc_url))
-                if proc_path:
-                    batch_sent_keys.update(_extract_media_keys(proc_path))
-                sent_vid_count += 1
-            except Exception as e:
-                logger.error("[share_responder] Fail sending next video: %s", e)
-
-    options = []
-    if config.book_button_enabled:
-        options.append({"id": f"share_book:{next_room_uuid}", "label": config.book_button_label[:20]})
-    if config.details_button_enabled:
-        options.append({"id": f"share_details:{next_room_uuid}", "label": config.details_button_label[:20]})
-
-    if subsequent_room_uuid and config.next_button_enabled and len(options) < 3:
-        options.append({
-            "id": f"share_next:{next_room_uuid}:{subsequent_room_uuid}",
-            "label": config.next_button_label[:20],
-        })
-    elif config.exit_button_enabled and len(options) < 3:
-        options.append({"id": f"share_exit:{next_room_uuid}", "label": config.exit_button_label[:20]})
-
-    # Strip leading/trailing whitespace — Meta rejects body_text that starts with newlines
-    safe_body = body_text.strip()[:1024] or "Room details"
-
-    # Guard: Meta rejects interactive messages with 0 buttons 
-    if options:
-        send_and_save_interactive_buttons(
-            conversation,
-            body_text=safe_body,
-            options=options,
-            # NOTE: Do NOT pass header_image_url here.
-            # Meta fetches the URL from its own servers; presigned/private R2 URLs
-            # are inaccessible to Meta and cause the entire interactive send to fail.
-            # The hero image is already sent as a standalone message above.
-            related_room_uuid=next_room_uuid,
-        )
-    else:
-        send_and_save_message(
-            conversation,
-            msg_type="text",
-            body=safe_body,
-            related_room_uuid=next_room_uuid,
-        )
+    body_text = _build_next_card_text(room, share_options, filters)
+    options = _build_action_buttons(
+        config, next_room_uuid, next_room_uuid=subsequent_room_uuid, include_details=True
+    )
+    _dispatch_card_or_text(conversation, body_text, options, next_room_uuid)
 
 
 def _handle_book_action(conversation, room_uuid: str, config: PropertyShareConfig):
-    """Acknowledges booking and notifies agent or starts flow."""
-    from django.core.cache import cache as _cache
-    ctx = _cache.get(f"share_ctx:{conversation.id}:{room_uuid}") or _cache.get(f"share_ctx:{conversation.id}:latest") or {}
-    room = fetch_room_by_uuid(room_uuid, user=conversation.assigned_agent, filters=ctx.get("filters") or {})
-    if not room and ctx.get("rooms_map", {}).get(room_uuid):
-        room = ctx["rooms_map"][room_uuid]
-    if not room and ctx.get("room_data"):
-        room = ctx.get("room_data")
+    ctx = (
+        cache.get(f"share_ctx:{conversation.id}:{room_uuid}")
+        or cache.get(f"share_ctx:{conversation.id}:latest")
+        or {}
+    )
+    room = _resolve_room_data(room_uuid, conversation.assigned_agent, ctx)
     room_name = room.get("name") if room else "Room"
 
-    reply_text = f"Thank you! Your booking interest for *{room_name}* has been received. Our team will contact you right away with confirmation details."
+    reply_text = (
+        f"Thank you! Your booking interest for *{room_name}* has been received. "
+        "Our team will contact you right away with confirmation details."
+    )
     send_and_save_message(
         conversation,
         msg_type="text",
@@ -1010,7 +873,6 @@ def _handle_book_action(conversation, room_uuid: str, config: PropertyShareConfi
 
 
 def _handle_exit_action(conversation, config: PropertyShareConfig):
-    """Sends polite exit message."""
     send_and_save_message(
         conversation,
         msg_type="text",

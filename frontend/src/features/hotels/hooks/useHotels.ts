@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { hotelsApi } from '../../../api/hotels';
 import { RoomFilters } from './useRoomFilters';
 import { authStore } from '../../../store/authStore';
@@ -127,10 +127,15 @@ export function useHotels(filters: RoomFilters, setPageCallback: (page: number) 
     filters.priceMin, filters.priceMax, filters.hideUnavailable, filters.sort
   ]);
 
+  const lastSearchRef = useRef(filters.search);
   useEffect(() => {
-    const t = setTimeout(() => { if (filters.search !== '') fetchRooms(true); }, 500);
+    if (lastSearchRef.current === filters.search) {
+      return;
+    }
+    lastSearchRef.current = filters.search;
+    const t = setTimeout(() => { fetchRooms(true); }, 500);
     return () => clearTimeout(t);
-  }, [filters.search]);
+  }, [filters.search, fetchRooms]);
   return {
     rooms, loading, error, totalPages, resultCount,
     propertyTypeOptions, roomTypeOptions, amenityOptions,

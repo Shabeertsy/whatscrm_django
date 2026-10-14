@@ -23,21 +23,54 @@ export function HotelRooms() {
   const [imgIdx, setImgIdx] = useState(0);
 
   // Filters (re-fetch room with new params)
+  const activeFilters = useHotelStore(state => state.filters);
+  const updateStoreFilter = useHotelStore(state => state.updateFilter);
+
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
   const [checkIn, setCheckIn] = useState(
-    cachedRoom?.price_summary?.check_in || today
+    activeFilters?.checkIn || cachedRoom?.price_summary?.check_in || today
   );
   const [checkOut, setCheckOut] = useState(
-    cachedRoom?.price_summary?.check_out || tomorrow
+    activeFilters?.checkOut || cachedRoom?.price_summary?.check_out || tomorrow
   );
-  const [adults, setAdults] = useState(1);
-  const [children, setChildren] = useState(0);
-  const [roomsCount, setRoomsCount] = useState(1);
-  const [appliedRoomsCount, setAppliedRoomsCount] = useState(1);
+  const [adults, setAdults] = useState(activeFilters?.adults || 1);
+  const [children, setChildren] = useState(activeFilters?.children || 0);
+  const [roomsCount, setRoomsCount] = useState(activeFilters?.rooms || 1);
+  const [appliedRoomsCount, setAppliedRoomsCount] = useState(activeFilters?.rooms || 1);
   const [mealPlanId, setMealPlanId] = useState<string>('');
   const [showGuestDropdown, setShowGuestDropdown] = useState(false);
   const guestRef = useRef<HTMLDivElement>(null);
+
+  const handleCheckInChange = (val: string) => {
+    setCheckIn(val);
+    updateStoreFilter('checkIn', val);
+  };
+  const handleCheckOutChange = (val: string) => {
+    setCheckOut(val);
+    updateStoreFilter('checkOut', val);
+  };
+  const handleAdultsChange = (valOrFn: any) => {
+    setAdults(prev => {
+      const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
+      updateStoreFilter('adults', next);
+      return next;
+    });
+  };
+  const handleChildrenChange = (valOrFn: any) => {
+    setChildren(prev => {
+      const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
+      updateStoreFilter('children', next);
+      return next;
+    });
+  };
+  const handleRoomsCountChange = (valOrFn: any) => {
+    setRoomsCount(prev => {
+      const next = typeof valOrFn === 'function' ? valOrFn(prev) : valOrFn;
+      updateStoreFilter('rooms', next);
+      return next;
+    });
+  };
 
   const filters = { checkIn, checkOut, adults, children, rooms: roomsCount };
   const shareState = useShareRoom(filters);
@@ -129,13 +162,13 @@ export function HotelRooms() {
           {/* Check In */}
           <div className="px-5 py-3.5 flex-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Check In</label>
-            <input type="date" value={checkIn} onChange={e => setCheckIn(e.target.value)}
+            <input type="date" value={checkIn} onChange={e => handleCheckInChange(e.target.value)}
               className="text-[13px] font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:outline-none w-full cursor-pointer" />
           </div>
           {/* Check Out */}
           <div className="px-5 py-3.5 flex-1">
             <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Check Out</label>
-            <input type="date" value={checkOut} onChange={e => setCheckOut(e.target.value)}
+            <input type="date" value={checkOut} onChange={e => handleCheckOutChange(e.target.value)}
               className="text-[13px] font-semibold text-slate-700 dark:text-slate-200 bg-transparent focus:outline-none w-full cursor-pointer" />
           </div>
           {/* Guests */}
@@ -146,16 +179,16 @@ export function HotelRooms() {
             {showGuestDropdown && (
               <div className="absolute top-full left-0 mt-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-xl rounded-md p-4 w-[220px] z-50" onClick={e => e.stopPropagation()}>
                 {[
-                  { label: 'Adults', val: adults, min: 1, set: setAdults },
-                  { label: 'Children', val: children, min: 0, set: setChildren },
-                  { label: 'Rooms', val: roomsCount, min: 1, set: setRoomsCount },
+                  { label: 'Adults', val: adults, min: 1, set: handleAdultsChange },
+                  { label: 'Children', val: children, min: 0, set: handleChildrenChange },
+                  { label: 'Rooms', val: roomsCount, min: 1, set: handleRoomsCountChange },
                 ].map(({ label, val, min, set }) => (
                   <div key={label} className="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
                     <span className="text-sm text-slate-700 dark:text-slate-300">{label}</span>
                     <div className="flex items-center gap-3">
-                      <button onClick={() => set(v => Math.max(min, v - 1))} className="w-7 h-7 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded-md hover:bg-green-50 transition-colors font-bold">−</button>
+                      <button onClick={() => set((v: number) => Math.max(min, v - 1))} className="w-7 h-7 flex items-center justify-center border border-[#007e3a] text-[#007e3a] rounded-md hover:bg-green-50 transition-colors font-bold">−</button>
                       <span className="w-5 text-center font-bold text-[13px] text-slate-900 dark:text-white">{val}</span>
-                      <button onClick={() => set(v => v + 1)} className="w-7 h-7 flex items-center justify-center bg-[#007e3a] text-white rounded-md hover:bg-[#00602d] transition-colors font-bold">+</button>
+                      <button onClick={() => set((v: number) => v + 1)} className="w-7 h-7 flex items-center justify-center bg-[#007e3a] text-white rounded-md hover:bg-[#00602d] transition-colors font-bold">+</button>
                     </div>
                   </div>
                 ))}

@@ -1,80 +1,16 @@
-import { useState } from 'react';
+import { useHotelStore, RoomFilters, getDefaultFilters } from '../../../store/hotelStore';
 
-export interface RoomFilters {
-    search: string;
-    checkIn: string;
-    checkOut: string;
-    propertyTypes: string[];
-    roomTypes: string[];
-    amenities: string[];
-    roomViews: string[];
-    bedroomTypes: string[];
-    tags: string[];
-    priceMin: number;
-    priceMax: number;
-    hideUnavailable: boolean;
-    adults: number;
-    children: number;
-    rooms: number;
-    mealPlans: string[];
-    areas: string[];
-    sort: string;
-}
+export type { RoomFilters };
+export { getDefaultFilters };
 
 export function useRoomFilters() {
-    const today = new Date().toISOString().split('T')[0];
-    const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+    const filters = useHotelStore(state => state.filters);
+    const setFilters = useHotelStore(state => state.setFilters);
+    const updateFilter = useHotelStore(state => state.updateFilter);
+    const toggleArrayFilter = useHotelStore(state => state.toggleArrayFilter);
+    const clearFilters = useHotelStore(state => state.clearFilters);
+    const page = useHotelStore(state => state.page);
+    const setPage = useHotelStore(state => state.setPage);
 
-    const [filters, setFilters] = useState<RoomFilters>({
-        search: "",
-        checkIn: today,
-        checkOut: tomorrow,
-        propertyTypes: [],
-        roomTypes: [],
-        amenities: [],
-        roomViews: [],
-        bedroomTypes: [],
-        tags: [],
-        priceMin: 0,
-        priceMax: 50000,
-        hideUnavailable: false,
-        adults: 1,
-        children: 0,
-        rooms: 1,
-        mealPlans: [],
-        areas: [],
-        sort: "price_asc",
-    });
-
-    const updateFilter = (key: keyof RoomFilters, value: any) => {
-        setFilters(prev => ({ ...prev, [key]: value }));
-    };
-
-    const toggleArrayFilter = (key: 'propertyTypes' | 'roomTypes' | 'amenities' | 'roomViews' | 'bedroomTypes' | 'tags' | 'mealPlans' | 'areas', value: string) => {
-        setFilters(prev => {
-            const arr = prev[key] as string[];
-            const newArr = arr.includes(value) ? arr.filter(x => x !== value) : [...arr, value];
-            return { ...prev, [key]: newArr };
-        });
-    };
-
-    const clearFilters = () => {
-        setFilters(prev => ({
-            ...prev,
-            propertyTypes: [],
-            roomTypes: [],
-            amenities: [],
-            roomViews: [],
-            bedroomTypes: [],
-            tags: [],
-            mealPlans: [],
-            areas: [],
-            priceMin: 0,
-            priceMax: 50000,
-            hideUnavailable: false,
-            sort: "price_asc",
-        }));
-    };
-
-    return { filters, setFilters, updateFilter, toggleArrayFilter, clearFilters };
+    return { filters, setFilters, updateFilter, toggleArrayFilter, clearFilters, page, setPage };
 }

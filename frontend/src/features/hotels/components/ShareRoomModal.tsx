@@ -307,7 +307,7 @@ export function ShareRoomModal({
                       {buttonConfig.details_button_label || 'More Details'}
                     </span>
                   )}
-                  {isMultiRoom && buttonConfig.next_button_enabled && (
+                  {buttonConfig.next_button_enabled && (
                     <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
                       {buttonConfig.next_button_label || 'Next'}
                     </span>
@@ -318,6 +318,11 @@ export function ShareRoomModal({
                     </span>
                   )}
                 </div>
+              )}
+              {useInteractiveButtons && isMultiRoom && (
+                <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                  Note: Action buttons will be attached to the last room message.
+                </p>
               )}
             </div>
           )}
