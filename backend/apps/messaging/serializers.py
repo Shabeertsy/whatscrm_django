@@ -1,3 +1,4 @@
+import json
 from rest_framework import serializers
 from .models import Contact, Conversation, Message, CustomMessage, MediaLibraryItem, PropertyShareConfig
 from .storage_backends import get_whatsapp_storage
@@ -99,6 +100,7 @@ class ContactMinimalSerializer(serializers.ModelSerializer):
 class MessageSerializer(serializers.ModelSerializer):
     sent_by_name = serializers.SerializerMethodField()
     replied_to_message = serializers.SerializerMethodField()
+    interactive_data = serializers.SerializerMethodField()
 
     class Meta:
         model  = Message
@@ -106,6 +108,7 @@ class MessageSerializer(serializers.ModelSerializer):
             'id', 'conversation', 'wa_message_id',
             'direction', 'msg_type', 'body', 'media_url', 'storage_path', 'related_room_uuid',
             'sent_by', 'sent_by_name', 'status', 'timestamp', 'replied_to_message', 'reaction',
+            'interactive_data',
         ]
         read_only_fields = ['id', 'wa_message_id', 'replied_to_message']
 
@@ -155,6 +158,157 @@ class MessageSerializer(serializers.ModelSerializer):
             }
         return None
 
+    def get_interactive_data(self, obj):
+        if obj.msg_type != 'interactive':
+            return None
+
+        # Check outbound interactive payload
+        if obj.direction == 'outbound':
+            if obj.body:
+                try:
+                    parsed = json.loads(obj.body)
+                    if isinstance(parsed, dict) and ('type' in parsed or 'options' in parsed):
+                        return parsed
+                except Exception:
+                    pass
+            return None
+
+        # Inbound interactive replies
+        raw = obj.raw_data if isinstance(obj.raw_data, dict) else {}
+        interactive_obj = raw.get('interactive', {}) if isinstance(raw, dict) else {}
+        i_type = interactive_obj.get('type')
+
+        def _format_label(key_name: str) -> str:
+            clean_k = key_name.replace('_', ' ').strip().title()
+            clean_k = clean_k.replace('Checkin', 'Check-In').replace('Checkout', 'Check-Out')
+            return clean_k
+
+        # 1. WhatsApp Flow Form Submission (nfm_reply) or body has "Sent" / "[Form Submitted]"
+        if i_type == 'nfm_reply' or obj.body == 'Sent' or (obj.body and obj.body.startswith('[Form Submitted]')):
+            nfm = interactive_obj.get('nfm_reply', {}) if isinstance(interactive_obj, dict) else {}
+            resp_json_raw = nfm.get('response_json', '{}')
+            resp_data = {}
+            if resp_json_raw:
+                if isinstance(resp_json_raw, dict):
+                    resp_data = dict(resp_json_raw)
+                elif isinstance(resp_json_raw, str):
+                    try:
+                        resp_data = json.loads(resp_json_raw)
+                    except Exception:
+                        resp_data = {}
+
+            # Look up FlowSubmission for enriched labels / screen_data
+            submission = None
+            try:
+                from apps.flows.models import FlowSubmission
+                flow_token = resp_data.get('flow_token')
+                if flow_token:
+                    submission = FlowSubmission.objects.filter(flow_token=flow_token).first()
+                if not submission and obj.conversation:
+                    submission = FlowSubmission.objects.filter(
+                        conversation=obj.conversation,
+                        completed=True
+                    ).order_by('-updated_at').first()
+
+                if submission and isinstance(submission.screen_data, dict) and submission.screen_data:
+                    # Enrich with submission screen_data (which has resolved human-readable titles)
+                    resp_data = {**resp_data, **submission.screen_data}
+            except Exception:
+                submission = None
+
+            # Fallback if resp_data is still empty: parse key-value lines from obj.body if formatted
+            if not resp_data and obj.body and '[Form Submitted]' in obj.body:
+                for line in obj.body.splitlines():
+                    if ':' in line and not line.startswith('['):
+                        parts = line.split(':', 1)
+                        resp_data[parts[0].strip()] = parts[1].strip()
+
+            # Separate labeled keys
+            labeled_keys = {k[:-6] for k in resp_data.keys() if k.endswith('_label')}
+            selected_items = []
+            clean_fields = {}
+
+            for k, v in resp_data.items():
+                if k in ('flow_token', '__wa_flow_token') or k.startswith('_') or k.endswith('_uuid') or k.endswith('_labels'):
+                    continue
+                if k in labeled_keys:
+                    continue
+
+                if k.endswith('_label'):
+                    orig_key = k[:-6]
+                    display_label = _format_label(orig_key)
+                    display_val = v
+                    clean_fields[orig_key] = v
+                else:
+                    display_label = _format_label(k)
+                    display_val = v
+                    clean_fields[k] = v
+
+                if isinstance(display_val, list):
+                    display_val_str = ", ".join(str(item) for item in display_val)
+                elif isinstance(display_val, bool):
+                    display_val_str = "Yes" if display_val else "No"
+                elif display_val is None:
+                    display_val_str = "-"
+                else:
+                    display_val_str = str(display_val)
+
+                if display_val_str.strip():
+                    selected_items.append({
+                        "key": k,
+                        "label": display_label,
+                        "value": display_val_str,
+                    })
+
+            flow_name = nfm.get('name') or (submission.flow.name if submission and submission.flow else '')
+            return {
+                "type": "nfm_reply",
+                "flow_name": flow_name,
+                "title": flow_name or "Form Submission",
+                "body_text": nfm.get('body', obj.body or 'Sent'),
+                "selected_data": selected_items,
+                "raw_fields": clean_fields,
+            }
+
+        # 2. List Reply
+        elif i_type == 'list_reply':
+            list_reply = interactive_obj.get('list_reply', {})
+            title = list_reply.get('title', obj.body)
+            desc = list_reply.get('description', '')
+            return {
+                "type": "list_reply",
+                "id": list_reply.get('id', ''),
+                "title": title,
+                "description": desc,
+                "selected_data": [
+                    {
+                        "key": "selection",
+                        "label": "Option Selected",
+                        "value": title,
+                        "description": desc,
+                    }
+                ],
+            }
+
+        # 3. Button Reply
+        elif i_type == 'button_reply':
+            btn_reply = interactive_obj.get('button_reply', {})
+            title = btn_reply.get('title', obj.body)
+            return {
+                "type": "button_reply",
+                "id": btn_reply.get('id', ''),
+                "title": title,
+                "selected_data": [
+                    {
+                        "key": "button",
+                        "label": "Option Selected",
+                        "value": title,
+                    }
+                ],
+            }
+
+        return None
+
 
 ## Conversation ##
 class ConversationListSerializer(serializers.ModelSerializer):
@@ -168,7 +322,7 @@ class ConversationListSerializer(serializers.ModelSerializer):
         model  = Conversation
         fields = [
             'id', 'contact', 'instance', 'instance_name',
-            'assigned_agent', 'agent_name', 'status', 'ai_active',
+            'assigned_agent', 'agent_name', 'status', 'ai_active', 'interactive_active',
             'unread_count', 'last_message', 'last_message_at', 'last_inbound_at',
         ]
         read_only_fields = ['id', 'unread_count', 'last_message_at']
@@ -201,7 +355,7 @@ class ConversationDetailSerializer(ConversationListSerializer):
 class ConversationUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model  = Conversation
-        fields = ['status', 'assigned_agent', 'ai_active']
+        fields = ['status', 'assigned_agent', 'ai_active', 'interactive_active']
 
 
 class SendMessageSerializer(serializers.Serializer):

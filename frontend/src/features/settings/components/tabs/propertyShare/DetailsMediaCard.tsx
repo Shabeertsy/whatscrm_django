@@ -39,6 +39,7 @@ const SHARE_CATEGORIES: ShareCategory[] = [
     subItems: [
       { subKey: 'propertyDetails_name', label: 'Property / Hotel Name', sample: 'Seaside Grand Resort' },
       { subKey: 'propertyDetails_type', label: 'Property Type', sample: '5-Star Resort' },
+      { subKey: 'propertyDetails_area', label: 'Area', sample: 'Mepaddi' },
     ],
   },
   {
@@ -53,7 +54,7 @@ const SHARE_CATEGORIES: ShareCategory[] = [
     key: 'location',
     label: 'Location',
     subItems: [
-      { subKey: 'location_name', label: 'Area / Location Name', sample: 'Calangute Beachfront' },
+      { subKey: 'location_name', label: 'Location Name', sample: 'Calangute Beachfront' },
       { subKey: 'location_city', label: 'City', sample: 'North Goa' },
       { subKey: 'location_state', label: 'State', sample: 'Goa' },
     ],
@@ -94,6 +95,7 @@ function buildPreviewMessage(options: Record<string, boolean>): string {
     const lines: string[] = [];
     if (options.propertyDetails_name) lines.push('*Property Name:* Seaside Grand Resort');
     if (options.propertyDetails_type) lines.push('*Property Type:* 5-Star Resort');
+    if (options.propertyDetails_area) lines.push('*Area:* Mepaddi');
     if (lines.length > 0) blocks.push(lines.join('\n'));
   }
 

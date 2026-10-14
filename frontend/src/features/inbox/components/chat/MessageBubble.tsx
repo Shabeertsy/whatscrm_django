@@ -89,8 +89,12 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           </div>
         )}
 
-        {message.msg_type === 'interactive' && message.body && (
-          <InteractiveMessage body={message.body} isOutbound={isOutbound} />
+        {message.msg_type === 'interactive' && (
+          <InteractiveMessage
+            body={message.body}
+            isOutbound={isOutbound}
+            interactiveData={message.interactive_data}
+          />
         )}
 
         {message.msg_type !== 'text' && message.msg_type !== 'template' && message.msg_type !== 'sticker' && message.msg_type !== 'unsupported' && message.msg_type !== 'interactive' && !['image', 'video', 'audio'].includes(message.msg_type) && (

@@ -85,6 +85,7 @@ export const DEFAULT_PROPERTY_SHARE_CONFIG: PropertyShareConfig = {
     propertyDetails: true,
     propertyDetails_name: true,
     propertyDetails_type: true,
+    propertyDetails_area: true,
     price: true,
     price_amount: true,
     price_meal_plans: true,

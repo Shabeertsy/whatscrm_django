@@ -762,15 +762,49 @@ class WebhookView(APIView):
         elif msg_type == 'interactive':
             interactive_obj = msg_data.get('interactive', {})
             interactive_type = interactive_obj.get('type', '')
+            
             if interactive_type == 'list_reply':
                 reply_data = interactive_obj.get('list_reply', {})
                 body = reply_data.get('title', reply_data.get('id', ''))
+
             elif interactive_type == 'button_reply':
                 reply_data = interactive_obj.get('button_reply', {})
                 body = reply_data.get('title', reply_data.get('id', ''))
+
             elif interactive_type == 'nfm_reply':
                 nfm_reply = interactive_obj.get('nfm_reply', {})
-                body = nfm_reply.get('body', '[Flow Form Submitted]')
+                resp_json_raw = nfm_reply.get('response_json', '{}')
+                parsed_resp = {}
+                try:
+                    if isinstance(resp_json_raw, str):
+                        parsed_resp = json.loads(resp_json_raw)
+                    elif isinstance(resp_json_raw, dict):
+                        parsed_resp = resp_json_raw
+                except Exception:
+                    parsed_resp = {}
+
+                # Create human-readable summary if fields exist
+                summary_lines = []
+                labeled_keys = {k[:-6] for k in parsed_resp.keys() if k.endswith('_label')}
+                for k, v in parsed_resp.items():
+                    if k in ('flow_token', '__wa_flow_token') or k.startswith('_') or k.endswith('_uuid') or k.endswith('_labels'):
+                        continue
+                    if k in labeled_keys:
+                        continue
+                    clean_k = k[:-6] if k.endswith('_label') else k
+                    clean_k = clean_k.replace('_', ' ').strip().title()
+                    clean_k = clean_k.replace('Checkin', 'Check-In').replace('Checkout', 'Check-Out')
+                    if isinstance(v, list):
+                        v_str = ", ".join(str(x) for x in v)
+                    else:
+                        v_str = str(v)
+                    if v_str.strip():
+                        summary_lines.append(f"{clean_k}: {v_str}")
+
+                if summary_lines:
+                    body = "[Form Submitted]\n" + "\n".join(summary_lines)
+                else:
+                    body = nfm_reply.get('body', '[Flow Form Submitted]')
             else:
                 body = interactive_obj.get('title', '')
 

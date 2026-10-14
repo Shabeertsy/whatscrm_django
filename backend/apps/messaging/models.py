@@ -78,6 +78,7 @@ class Conversation(models.Model):
     )
     status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     ai_active       = models.BooleanField(default=True)
+    interactive_active = models.BooleanField(default=True)
     unread_count    = models.PositiveIntegerField(default=0)
     last_message_at = models.DateTimeField(null=True, blank=True)
 

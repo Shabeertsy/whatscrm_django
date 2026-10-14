@@ -38,9 +38,32 @@ export function generateShareText(
   }
 
   if (options.propertyDetails) {
-    if (options.propertyDetails_name) text += `*Property Name:* ${room.owner_brand_name || room.owner_username || 'N/A'}\n`;
-    if (options.propertyDetails_type) text += `*Property Type:* ${room.property_type?.name || 'N/A'}\n`;
-    if (options.propertyDetails_name || options.propertyDetails_type) text += '\n';
+    const pName = room.property_details?.property_name || room.owner_brand_name || room.owner_username;
+    const pType = room.property_type?.name;
+    const areaName =
+      room.property_details?.area?.name ||
+      (typeof room.property_details?.area === 'string' ? room.property_details?.area : '') ||
+      room.area?.name ||
+      (typeof room.area === 'string' ? room.area : '') ||
+      room.property_location?.name ||
+      '';
+
+    let hasLines = false;
+    if (options.propertyDetails_name && pName) {
+      text += `*Property Name:* ${pName}\n`;
+      hasLines = true;
+    }
+    if (options.propertyDetails_type && pType) {
+      text += `*Property Type:* ${pType}\n`;
+      hasLines = true;
+    }
+    if (options.propertyDetails_area && areaName) {
+      text += `*Area:* ${areaName}\n`;
+      hasLines = true;
+    }
+    if (hasLines) {
+      text += '\n';
+    }
   }
 
   if (options.price && options.price_amount) {
@@ -56,11 +79,12 @@ export function generateShareText(
   }
 
   if (options.location) {
-    const locName = options.location_name ? (room.property_location?.name || 'N/A') : '';
-    const city = options.location_city ? (room.property_location?.city || 'N/A') : '';
-    const state = options.location_state ? (room.property_location?.state || 'N/A') : '';
-    if (locName || city || state) {
-      text += `*Location:* ${[locName, city, state].filter(Boolean).join(', ')}\n\n`;
+    const locName = options.location_name ? (room.property_location?.name || room.property_details?.area?.name || '') : '';
+    const city = options.location_city ? (room.property_location?.city || room.property_details?.district?.name || '') : '';
+    const state = options.location_state ? (room.property_location?.state || room.property_details?.district?.state || '') : '';
+    const locParts = [locName, city, state].filter(Boolean);
+    if (locParts.length > 0) {
+      text += `*Location:* ${locParts.join(', ')}\n\n`;
     }
   }
 

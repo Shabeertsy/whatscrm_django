@@ -39,6 +39,25 @@ export interface Conversation {
   last_message_at: string | null;
   last_inbound_at: string | null;
   ai_active: boolean;
+  interactive_active?: boolean;
+}
+
+export interface InteractiveSelectedData {
+  key: string;
+  label: string;
+  value: string;
+  description?: string;
+}
+
+export interface InteractiveData {
+  type?: 'nfm_reply' | 'list_reply' | 'button_reply' | 'interactive_buttons' | 'interactive_list' | string;
+  flow_name?: string;
+  title?: string;
+  description?: string;
+  body_text?: string;
+  selected_data?: InteractiveSelectedData[];
+  raw_fields?: Record<string, any>;
+  [key: string]: any;
 }
 
 export interface Message {
@@ -62,6 +81,7 @@ export interface Message {
   status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
   timestamp: string;
   reaction?: string | null;
+  interactive_data?: InteractiveData | null;
 }
 
 export interface ConversationDetail extends Conversation {
@@ -204,8 +224,8 @@ export const messagingApi = {
     return apiClient.delete(`${BASE}/messages/${messageId}/`);
   },
 
-  /** Update conversation status or ai_active */
-  updateConversation(conversationId: string, data: { status?: string; assigned_agent?: string | null; ai_active?: boolean }) {
+  /** Update conversation status, ai_active, or interactive_active */
+  updateConversation(conversationId: string, data: { status?: string; assigned_agent?: string | null; ai_active?: boolean; interactive_active?: boolean }) {
     return apiClient.patch(`${BASE}/conversations/${conversationId}/`, data);
   },
 

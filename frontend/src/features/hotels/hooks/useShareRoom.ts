@@ -30,6 +30,8 @@ export function useShareRoom(
       .catch(err => console.error("Could not load property share config", err));
   }, []);
 
+
+
   const buildInitialOptions = (room: any, cfg: PropertyShareConfig = buttonConfig): Record<string, boolean> => {
     const initialSendRoom = cfg.initial_send_room_images ?? true;
     const initialSendProp = cfg.initial_send_property_images ?? true;
@@ -44,6 +46,10 @@ export function useShareRoom(
       basicDetails_roomType: true,
       basicDetails_occupancy: true,
       basicDetails_amenities: true,
+      propertyDetails: true,
+      propertyDetails_name: true,
+      propertyDetails_type: true,
+      propertyDetails_area: true,
       price: true,
       price_amount: true,
       images_room: initialSendRoom,
@@ -74,6 +80,8 @@ export function useShareRoom(
       setShareOptions({});
     }
   };
+
+
 
   const [expandedShareCategory, setExpandedShareCategory] = useState<string | null>(null);
   const [shareStep, setShareStep] = useState<'options' | 'select_chats'>('options');

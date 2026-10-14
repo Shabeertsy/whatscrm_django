@@ -214,6 +214,13 @@ def handle_share_button_reply(conversation, button_id: str, button_title: str = 
     if not button_id or not button_id.startswith("share_"):
         return False
 
+    if getattr(conversation, 'interactive_active', True) is False:
+        logger.info(
+            "[share_responder] Interactive paused for conv %s, ignoring button action %s",
+            conversation.id, button_id
+        )
+        return True
+
     config = PropertyShareConfig.get_effective_config(user=conversation.assigned_agent)
     parts = button_id.split(":")
     action = parts[0]
@@ -355,6 +362,7 @@ DEFAULT_DETAILS_FIELDS = {
     "propertyDetails": True,
     "propertyDetails_name": True,
     "propertyDetails_type": True,
+    "propertyDetails_area": True,
     "price": True,
     "price_amount": True,
     "price_meal_plans": True,
@@ -427,18 +435,44 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
         if filter_parts:
             text_blocks.append("*Requirements:*\n" + "\n".join(filter_parts))
 
+    # Resolve area name from property_details.area (or fallback area / property_location)
+    prop_details = room.get("property_details") or {}
+    area_obj = prop_details.get("area") if isinstance(prop_details, dict) else {}
+    if isinstance(area_obj, dict):
+        area_name = area_obj.get("name", "")
+    elif isinstance(area_obj, str):
+        area_name = area_obj
+    else:
+        area_name = ""
+
+    if not area_name:
+        area_direct = room.get("area") or {}
+        if isinstance(area_direct, dict):
+            area_name = area_direct.get("name", "")
+        elif isinstance(area_direct, str):
+            area_name = area_direct
+
+    if not area_name:
+        loc = room.get("property_location") or {}
+        area_name = loc.get("name", "") if isinstance(loc, dict) else ""
+
     # Property Details
     if options.get("propertyDetails"):
         p_lines = []
-        p_name = room.get("owner_brand_name") or room.get("owner_username")
+        p_name = (
+            (prop_details.get("property_name") if isinstance(prop_details, dict) else "")
+            or room.get("owner_brand_name")
+            or room.get("owner_username")
+        )
         p_type = (room.get("property_type") or {}).get("name") if isinstance(room.get("property_type"), dict) else room.get("property_type")
         if options.get("propertyDetails_name") and p_name:
             p_lines.append(f"*Property Name:* {p_name}")
         if options.get("propertyDetails_type") and p_type:
             p_lines.append(f"*Property Type:* {p_type}")
+        if options.get("propertyDetails_area") and area_name:
+            p_lines.append(f"*Area:* {area_name}")
         if p_lines:
             text_blocks.append("\n".join(p_lines))
-
     # Price & Rate Plans
     if options.get("price") and options.get("price_amount"):
         price_lines = []
@@ -466,9 +500,10 @@ def build_share_text(room: dict, options: dict, filters: dict = None) -> str:
     # Location
     if options.get("location"):
         loc = room.get("property_location") or {}
-        loc_name = loc.get("name") if options.get("location_name") else ""
-        city = loc.get("city") if options.get("location_city") else ""
-        state = loc.get("state") if options.get("location_state") else ""
+        loc_name = ((loc.get("name") if isinstance(loc, dict) else "") or area_name) if options.get("location_name") else ""
+        district = (prop_details.get("district") or {}) if isinstance(prop_details, dict) else {}
+        city = ((loc.get("city") if isinstance(loc, dict) else "") or (district.get("name", "") if isinstance(district, dict) else "")) if options.get("location_city") else ""
+        state = ((loc.get("state") if isinstance(loc, dict) else "") or (district.get("state", "") if isinstance(district, dict) else "")) if options.get("location_state") else ""
         loc_str = ", ".join(filter(None, [loc_name, city, state]))
         if loc_str:
             text_blocks.append(f"*Location:* {loc_str}")
@@ -794,10 +829,10 @@ def execute_initial_share(
     session_time_str = now.isoformat()
     conversation_id = conversation.id
 
-    # 1. Mark cutoff time in cache for "last initial share"
+    # Mark cutoff time in cache for "last initial share"
     cache.set(f"share_ctx:{conversation_id}:last_initial_share_time", session_time_str, timeout=86400 * 7)
 
-    # 2. Build rooms map and identify initial room UUIDs
+    #  Build rooms map and identify initial room UUIDs
     rooms_map = {}
     initial_room_uuids = set()
     for r in rooms:
@@ -806,11 +841,11 @@ def execute_initial_share(
             initial_room_uuids.add(u)
             rooms_map[u] = r
 
-    # 3. Queue calculation: available_room_uuids excluding the initially shared rooms
+    # Queue calculation: available_room_uuids excluding the initially shared rooms
     queue = [u for u in (available_room_uuids or []) if u and u not in initial_room_uuids]
     cache.set(f"share_ctx:{conversation_id}:queue", queue, timeout=86400)
 
-    # 4. Save share_context in cache for each initial room
+    # Save share_context in cache for each initial room
     share_ctx = {
         "filters": filters or {},
         "share_options": share_options or {},
@@ -823,17 +858,17 @@ def execute_initial_share(
         cache.set(f"share_ctx_room_{u}", r_data, timeout=86400)
     cache.set(f"share_ctx:{conversation_id}:latest", share_ctx, timeout=86400)
 
-    # 5. Media keys tracker (scoped to this session)
+    # Media keys tracker (scoped to this session)
     sent_media_keys = _get_previously_sent_media_keys(conversation, since_time=now)
 
-    # 6. Loop over rooms and send
+    # Loop over rooms and send
     total_rooms = len(rooms)
     for idx, room in enumerate(rooms):
         room_uuid = room.get("uuid", "")
         is_last_room = (idx == total_rooms - 1)
-        is_interactive = use_interactive
+        is_interactive = use_interactive and getattr(conversation, 'interactive_active', True)
 
-        # Step A: Send all images and videos FIRST
+        # Send all images and videos FIRST
         dispatch_res = {}
         try:
             dispatch_res = _dispatch_room_media(conversation, room, room_uuid, config, share_options, sent_media_keys, is_initial=True)
@@ -841,8 +876,6 @@ def execute_initial_share(
             logger.error("[share_responder] Error sending room media: %s", media_err)
 
         # Dynamic delivery buffer before sending the text/interactive buttons:
-        # If a video was sent, wait 2.5s for WhatsApp CDN to route it to the device before sending text.
-        # If images were sent, wait 1.2s.
         if isinstance(dispatch_res, dict) and dispatch_res.get("videos_sent", 0) > 0:
             time.sleep(2.5)
         elif isinstance(dispatch_res, dict) and dispatch_res.get("total_sent", 0) > 0:
@@ -850,12 +883,12 @@ def execute_initial_share(
         elif not isinstance(dispatch_res, dict) and dispatch_res:
             time.sleep(1.2)
 
-        # Step B: Build room details text
+        # Build room details text
         body_text = build_share_text(room, share_options, filters=filters)
         if not body_text:
             body_text = _build_next_card_text(room, share_options, filters)
 
-        # Step C: Send Room Details with interactive buttons (if last room and interactive enabled) or text
+        # Send Room Details with interactive buttons (if last room and interactive enabled) or text
         raw_meta = {
             "is_initial_share": True,
             "share_session_time": session_time_str,

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, memo, useCallback } from "react";
 import type { Conversation, Message } from "../../../api/messaging";
 import { messagingApi } from "../../../api/messaging";
 import { useMessagingStore, messagingStore } from "../../../store/messagingStore";
-import { User2, ChevronDown, Bot, Loader2 } from "lucide-react";
+import { User2, ChevronDown, Bot, Loader2, Zap } from "lucide-react";
 import { useRouter } from "../../../router";
 
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
@@ -194,6 +194,20 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
     }
   };
 
+  const handleToggleInteractive = async () => {
+    const currentVal = conversation.interactive_active !== false;
+    const newStatus = !currentVal;
+    messagingStore.updateConversationMeta(conversation.id, { interactive_active: newStatus });
+    try {
+      await messagingApi.updateConversation(conversation.id, { interactive_active: newStatus });
+    } catch (err) {
+      // Revert if failed
+      messagingStore.updateConversationMeta(conversation.id, { interactive_active: currentVal });
+      console.error(err);
+      alert('Failed to update interactive status for this conversation.');
+    }
+  };
+
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-slate-50/10 dark:bg-slate-900/10 transition duration-200 relative">
       {/* Chat Header */}
@@ -236,7 +250,7 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
             <button
               onClick={handleToggleAi}
               title={conversation.ai_active ? "Click to disable AI for this contact" : "Click to enable AI for this contact"}
-              className={`flex items-center space-x-1.5 px-2 py-1 rounded-full transition-colors ${conversation.ai_active
+              className={`flex items-center space-x-1.5 px-2 py-1 rounded-full transition-colors cursor-pointer ${conversation.ai_active
                 ? "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-500/30"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                 }`}
@@ -247,6 +261,22 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
               </span>
             </button>
           )}
+
+          {/* Interactive Button Response Toggle for Leads */}
+          <button
+            onClick={handleToggleInteractive}
+            title={conversation.interactive_active !== false ? "Interactive replies active. Click to pause/stop interactive buttons for this contact (useful for junk leads)" : "Interactive replies paused. Click to enable interactive buttons"}
+            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.interactive_active !== false
+              ? "bg-amber-100 hover:bg-amber-200 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-500/30"
+              : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 opacity-80"
+              }`}
+          >
+            <Zap className={`h-3.5 w-3.5 ${conversation.interactive_active !== false ? "fill-amber-500 text-amber-600 dark:text-amber-400" : "text-slate-400"}`} />
+            <span>
+              {conversation.interactive_active !== false ? "Interactive Active" : "Interactive Paused"}
+            </span>
+          </button>
+
           <StagePopup conversation={conversation} />
         </div>
       </div>

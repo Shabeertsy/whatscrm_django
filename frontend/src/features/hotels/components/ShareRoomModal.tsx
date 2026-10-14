@@ -50,302 +50,330 @@ export function ShareRoomModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm" onClick={closeShare}>
       <div className="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         {shareStep === 'options' && (
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-              {isMultiRoom ? `Share ${rooms.length} Rooms` : 'Share Room'}
-            </h3>
-            <button onClick={closeShare} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-          <p className="text-sm text-slate-500 mb-4">
-            {isMultiRoom
-              ? `Each room's details will be sent as a separate message.`
-              : `Share this room's details with others.`}
-          </p>
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                {isMultiRoom ? `Share ${rooms.length} Rooms` : 'Share Room'}
+              </h3>
+              <button onClick={closeShare} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-sm text-slate-500 mb-4">
+              {isMultiRoom
+                ? `Each room's details will be sent as a separate message.`
+                : `Share this room's details with others.`}
+            </p>
 
-          {/* Room Summary Card(s) */}
-          {isMultiRoom ? (
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-200 dark:border-slate-700 space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
-              {rooms.map((r: any, idx: number) => (
-                <div key={r.uuid || idx} className="flex items-center gap-2">
-                  <Bed className="h-3.5 w-3.5 text-[#007e3a] flex-shrink-0" />
-                  <div className="min-w-0">
-                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate block">{r.name}</span>
-                    <span className="text-[11px] text-slate-400 truncate block">{r.owner_username || r.owner_brand_name}</span>
+            {/* Room Summary Card(s) */}
+            {isMultiRoom ? (
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 mb-4 border border-slate-200 dark:border-slate-700 space-y-2 max-h-[140px] overflow-y-auto custom-scrollbar">
+                {rooms.map((r: any, idx: number) => (
+                  <div key={r.uuid || idx} className="flex items-center gap-2">
+                    <Bed className="h-3.5 w-3.5 text-[#007e3a] flex-shrink-0" />
+                    <div className="min-w-0">
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate block">{r.name}</span>
+                      <span className="text-[11px] text-slate-400 truncate block">{r.owner_username || r.owner_brand_name}</span>
+                    </div>
                   </div>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-200 dark:border-slate-700">
+                <div className="flex items-center gap-3 mb-2">
+                  <Bed className="h-5 w-5 text-[#007e3a]" />
+                  <span className="font-semibold text-slate-800 dark:text-slate-200">{firstRoom.name}</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-4 mb-4 border border-slate-200 dark:border-slate-700">
-              <div className="flex items-center gap-3 mb-2">
-                <Bed className="h-5 w-5 text-[#007e3a]" />
-                <span className="font-semibold text-slate-800 dark:text-slate-200">{firstRoom.name}</span>
+                <div className="text-sm text-slate-600 dark:text-slate-400">
+                  {firstRoom.owner_username || firstRoom.owner_brand_name} • {firstRoom.property_location?.name ? `${firstRoom.property_location.name}, ` : ''}{firstRoom.property_location?.city}
+                </div>
               </div>
-              <div className="text-sm text-slate-600 dark:text-slate-400">
-                {firstRoom.owner_username || firstRoom.owner_brand_name} • {firstRoom.property_location?.name ? `${firstRoom.property_location.name}, ` : ''}{firstRoom.property_location?.city}
-              </div>
-            </div>
-          )}
+            )}
 
-          <div className="mb-6 space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">Include in Message</p>
-            <div className="space-y-2">
-              {(() => {
-                const searchFilterItems = [];
-                if (filters) {
-                  if (filters.checkIn || filters.checkOut) {
-                    searchFilterItems.push({ subKey: 'filters_dates', label: `Dates: ${filters.checkIn || 'Any'} to ${filters.checkOut || 'Any'}` });
+            <div className="mb-6 space-y-3 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wider sticky top-0 bg-white dark:bg-slate-900 pb-2 z-10">Include in Message</p>
+              <div className="space-y-2">
+                {(() => {
+                  const searchFilterItems = [];
+                  if (filters) {
+                    if (filters.checkIn || filters.checkOut) {
+                      searchFilterItems.push({ subKey: 'filters_dates', label: `Dates: ${filters.checkIn || 'Any'} to ${filters.checkOut || 'Any'}` });
+                    }
+                    if (filters.adults || filters.children) {
+                      searchFilterItems.push({ subKey: 'filters_guests', label: `Guests: ${filters.adults || 1} Adults, ${filters.children || 0} Children` });
+                    }
+                    if (filters.rooms) {
+                      searchFilterItems.push({ subKey: 'filters_rooms', label: `Rooms Needed: ${filters.rooms}` });
+                    }
                   }
-                  if (filters.adults || filters.children) {
-                    searchFilterItems.push({ subKey: 'filters_guests', label: `Guests: ${filters.adults || 1} Adults, ${filters.children || 0} Children` });
+
+                  const shareItemsList: any[] = [];
+
+                  // 1. Basic Room Details
+                  shareItemsList.push({
+                    key: 'basicDetails', label: 'Basic Room Details', subItems: [
+                      { subKey: 'basicDetails_roomName', label: 'Room Name: ' + firstRoom.name },
+                      { subKey: 'basicDetails_roomType', label: 'Room Type: ' + (firstRoom.room_type?.name || 'N/A') },
+                      { subKey: 'basicDetails_occupancy', label: `Max Occupancy: ${firstRoom.max_occupancy} Guests` },
+                      { subKey: 'basicDetails_amenities', label: 'Amenities: ' + (firstRoom.amenities?.map((a: any) => a.name).join(', ') || 'None') }
+                    ]
+                  });
+
+                  if (searchFilterItems.length > 0) {
+                    shareItemsList.push({ key: 'searchFilters', label: 'Search Requirements', subItems: searchFilterItems });
                   }
-                  if (filters.rooms) {
-                    searchFilterItems.push({ subKey: 'filters_rooms', label: `Rooms Needed: ${filters.rooms}` });
-                  }
-                }
 
-                const shareItemsList: any[] = [];
-                
-                // 1. Basic Room Details
-                shareItemsList.push({ key: 'basicDetails', label: 'Basic Room Details', subItems: [
-                    { subKey: 'basicDetails_roomName', label: 'Room Name: ' + firstRoom.name },
-                    { subKey: 'basicDetails_roomType', label: 'Room Type: ' + (firstRoom.room_type?.name || 'N/A') },
-                    { subKey: 'basicDetails_occupancy', label: `Max Occupancy: ${firstRoom.max_occupancy} Guests` },
-                    { subKey: 'basicDetails_amenities', label: 'Amenities: ' + (firstRoom.amenities?.map((a: any) => a.name).join(', ') || 'None') }
-                ]});
+                  // 2. Property Details 
+                  const areaName =
+                    firstRoom.property_details?.area?.name ||
+                    (typeof firstRoom.property_details?.area === 'string' ? firstRoom.property_details?.area : '') ||
+                    firstRoom.area?.name ||
+                    (typeof firstRoom.area === 'string' ? firstRoom.area : '') ||
+                    firstRoom.property_location?.name ||
+                    'N/A';
+                  const propName =
+                    firstRoom.property_details?.property_name ||
+                    firstRoom.owner_brand_name ||
+                    firstRoom.owner_username ||
+                    'N/A';
 
-                if (searchFilterItems.length > 0) {
-                  shareItemsList.push({ key: 'searchFilters', label: 'Search Requirements', subItems: searchFilterItems });
-                }
+                  shareItemsList.push(
+                    {
+                      key: 'propertyDetails', label: 'Property Details', subItems: [
+                        { subKey: 'propertyDetails_name', label: 'Property Name: ' + propName },
+                        { subKey: 'propertyDetails_type', label: 'Property Type: ' + (firstRoom.property_type?.name || 'N/A') },
+                        { subKey: 'propertyDetails_area', label: 'Area: ' + areaName }
+                      ]
+                    });
 
-                // 2. Property Details (Owner/Brand/Property Type etc)
-                shareItemsList.push(
-                  { key: 'propertyDetails', label: 'Property Details', subItems: [
-                      { subKey: 'propertyDetails_name', label: 'Property Name: ' + (firstRoom.owner_brand_name || firstRoom.owner_username || 'N/A') },
-                      { subKey: 'propertyDetails_type', label: 'Property Type: ' + (firstRoom.property_type?.name || 'N/A') }
-                  ]});
-                
-                // 3. Price
-                const nights = firstRoom.price_summary?.nights || 1;
-                const roomsCount = filters?.rooms || 1;
-                shareItemsList.push(
-                  { key: 'price', label: 'Price', subItems: [
-                      { subKey: 'price_amount', label: `Amount: ₹${(firstRoom.price_summary?.grand_total ?? firstRoom.grand_total ?? firstRoom.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})` }
-                  ]});
+                  // 3. Price
+                  const nights = firstRoom.price_summary?.nights || 1;
+                  const roomsCount = filters?.rooms || 1;
+                  shareItemsList.push(
+                    {
+                      key: 'price', label: 'Price', subItems: [
+                        { subKey: 'price_amount', label: `Amount: ₹${(firstRoom.price_summary?.grand_total ?? firstRoom.grand_total ?? firstRoom.price)?.toLocaleString()} (for ${nights} night${nights > 1 ? 's' : ''}, ${roomsCount} room${roomsCount > 1 ? 's' : ''})` }
+                      ]
+                    });
 
-                // 4. Location
-                shareItemsList.push(
-                  { key: 'location', label: 'Location', subItems: [
-                      { subKey: 'location_name', label: `Name: ${firstRoom.property_location?.name || 'N/A'}` },
-                      { subKey: 'location_city', label: `City: ${firstRoom.property_location?.city || 'N/A'}` },
-                      { subKey: 'location_state', label: `State: ${firstRoom.property_location?.state || 'N/A'}` }
-                  ]});
+                  // 4. Location
+                  const locName = firstRoom.property_location?.name || firstRoom.property_details?.area?.name || firstRoom.area?.name || 'N/A';
+                  const locCity = firstRoom.property_location?.city || firstRoom.property_details?.district?.name || 'N/A';
+                  const locState = firstRoom.property_location?.state || firstRoom.property_details?.district?.state || 'N/A';
+                  shareItemsList.push(
+                    {
+                      key: 'location', label: 'Location', subItems: [
+                        { subKey: 'location_name', label: `Name: ${locName}` },
+                        { subKey: 'location_city', label: `City: ${locCity}` },
+                        { subKey: 'location_state', label: `State: ${locState}` }
+                      ]
+                    });
 
-                // 5. Contact Details
-                shareItemsList.push(
-                  { key: 'contactDetails', label: 'Contact Details', subItems: [
-                      { subKey: 'contactDetails_phone', label: `Phone: ${firstRoom.owner_phone || 'N/A'}` }
-                  ]});
+                  // 5. Contact Details
+                  shareItemsList.push(
+                    {
+                      key: 'contactDetails', label: 'Contact Details', subItems: [
+                        { subKey: 'contactDetails_phone', label: `Phone: ${firstRoom.owner_phone || 'N/A'}` }
+                      ]
+                    });
 
-                // 6. Property Images
-                const propImages = firstRoom.property_details?.property_images || firstRoom.property_images || firstRoom.property?.images || [];
-                shareItemsList.push({ 
-                    key: 'images_property', 
-                    label: 'Property Images', 
+                  // 6. Property Images
+                  const propImages = firstRoom.property_details?.property_images || firstRoom.property_images || firstRoom.property?.images || [];
+                  shareItemsList.push({
+                    key: 'images_property',
+                    label: 'Property Images',
                     subItems: propImages.map((img: any, i: number) => ({
-                        subKey: `images_property_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
+                      subKey: `images_property_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
                     })),
                     emptyMessage: propImages.length === 0 ? 'No media available' : undefined
-                });
+                  });
 
-                // 7. Room Images (use first room as reference)
-                const roomImgs = firstRoom.room_images || [];
-                shareItemsList.push({ 
-                    key: 'images_room', 
-                    label: isMultiRoom ? 'Room Images (per room)' : 'Room Images', 
+                  // 7. Room Images (use first room as reference)
+                  const roomImgs = firstRoom.room_images || [];
+                  shareItemsList.push({
+                    key: 'images_room',
+                    label: isMultiRoom ? 'Room Images (per room)' : 'Room Images',
                     subItems: roomImgs.map((img: any, i: number) => ({
-                        subKey: `images_room_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
+                      subKey: `images_room_${i}`, label: `Image ${i + 1}: ${img.url || img.image}`
                     })),
                     emptyMessage: roomImgs.length === 0 ? 'No media available' : undefined
-                });
+                  });
 
-                // 8. Property Videos
-                const propVideos = firstRoom.property_details?.property_videos || firstRoom.property_videos || firstRoom.property?.videos || [];
-                shareItemsList.push({ 
-                    key: 'videos_property', 
-                    label: 'Property Videos', 
+                  // 8. Property Videos
+                  const propVideos = firstRoom.property_details?.property_videos || firstRoom.property_videos || firstRoom.property?.videos || [];
+                  shareItemsList.push({
+                    key: 'videos_property',
+                    label: 'Property Videos',
                     subItems: propVideos.map((vid: any, i: number) => ({
-                        subKey: `videos_property_${i}`, label: `Video ${i + 1}: ${vid.video || vid.url}`
+                      subKey: `videos_property_${i}`, label: `Video ${i + 1}: ${vid.video || vid.url}`
                     })),
                     emptyMessage: propVideos.length === 0 ? 'No media available' : undefined
-                });
+                  });
 
-                return shareItemsList.map(opt => (
-                <div key={opt.key} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50">
-                    <label className="flex items-center gap-2 cursor-pointer group flex-1">
-                      <input 
-                        type="checkbox" 
-                        checked={!!shareOptions[opt.key]} 
-                        onChange={e => {
-                          const isChecked = e.target.checked;
-                          setShareOptions(prev => {
-                            const newOpts: Record<string, boolean> = { ...prev, [opt.key as string]: isChecked };
-                            if (opt.subItems) {
-                              if (!isChecked) {
-                                opt.subItems.forEach((sub: any) => {
-                                  newOpts[sub.subKey as string] = false;
-                                });
-                              } else {
-                                let maxCount = opt.subItems.length;
-                                if (opt.key === 'images_property') {
-                                  maxCount = Math.max(1, buttonConfig?.initial_property_image_limit ?? 1);
-                                } else if (opt.key === 'images_room') {
-                                  maxCount = Math.max(1, buttonConfig?.initial_room_image_limit ?? 1);
-                                } else if (opt.key === 'videos_property') {
-                                  maxCount = Math.max(1, buttonConfig?.initial_video_limit ?? 1);
-                                }
-                                opt.subItems.forEach((sub: any, idx: number) => {
-                                  newOpts[sub.subKey as string] = idx < maxCount;
-                                });
-                              }
-                            }
-                            return newOpts;
-                          });
-                        }}
-                        className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer" 
-                      />
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-                        {opt.label}
-                      </span>
-                    </label>
-                    {(opt.subItems.length > 0 || opt.emptyMessage) && (
-                      <button 
-                        onClick={() => setExpandedShareCategory(expandedShareCategory === opt.key ? null : opt.key)}
-                        className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                      >
-                        <ChevronRight className={`h-4 w-4 transition-transform ${expandedShareCategory === opt.key ? 'rotate-90' : ''}`} />
-                      </button>
-                    )}
-                  </div>
-                  {expandedShareCategory === opt.key && (opt.subItems.length > 0 || opt.emptyMessage) && (
-                    <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 space-y-2">
-                      {opt.emptyMessage ? (
-                         <div className="text-[13px] text-slate-400 italic px-1 py-0.5">{opt.emptyMessage}</div>
-                      ) : (
-                        opt.subItems.map((sub: any) => (
-                        <label key={sub.subKey} className="flex items-start gap-2 cursor-pointer group">
-                          <input 
-                            type="checkbox" 
-                            checked={!!shareOptions[sub.subKey]} 
+                  return shareItemsList.map(opt => (
+                    <div key={opt.key} className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                      <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50">
+                        <label className="flex items-center gap-2 cursor-pointer group flex-1">
+                          <input
+                            type="checkbox"
+                            checked={!!shareOptions[opt.key]}
                             onChange={e => {
                               const isChecked = e.target.checked;
                               setShareOptions(prev => {
-                                const newOpts: Record<string, boolean> = { ...prev, [sub.subKey as string]: isChecked };
-                                const anyChecked = opt.subItems.some((s: any) => 
-                                  s.subKey === sub.subKey ? isChecked : !!prev[s.subKey]
-                                );
-                                newOpts[opt.key as string] = anyChecked;
+                                const newOpts: Record<string, boolean> = { ...prev, [opt.key as string]: isChecked };
+                                if (opt.subItems) {
+                                  if (!isChecked) {
+                                    opt.subItems.forEach((sub: any) => {
+                                      newOpts[sub.subKey as string] = false;
+                                    });
+                                  } else {
+                                    let maxCount = opt.subItems.length;
+                                    if (opt.key === 'images_property') {
+                                      maxCount = Math.max(1, buttonConfig?.initial_property_image_limit ?? 1);
+                                    } else if (opt.key === 'images_room') {
+                                      maxCount = Math.max(1, buttonConfig?.initial_room_image_limit ?? 1);
+                                    } else if (opt.key === 'videos_property') {
+                                      maxCount = Math.max(1, buttonConfig?.initial_video_limit ?? 1);
+                                    }
+                                    opt.subItems.forEach((sub: any, idx: number) => {
+                                      newOpts[sub.subKey as string] = idx < maxCount;
+                                    });
+                                  }
+                                }
                                 return newOpts;
                               });
                             }}
-                            className="h-3.5 w-3.5 rounded accent-[#007e3a] cursor-pointer mt-0.5 flex-shrink-0" 
+                            className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer"
                           />
-                          <span className="text-[13px] text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors break-all leading-tight">
-                            {sub.label}
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
+                            {opt.label}
                           </span>
                         </label>
-                      )))}
+                        {(opt.subItems.length > 0 || opt.emptyMessage) && (
+                          <button
+                            onClick={() => setExpandedShareCategory(expandedShareCategory === opt.key ? null : opt.key)}
+                            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                          >
+                            <ChevronRight className={`h-4 w-4 transition-transform ${expandedShareCategory === opt.key ? 'rotate-90' : ''}`} />
+                          </button>
+                        )}
+                      </div>
+                      {expandedShareCategory === opt.key && (opt.subItems.length > 0 || opt.emptyMessage) && (
+                        <div className="p-3 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 space-y-2">
+                          {opt.emptyMessage ? (
+                            <div className="text-[13px] text-slate-400 italic px-1 py-0.5">{opt.emptyMessage}</div>
+                          ) : (
+                            opt.subItems.map((sub: any) => (
+                              <label key={sub.subKey} className="flex items-start gap-2 cursor-pointer group">
+                                <input
+                                  type="checkbox"
+                                  checked={!!shareOptions[sub.subKey]}
+                                  onChange={e => {
+                                    const isChecked = e.target.checked;
+                                    setShareOptions(prev => {
+                                      const newOpts: Record<string, boolean> = { ...prev, [sub.subKey as string]: isChecked };
+                                      const anyChecked = opt.subItems.some((s: any) =>
+                                        s.subKey === sub.subKey ? isChecked : !!prev[s.subKey]
+                                      );
+                                      newOpts[opt.key as string] = anyChecked;
+                                      return newOpts;
+                                    });
+                                  }}
+                                  className="h-3.5 w-3.5 rounded accent-[#007e3a] cursor-pointer mt-0.5 flex-shrink-0"
+                                />
+                                <span className="text-[13px] text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors break-all leading-tight">
+                                  {sub.label}
+                                </span>
+                              </label>
+                            )))}
+                        </div>
+                      )}
                     </div>
+                  ))
+                })()}
+              </div>
+            </div>
+
+            {/* WhatsApp Interactive Action Buttons Card */}
+            {buttonConfig && (
+              <div className="mb-4 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-200">
+                    <input
+                      type="checkbox"
+                      checked={useInteractiveButtons}
+                      onChange={(e) => setUseInteractiveButtons?.(e.target.checked)}
+                      className="rounded accent-amber-500 text-amber-500"
+                    />
+                    Attach WhatsApp Action Buttons
+                  </label>
+
+                  {useInteractiveButtons && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        closeShare();
+                        navigate('/settings?tab=property_share');
+                      }}
+                      className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      Customize Buttons
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
                   )}
                 </div>
-              ))})()}
-            </div>
-          </div>
 
-          {/* WhatsApp Interactive Action Buttons Card */}
-          {buttonConfig && (
-            <div className="mb-4 bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200/80 dark:border-amber-900/40 rounded-xl p-3 space-y-2">
-              <div className="flex items-center justify-between">
-                <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-slate-200">
-                  <input
-                    type="checkbox"
-                    checked={useInteractiveButtons}
-                    onChange={(e) => setUseInteractiveButtons?.(e.target.checked)}
-                    className="rounded accent-amber-500 text-amber-500"
-                  />
-                  Attach WhatsApp Action Buttons
-                </label>
-                
                 {useInteractiveButtons && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      closeShare();
-                      navigate('/settings?tab=property_share');
-                    }}
-                    className="text-[11px] font-semibold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
-                  >
-                    Customize Buttons
-                    <ExternalLink className="h-3 w-3" />
-                  </button>
+                  <div className="flex flex-wrap gap-1.5 pt-0.5">
+                    {buttonConfig.book_button_enabled && (
+                      <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
+                        {buttonConfig.book_button_label || 'Book Now'}
+                      </span>
+                    )}
+                    {buttonConfig.details_button_enabled && (
+                      <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
+                        {buttonConfig.details_button_label || 'More Details'}
+                      </span>
+                    )}
+                    {buttonConfig.next_button_enabled && (
+                      <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
+                        {buttonConfig.next_button_label || 'Next'}
+                      </span>
+                    )}
+                    {buttonConfig.exit_button_enabled && (
+                      <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
+                        {buttonConfig.exit_button_label || 'Exit'}
+                      </span>
+                    )}
+                  </div>
+                )}
+                {useInteractiveButtons && isMultiRoom && (
+                  <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                    Note: Action buttons will be attached to the last room message.
+                  </p>
                 )}
               </div>
+            )}
 
-              {useInteractiveButtons && (
-                <div className="flex flex-wrap gap-1.5 pt-0.5">
-                  {buttonConfig.book_button_enabled && (
-                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
-                      {buttonConfig.book_button_label || 'Book Now'}
-                    </span>
-                  )}
-                  {buttonConfig.details_button_enabled && (
-                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
-                      {buttonConfig.details_button_label || 'More Details'}
-                    </span>
-                  )}
-                  {buttonConfig.next_button_enabled && (
-                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-amber-300 dark:border-amber-800 text-slate-700 dark:text-slate-200 px-2 py-0.5 rounded-md">
-                      {buttonConfig.next_button_label || 'Next'}
-                    </span>
-                  )}
-                  {buttonConfig.exit_button_enabled && (
-                    <span className="text-[10px] font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-md">
-                      {buttonConfig.exit_button_label || 'Exit'}
-                    </span>
-                  )}
-                </div>
-              )}
-              {useInteractiveButtons && isMultiRoom && (
-                <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  Note: Action buttons will be attached to the last room message.
-                </p>
-              )}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => {
+                  const allText = rooms.map(r => generateShareText(r, shareOptions, filters, amenityOptions, propertyTypeOptions)).join('\n\n---\n\n');
+                  navigator.clipboard.writeText(allText);
+                  alert('Message copied to clipboard!');
+                }}
+                className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                Copy Text
+              </button>
+              <button
+                onClick={loadConversations}
+                className="flex-1 bg-[#007e3a] hover:bg-[#00602d] text-white py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                <Share2 className="h-4 w-4" /> Share to Chats
+              </button>
             </div>
-          )}
-
-          <div className="flex items-center gap-3">
-            <button 
-              onClick={() => {
-                const allText = rooms.map(r => generateShareText(r, shareOptions, filters, amenityOptions, propertyTypeOptions)).join('\n\n---\n\n');
-                navigator.clipboard.writeText(allText);
-                alert('Message copied to clipboard!');
-              }}
-              className="flex-1 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-            >
-              Copy Text
-            </button>
-            <button 
-              onClick={loadConversations}
-              className="flex-1 bg-[#007e3a] hover:bg-[#00602d] text-white py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
-            >
-              <Share2 className="h-4 w-4" /> Share to Chats
-            </button>
           </div>
-        </div>
         )}
 
         {shareStep === 'select_chats' && (
@@ -376,13 +404,13 @@ export function ShareRoomModal({
               ) : (
                 filteredConversations.map(c => (
                   <label key={c.id} className={`flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-colors ${selectedChats.includes(c.id) ? 'border-[#007e3a] bg-[#007e3a]/5 dark:bg-[#007e3a]/10' : 'border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
-                    <input 
-                      type="checkbox" 
-                      checked={selectedChats.includes(c.id)} 
+                    <input
+                      type="checkbox"
+                      checked={selectedChats.includes(c.id)}
                       onChange={(e) => {
                         if (e.target.checked) setSelectedChats(p => [...p, c.id]);
                         else setSelectedChats(p => p.filter(id => id !== c.id));
-                      }} 
+                      }}
                       className="h-4 w-4 accent-[#007e3a] cursor-pointer"
                     />
                     <div className="flex-1 flex items-center gap-3 overflow-hidden">
@@ -403,7 +431,7 @@ export function ShareRoomModal({
               )}
             </div>
 
-            <button 
+            <button
               disabled={isSendingShare || selectedChats.length === 0}
               onClick={handleSendShare}
               className="w-full bg-[#007e3a] hover:bg-[#00602d] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
