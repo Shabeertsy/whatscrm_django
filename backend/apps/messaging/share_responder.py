@@ -824,10 +824,13 @@ def execute_initial_share(
         is_interactive = use_interactive and is_last_room
 
         # Step A: Send all images and videos FIRST
-        _dispatch_room_media(conversation, room, room_uuid, config, share_options, sent_media_keys, is_initial=True)
+        try:
+            _dispatch_room_media(conversation, room, room_uuid, config, share_options, sent_media_keys, is_initial=True)
+        except Exception as media_err:
+            logger.error("[share_responder] Error sending room media: %s", media_err)
 
         # Pause slightly so WhatsApp processes all media before the text/interactive message
-        time.sleep(0.5)
+        time.sleep(1.0)
 
         # Step B: Build room details text
         body_text = build_share_text(room, share_options, filters=filters)
@@ -857,7 +860,6 @@ def execute_initial_share(
                     options=options,
                     sent_by=sent_by,
                     related_room_uuid=room_uuid,
-                    raw_data=raw_meta,
                 )
             else:
                 send_and_save_message(
@@ -975,7 +977,7 @@ def _build_action_buttons(
     return buttons
 
 
-def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: str, raw_data: dict = None):
+def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: str):
     # Meta WhatsApp rejects body_text starting with newlines or exceeding 1024 characters
     safe_body = body.strip()[:1024] or "Room details"
     if options:
@@ -984,7 +986,6 @@ def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: st
             body_text=safe_body,
             options=options,
             related_room_uuid=room_uuid,
-            raw_data=raw_data or {},
         )
     else:
         send_and_save_message(
@@ -992,7 +993,6 @@ def _dispatch_card_or_text(conversation, body: str, options: list, room_uuid: st
             msg_type="text",
             body=safe_body,
             related_room_uuid=room_uuid,
-            raw_data=raw_data or {},
         )
 
 
@@ -1063,22 +1063,19 @@ def _handle_next_action(
         cache.set(f"share_ctx:{conversation.id}:latest", ctx, timeout=86400)
 
     # Dispatch media first (images & videos)
-    batch_sent_keys = _get_previously_sent_media_keys(conversation)
-    _dispatch_room_media(conversation, room, next_room_uuid, config, share_options, batch_sent_keys)
-    time.sleep(0.5)
+    try:
+        batch_sent_keys = _get_previously_sent_media_keys(conversation)
+        _dispatch_room_media(conversation, room, next_room_uuid, config, share_options, batch_sent_keys)
+    except Exception as media_err:
+        logger.error("[share_responder] Error dispatching next room media: %s", media_err)
+    time.sleep(1.0)
 
     # Dispatch room details with interactive action buttons AFTER all images and videos
     body_text = _build_next_card_text(room, share_options, filters)
     options = _build_action_buttons(
         config, next_room_uuid, next_room_uuid=subsequent_room_uuid, include_details=True
     )
-    _dispatch_card_or_text(
-        conversation,
-        body_text,
-        options,
-        next_room_uuid,
-        raw_data={"is_next_share": True, "room_uuid": next_room_uuid},
-    )
+    _dispatch_card_or_text(conversation, body_text, options, next_room_uuid)
 
 
 def _handle_book_action(conversation, room_uuid: str, config: PropertyShareConfig):
