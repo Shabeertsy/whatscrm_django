@@ -176,30 +176,35 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
     price, location, dates). Extra detail fields are reserved for
     build_details_body() which is only called by the 'More Details' button.
     """
-    # Use a stripped-down field set — only what belongs in a navigation card
+    
     _NEXT_CARD_FIELDS = {
-        "basicDetails": True,
-        "basicDetails_roomName": True,
-        "basicDetails_roomType": True,
+        # Always shown (core room identity)
+        "basicDetails":           True,
+        "basicDetails_roomName":  True,
+        "basicDetails_roomType":  True,
         "basicDetails_occupancy": True,
+        # User's popup selection
         "basicDetails_amenities": share_options.get("basicDetails_amenities", False),
-        "searchFilters": share_options.get("searchFilters", True),
-        "filters_dates": share_options.get("filters_dates", True),
-        "filters_guests": share_options.get("filters_guests", True),
-        "filters_rooms": share_options.get("filters_rooms", False),
-        "propertyDetails": True,
-        "propertyDetails_name": share_options.get("propertyDetails_name", False),   
-        "propertyDetails_type": share_options.get("propertyDetails_type", False),
-        "propertyDetails_area": share_options.get("propertyDetails_area", False),  
-        "price": True,
-        "price_amount": True,
-        "price_meal_plans": False,   # meal plans only in 'More Details'
-        "location": share_options.get("location", True),
-        "location_name": True,
-        "location_city": True,
-        "location_state": False,
-        "contactDetails": False,     # contact only in 'More Details'   
-        "contactDetails_phone": False,
+        "searchFilters":          share_options.get("searchFilters",          False),
+        "filters_dates":          share_options.get("filters_dates",          False),
+        "filters_guests":         share_options.get("filters_guests",         False),
+        "filters_rooms":          share_options.get("filters_rooms",          False),
+        "propertyDetails":        share_options.get("propertyDetails",        False),
+        "propertyDetails_name":   share_options.get("propertyDetails_name",   False),
+        "propertyDetails_type":   share_options.get("propertyDetails_type",   False),
+        "propertyDetails_area":   share_options.get("propertyDetails_area",   False),
+        # Always shown (price is core)
+        "price":                  True,
+        "price_amount":           True,
+        "price_meal_plans":       False,  # meal plans only in 'More Details'
+        # User's popup selection
+        "location":               share_options.get("location",               False),
+        "location_name":          share_options.get("location_name",          False),
+        "location_city":          share_options.get("location_city",          False),
+        "location_state":         False,
+        # Never in Next card
+        "contactDetails":         False,
+        "contactDetails_phone":   False,
     }
     body = build_share_text(room, _NEXT_CARD_FIELDS, filters=filters)
     if body:
