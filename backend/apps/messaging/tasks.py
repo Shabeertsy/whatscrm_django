@@ -340,53 +340,209 @@ def process_inbound_message(self, conversation_id: int):
         raise self.retry(exc=exc)
 
 
-@shared_task(bind=True, max_retries=1)
+# Share tasks  (one per conversation / one per media item — never blocking)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@shared_task(
+    bind=True,
+    max_retries=1,
+    name="messaging.initial_share_task",
+    queue="share",
+)
 def initial_share_task(
     self,
-    conversation_ids,
-    rooms,
-    filters,
-    share_options,
-    use_interactive=True,
-    available_room_uuids=None,
-    user_id=None,
+    conversation_id: int,       # single conv — parallelism via group() in dispatch
+    rooms: list,
+    filters: dict,
+    share_options: dict,
+    use_interactive: bool = True,
+    available_room_uuids: list = None,
+    user_id: int = None,
 ):
+    """
+    Executes the initial share for ONE conversation.
+    dispatch_initial_share_async() calls this via group() for true parallelism.
+    """
     from django.contrib.auth import get_user_model
     from apps.messaging.models import Conversation, PropertyShareConfig
-    from apps.messaging.share_responder import execute_initial_share
-
-    User = get_user_model()
-    user = User.objects.filter(id=user_id).first() if user_id else None
-    config = PropertyShareConfig.get_effective_config(user=user)
-
-    for conv_id in conversation_ids:
-        try:
-            conv = Conversation.objects.filter(id=conv_id).first()
-            if not conv:
-                continue
-            execute_initial_share(
-                conversation=conv,
-                rooms=rooms,
-                filters=filters,
-                share_options=share_options,
-                config=config,
-                use_interactive=use_interactive,
-                available_room_uuids=available_room_uuids,
-                sent_by=user,
-            )
-        except Exception as err:
-            logger.error("[initial_share_task] Error sharing to conv %s: %s", conv_id, err)
-
-
-@shared_task(bind=True, max_retries=1)
-def share_button_reply_task(self, conversation_id, button_id, button_title=""):
-    from apps.messaging.models import Conversation
-    from apps.messaging.share_responder import handle_share_button_reply
+    from apps.messaging.share.session import execute_initial_share
 
     try:
-        conv = Conversation.objects.filter(id=conversation_id).first()
+        conv = Conversation.objects.select_related(
+            "contact", "instance", "assigned_agent"
+        ).filter(id=conversation_id).first()
+        if not conv:
+            logger.warning("[initial_share_task] Conv %s not found", conversation_id)
+            return
+
+        User = get_user_model()
+        user = User.objects.filter(id=user_id).first() if user_id else None
+        config = PropertyShareConfig.get_effective_config(user=user)
+
+        execute_initial_share(
+            conversation=conv,
+            rooms=rooms,
+            filters=filters,
+            share_options=share_options,
+            config=config,
+            use_interactive=use_interactive,
+            available_room_uuids=available_room_uuids,
+            sent_by=user,
+        )
+    except Exception as err:
+        logger.error("[initial_share_task] Error for conv %s: %s", conversation_id, err)
+        raise self.retry(exc=err)
+
+
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=5,
+    name="messaging.send_media_item_task",
+    queue="share",
+)
+def send_media_item_task(
+    self,
+    conversation_id: int,
+    raw_url: str,
+    msg_type: str,
+    room_uuid: str,
+    is_initial: bool = False,
+):
+    """
+    Sends a single image or video message.
+    Scheduled with Celery countdown instead of time.sleep() — worker is free
+    between items; delivery ordering is maintained via staggered countdowns.
+    """
+    from apps.messaging.models import Conversation
+    from apps.messaging.utils import send_and_save_message, process_external_media_url
+
+    try:
+        conv = Conversation.objects.select_related("contact", "instance").get(
+            id=conversation_id
+        )
+        phone = conv.contact.phone if conv.contact else ""
+        proc_url, proc_path = process_external_media_url(raw_url, msg_type, phone=phone)
+
+        raw_meta = {"original_url": raw_url}
+        if is_initial:
+            raw_meta["is_initial_share"] = True
+
+        send_and_save_message(
+            conv,
+            msg_type=msg_type,
+            media_url=proc_url,
+            storage_path=proc_path,
+            related_room_uuid=room_uuid,
+            raw_data=raw_meta,
+        )
+        logger.info(
+            "[send_media_item_task] Sent %s to conv %s room %s",
+            msg_type, conversation_id, room_uuid,
+        )
+    except Conversation.DoesNotExist:
+        logger.warning("[send_media_item_task] Conv %s not found", conversation_id)
+    except Exception as exc:
+        logger.error("[send_media_item_task] Failed %s for conv %s: %s", msg_type, conversation_id, exc)
+        raise self.retry(exc=exc)
+
+
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=5,
+    name="messaging.send_share_card_task",
+    queue="share",
+)
+def send_share_card_task(
+    self,
+    conversation_id: int,
+    body_text: str,
+    options: list,
+    room_uuid: str,
+    is_interactive: bool = True,
+    is_initial: bool = False,
+    session_time_str: str = None,
+    sent_by_id: int = None,
+):
+    """
+    Sends the interactive card (or plain text) for a room.
+    Scheduled with countdown so it fires after all associated media tasks.
+    """
+    from apps.messaging.models import Conversation
+    from apps.messaging.utils import send_and_save_interactive_buttons, send_and_save_message
+
+    try:
+        conv = Conversation.objects.select_related("contact", "instance").get(
+            id=conversation_id
+        )
+
+        sent_by = None
+        if sent_by_id:
+            from django.contrib.auth import get_user_model
+            sent_by = get_user_model().objects.filter(id=sent_by_id).first()
+
+        raw_meta = {"room_uuid": room_uuid}
+        if is_initial:
+            raw_meta["is_initial_share"] = True
+        if session_time_str:
+            raw_meta["share_session_time"] = session_time_str
+
+        safe_body = body_text.strip()[:1024] or "Room details"
+
+        if is_interactive and options:
+            send_and_save_interactive_buttons(
+                conv,
+                body_text=safe_body,
+                options=options,
+                sent_by=sent_by,
+                related_room_uuid=room_uuid,
+            )
+        else:
+            send_and_save_message(
+                conv,
+                msg_type="text",
+                body=safe_body,
+                sent_by=sent_by,
+                related_room_uuid=room_uuid,
+                raw_data=raw_meta,
+            )
+
+        logger.info(
+            "[send_share_card_task] Card sent to conv %s room %s",
+            conversation_id, room_uuid,
+        )
+    except Conversation.DoesNotExist:
+        logger.warning("[send_share_card_task] Conv %s not found", conversation_id)
+    except Exception as exc:
+        logger.error("[send_share_card_task] Failed for conv %s: %s", conversation_id, exc)
+        raise self.retry(exc=exc)
+
+
+@shared_task(
+    bind=True,
+    max_retries=1,
+    name="messaging.share_button_reply_task",
+    queue="share",
+)
+def share_button_reply_task(self, conversation_id: int, button_id: str, button_title: str = ""):
+    """
+    Handle a WhatsApp interactive button click from the share flow.
+    Media scheduling is done via countdown inside the handler — no sleep here.
+    """
+    from apps.messaging.models import Conversation
+    from apps.messaging.share.handlers import handle_share_button_reply
+
+    try:
+        conv = Conversation.objects.select_related(
+            "contact", "instance", "assigned_agent"
+        ).filter(id=conversation_id).first()
         if conv:
             handle_share_button_reply(conv, button_id, button_title)
     except Exception as exc:
-        logger.error("[share_button_reply_task] Error handling button %s: %s", button_id, exc)
+        logger.error(
+            "[share_button_reply_task] Error handling button %s for conv %s: %s",
+            button_id, conversation_id, exc,
+        )
+        raise self.retry(exc=exc)
 

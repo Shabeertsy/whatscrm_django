@@ -852,7 +852,7 @@ class WebhookView(APIView):
                 b_id = b_reply.get('id', '')
                 b_title = b_reply.get('title', '')
                 if b_id and b_id.startswith('share_'):
-                    from apps.messaging.share_responder import dispatch_share_button_reply_async
+                    from apps.messaging.share.handlers import dispatch_share_button_reply_async
                     dispatch_share_button_reply_async(conv, b_id, b_title)
                     return  
 
@@ -1106,7 +1106,7 @@ class InitialShareAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
 
-        from apps.messaging.share_responder import dispatch_initial_share_async
+        from apps.messaging.share.session import dispatch_initial_share_async
         dispatch_initial_share_async(
             conversation_ids=data["conversation_ids"],
             rooms=data["rooms"],
