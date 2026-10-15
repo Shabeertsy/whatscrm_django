@@ -422,7 +422,7 @@ class PropertyShareConfigSerializer(serializers.ModelSerializer):
 
 class InitialShareSerializer(serializers.Serializer):
     conversation_ids = serializers.ListField(
-        child=serializers.CharField(),
+        child=serializers.IntegerField(),   # PKs must be int, not str
         required=True,
         allow_empty=False,
     )

@@ -347,7 +347,6 @@ def process_inbound_message(self, conversation_id: int):
     bind=True,
     max_retries=1,
     name="messaging.initial_share_task",
-    queue="share",
 )
 def initial_share_task(
     self,
@@ -399,7 +398,6 @@ def initial_share_task(
     max_retries=2,
     default_retry_delay=5,
     name="messaging.send_media_item_task",
-    queue="share",
 )
 def send_media_item_task(
     self,
@@ -452,7 +450,6 @@ def send_media_item_task(
     max_retries=2,
     default_retry_delay=5,
     name="messaging.send_share_card_task",
-    queue="share",
 )
 def send_share_card_task(
     self,
@@ -523,7 +520,6 @@ def send_share_card_task(
     bind=True,
     max_retries=1,
     name="messaging.share_button_reply_task",
-    queue="share",
 )
 def share_button_reply_task(self, conversation_id: int, button_id: str, button_title: str = ""):
     """

@@ -164,7 +164,7 @@ def _handle_next_action(
         cache.set_many({
             ShareCacheKey.room(conversation.id, next_room_uuid): ctx,
             ShareCacheKey.session(conversation.id): ctx,
-        }, timeout=SESSION_TTL_S)  # SESSION_TTL_S imported from .constants at top
+        }, timeout=SESSION_TTL_S)
 
     # Schedule media sends
     sent_keys = collect_sent_media_keys(conversation)

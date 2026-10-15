@@ -196,15 +196,16 @@ def dispatch_initial_share_async(
     user=None,
 ):
     """
-    Fan-out: spawn one Celery task per conversation (parallel, not sequential).
-    Workers pick them up simultaneously instead of waiting for each other.
+    Fan-out: queue one Celery task per conversation.
+    Workers pick them up in parallel from the default queue.
+    Simple .delay() loop is equivalent to group() but has no silent
+    failure modes from result-backend misconfiguration.
     """
     from apps.messaging.tasks import initial_share_task
-    from celery import group
 
     user_id = getattr(user, "id", None)
-    job = group(
-        initial_share_task.s(
+    for conv_id in conversation_ids:
+        initial_share_task.delay(
             conversation_id=conv_id,
             rooms=rooms,
             filters=filters,
@@ -213,6 +214,7 @@ def dispatch_initial_share_async(
             available_room_uuids=available_room_uuids,
             user_id=user_id,
         )
-        for conv_id in conversation_ids
+    logger.info(
+        "[share.session] Queued initial_share_task for %d conversation(s)",
+        len(conversation_ids),
     )
-    job.apply_async()
