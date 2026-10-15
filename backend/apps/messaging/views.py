@@ -870,6 +870,20 @@ class WebhookView(APIView):
         wa_msg_id  = status_data.get('id')
         new_status = status_data.get('status') 
         if wa_msg_id and new_status:
+            # Log failed statuses with full Meta error info
+            if new_status == 'failed':
+                errors = status_data.get('errors', [])
+                for err in errors:
+                    logger.error(
+                        "[webhook] Message %s FAILED — Meta error code=%s title=%s details=%s",
+                        wa_msg_id,
+                        err.get('code'),
+                        err.get('title'),
+                        err.get('error_data', {}).get('details', err.get('message', '')),
+                    )
+                if not errors:
+                    logger.error("[webhook] Message %s FAILED — no error details in webhook payload: %s", wa_msg_id, status_data)
+
             msg = Message.objects.filter(wa_message_id=wa_msg_id).first()
             if msg:
                 msg.status = new_status
