@@ -38,20 +38,37 @@ class AutomationEngine(BaseChatbotEngine):
 
     def generate_reply(self, ctx: ChatbotContext) -> Optional[ChatbotReply]:
         """
-        1. If a WAITING execution exists, resume it (e.g. menu response).
+        1. If a WAITING execution exists, try to resume it.
+           Exception: if the user's message matches a NEW flow trigger keyword,
+           cancel the stale WAITING execution and start the new flow instead.
         2. Otherwise, find a matching trigger and start a fresh execution.
         """
         inbound_text = self._normalize_text(ctx.inbound_message_body or "")
 
-        # Resume an existing WAITING execution
+        # Resume an existing WAITING execution — but yield to a fresh trigger keyword
         waiting = FlowExecution.objects.filter(
             contact=self.conv.contact,
             status=ExecutionStatus.WAITING,
         ).first()
         if waiting:
-            return self._resume_execution(waiting, ctx, inbound_text)
+            # Check if the message is actually a trigger for a DIFFERENT (or same) flow
+            triggered_flow, trigger_node = self._find_trigger(inbound_text)
+            if triggered_flow and trigger_node:
+                # User sent a trigger keyword while another flow was waiting.
+                # Cancel the stale execution and start the new flow fresh.
+                logger.info(
+                    "[AutomationEngine] Conv %s — cancelling stale WAITING execution %s "
+                    "(node=%s) to start fresh flow '%s' triggered by '%s'",
+                    self.conv.id, waiting.id,
+                    getattr(waiting.current_node, 'node_type', '?'),
+                    triggered_flow.name, inbound_text,
+                )
+                waiting.status = ExecutionStatus.CANCELLED
+                waiting.save(update_fields=["status"])
+            else:
+                return self._resume_execution(waiting, ctx, inbound_text)
 
-        # Find the first matching trigger
+        # Find the first matching trigger (also reached if we just cancelled a stale execution)
         triggered_flow, trigger_node = self._find_trigger(inbound_text)
         if not triggered_flow or not trigger_node:
             return None
@@ -1559,19 +1576,45 @@ class AutomationEngine(BaseChatbotEngine):
             status=FlowStatus.ACTIVE,
         ).prefetch_related("nodes", "edges")
 
-        for flow in flows:
-            for node in flow.nodes.filter(node_type=NodeType.TRIGGER):
+        flow_list = list(flows)
+        logger.info(
+            "[AutomationEngine] Conv %s _find_trigger text='%s' checking %d active flow(s)",
+            self.conv.id, inbound_text[:40], len(flow_list),
+        )
+
+        for flow in flow_list:
+            trigger_nodes = list(flow.nodes.filter(node_type=NodeType.TRIGGER))
+            for node in trigger_nodes:
                 trigger_type = node.config.get("triggerType")
 
                 if trigger_type == TriggerType.KEYWORD:
                     keywords   = node.config.get("keywords", [])
                     match_type = node.config.get("matchType", "contains")
-                    if self._evaluate_keyword_match(inbound_text, keywords, match_type):
+                    matched = self._evaluate_keyword_match(inbound_text, keywords, match_type)
+                    logger.info(
+                        "[AutomationEngine] Conv %s flow='%s' keyword trigger keywords=%s match_type=%s matched=%s",
+                        self.conv.id, flow.name, keywords, match_type, matched,
+                    )
+                    if matched:
                         return flow, node
 
                 elif trigger_type == TriggerType.INBOUND_MESSAGE:
+                    logger.info(
+                        "[AutomationEngine] Conv %s flow='%s' INBOUND_MESSAGE trigger matched",
+                        self.conv.id, flow.name,
+                    )
                     return flow, node
 
+                else:
+                    logger.info(
+                        "[AutomationEngine] Conv %s flow='%s' unknown trigger_type='%s' skipped",
+                        self.conv.id, flow.name, trigger_type,
+                    )
+
+        logger.info(
+            "[AutomationEngine] Conv %s no trigger matched for text='%s'",
+            self.conv.id, inbound_text[:40],
+        )
         return None, None
 
 
