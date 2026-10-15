@@ -231,7 +231,7 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
 def build_details_body(
     room: dict,
     ctx: dict,
-    config,           # PropertyShareConfig — avoid circular import with TYPE_CHECKING
+    config,          
 ) -> str:
     """Build the 'More Details' card body text."""
     if config.details_text_template:
@@ -246,6 +246,7 @@ def build_details_body(
             body = f"🏨 *{room_name}*"
 
     return f"{body}\n\nTap *Book Now* below to reserve this room."
+
 
 
 #  Internal helpers ───────────────────────────────────────────────────────────

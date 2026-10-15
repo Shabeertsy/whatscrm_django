@@ -154,9 +154,9 @@ def schedule_room_media(
     room_img_limit = config.initial_room_image_limit or 0
     video_limit    = getattr(config, "initial_video_limit", 1) or 0
 
-    logger.debug(
+    logger.info(
         "[share.media_dispatcher] conv=%s room=%s | config limits: prop_img=%d room_img=%d video=%d "
-        "| available: prop_imgs=%d room_imgs=%d videos=%d",
+        "| CRM data available: prop_imgs=%d room_imgs=%d videos=%d",
         conversation.id, room_uuid,
         prop_img_limit, room_img_limit, video_limit,
         len(prop_images), len(room_images), len(prop_videos),
