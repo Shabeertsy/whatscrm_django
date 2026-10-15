@@ -169,11 +169,43 @@ def build_share_text(room: dict, options: dict, filters: dict | None = None) -> 
 
 
 def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
-    """Compact text for 'Next room' cards. Falls back to a minimal summary."""
-    body = build_share_text(room, share_options, filters=filters) if share_options else ""
+    """
+    Compact text for 'Next room' navigation cards.
+
+    Always shows ONLY the initial/basic fields (name, type, occupancy,
+    price, location, dates). Extra detail fields are reserved for
+    build_details_body() which is only called by the 'More Details' button.
+    """
+    # Use a stripped-down field set — only what belongs in a navigation card
+    _NEXT_CARD_FIELDS = {
+        "basicDetails": True,
+        "basicDetails_roomName": True,
+        "basicDetails_roomType": True,
+        "basicDetails_occupancy": True,
+        "basicDetails_amenities": share_options.get("basicDetails_amenities", False),
+        "searchFilters": share_options.get("searchFilters", True),
+        "filters_dates": share_options.get("filters_dates", True),
+        "filters_guests": share_options.get("filters_guests", True),
+        "filters_rooms": share_options.get("filters_rooms", False),
+        "propertyDetails": True,
+        "propertyDetails_name": True,
+        "propertyDetails_type": share_options.get("propertyDetails_type", False),
+        "propertyDetails_area": True,
+        "price": True,
+        "price_amount": True,
+        "price_meal_plans": False,   # meal plans only in 'More Details'
+        "location": share_options.get("location", True),
+        "location_name": True,
+        "location_city": True,
+        "location_state": False,
+        "contactDetails": False,     # contact only in 'More Details'
+        "contactDetails_phone": False,
+    }
+    body = build_share_text(room, _NEXT_CARD_FIELDS, filters=filters)
     if body:
         return body
 
+    # Ultimate fallback — bare minimum one-liner
     name = room.get("name") or "Room Option"
     prop_name = room.get("owner_brand_name") or room.get("owner_username") or "Property"
     price = room.get("price") or room.get("grand_total") or ""
@@ -182,20 +214,18 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
     )
     city = (room.get("property_location") or {}).get("city", "")
 
-    lines = [f" *{name}* ({prop_name})"]
+    lines = [f"*{name}* — {prop_name}"]
     if city:
-        lines.append(f" Location: {city}")
+        lines.append(f"📍 {city}")
     if price_str:
-        lines.append(f" Price: {price_str}")
-
+        lines.append(f"💰 {price_str}")
     cin = filters.get("checkIn")
     cout = filters.get("checkOut")
     if cin or cout:
-        lines.append(f" Dates: {cin or 'Any'} – {cout or 'Any'}")
-    if filters.get("adults"):
-        lines.append(f" Guests: {filters.get('adults', 1)} Adults")
+        lines.append(f"📅 {cin or 'Any'} – {cout or 'Any'}")
 
     return "\n".join(lines)
+
 
 
 def build_details_body(

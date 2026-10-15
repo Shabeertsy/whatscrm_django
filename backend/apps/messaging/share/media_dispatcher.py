@@ -63,15 +63,23 @@ def schedule_media_sends(
     room_uuid: str,
     is_initial: bool,
     start_countdown: float = 0.0,
+    batch_keys: set | None = None,
 ) -> tuple[int, float]:
     """
     Schedule individual send_media_item_task Celery tasks with increasing
     countdowns so they are delivered in order without blocking any worker.
 
     Returns (number_scheduled, next_available_countdown_s).
-    The caller accumulates the returned countdown to chain subsequent steps.
+
+    sent_keys  — cross-session dedup (media sent in earlier actions).
+    batch_keys — within-call dedup (media already scheduled earlier in
+                 THIS call — prevents true URL duplicates across sections
+                 without contaminating the next section's sent_keys check).
     """
-    from apps.messaging.tasks import send_media_item_task  
+    from apps.messaging.tasks import send_media_item_task
+
+    if batch_keys is None:
+        batch_keys = set()
 
     pacing = PACING_VIDEO_S if msg_type == "video" else PACING_IMAGE_S
     countdown = start_countdown
@@ -83,8 +91,10 @@ def schedule_media_sends(
             continue
 
         cand_keys = extract_media_keys(raw_url)
-        if cand_keys & sent_keys:
-            continue  # already sent — skip
+
+        # Skip if sent in a previous session/action OR already in this batch
+        if cand_keys & sent_keys or cand_keys & batch_keys:
+            continue
 
         send_media_item_task.apply_async(
             kwargs={
@@ -97,8 +107,9 @@ def schedule_media_sends(
             countdown=int(countdown),
         )
 
-        # Optimistically update sent_keys so the next iteration skips duplicates
-        sent_keys.update(cand_keys)
+        # Track in batch_keys only (not sent_keys) so the next section
+        # in the same call doesn't falsely skip its own images.
+        batch_keys.update(cand_keys)
         countdown += pacing
         scheduled += 1
 
@@ -131,6 +142,11 @@ def schedule_room_media(
         or []
     )
 
+    # Shared batch_keys set — tracks what we schedule IN THIS CALL.
+    # Prevents true URL duplicates across prop/room/video sections.
+    # Does NOT contaminate sent_keys (cross-session dedup stays clean).
+    batch_keys: set = set()
+
     countdown = start_countdown
 
     # Read limits directly from config — no forced floor so admin-set values take effect
@@ -151,18 +167,18 @@ def schedule_room_media(
     selected_prop = filter_selected_media(prop_images, "images_property", send_prop_imgs, prop_img_limit, share_options)
     if selected_prop:
         n, countdown = schedule_media_sends(
-            conversation.id, selected_prop, "image", sent_keys, room_uuid, is_initial, countdown
+            conversation.id, selected_prop, "image", sent_keys, room_uuid, is_initial, countdown, batch_keys
         )
         if n:
             countdown += PACING_POST_IMAGE_BATCH_S
 
-    # 2. Room images
+    # 2. Room images — uses same batch_keys but NOT contaminated by prop keys
     send_room_imgs = share_options.get("images_room", config.initial_send_room_images)
     fallback_room_imgs = room_images or (prop_images if not send_prop_imgs else [])
     selected_room = filter_selected_media(fallback_room_imgs, "images_room", send_room_imgs, room_img_limit, share_options)
     if selected_room:
         n, countdown = schedule_media_sends(
-            conversation.id, selected_room, "image", sent_keys, room_uuid, is_initial, countdown
+            conversation.id, selected_room, "image", sent_keys, room_uuid, is_initial, countdown, batch_keys
         )
         if n:
             countdown += PACING_POST_IMAGE_BATCH_S
@@ -172,7 +188,7 @@ def schedule_room_media(
     selected_vids = filter_selected_media(prop_videos, "videos_property", send_videos, video_limit, share_options)
     if selected_vids:
         n, countdown = schedule_media_sends(
-            conversation.id, selected_vids, "video", sent_keys, room_uuid, is_initial, countdown
+            conversation.id, selected_vids, "video", sent_keys, room_uuid, is_initial, countdown, batch_keys
         )
         if n:
             countdown += PACING_POST_VIDEO_BATCH_S
