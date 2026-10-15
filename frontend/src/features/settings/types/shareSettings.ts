@@ -83,9 +83,9 @@ export const DEFAULT_PROPERTY_SHARE_CONFIG: PropertyShareConfig = {
     filters_guests: true,
     filters_rooms: true,
     propertyDetails: true,
-    propertyDetails_name: true,
+    propertyDetails_name: false,   // unchecked by default
     propertyDetails_type: true,
-    propertyDetails_area: true,
+    propertyDetails_area: false,   // unchecked by default
     price: true,
     price_amount: true,
     price_meal_plans: true,

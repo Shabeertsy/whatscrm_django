@@ -188,9 +188,9 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
         "filters_guests": share_options.get("filters_guests", True),
         "filters_rooms": share_options.get("filters_rooms", False),
         "propertyDetails": True,
-        "propertyDetails_name": True,
+        "propertyDetails_name": share_options.get("propertyDetails_name", False),   
         "propertyDetails_type": share_options.get("propertyDetails_type", False),
-        "propertyDetails_area": True,
+        "propertyDetails_area": share_options.get("propertyDetails_area", False),  
         "price": True,
         "price_amount": True,
         "price_meal_plans": False,   # meal plans only in 'More Details'
@@ -198,7 +198,7 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
         "location_name": True,
         "location_city": True,
         "location_state": False,
-        "contactDetails": False,     # contact only in 'More Details'
+        "contactDetails": False,     # contact only in 'More Details'   
         "contactDetails_phone": False,
     }
     body = build_share_text(room, _NEXT_CARD_FIELDS, filters=filters)
