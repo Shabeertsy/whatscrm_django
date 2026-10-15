@@ -43,9 +43,13 @@ def filter_selected_media(
             item for i, item in enumerate(media_items)
             if share_options.get(f"{prefix}_{i}", False)
         ]
-        return selected[:default_limit] if default_limit > 0 else selected
+        return selected 
 
-    limit = max(1, default_limit or 1)
+    # No per-image selection: use the config limit directly (no floor of 1 —
+    # if admin sets limit=5, we send up to 5, not capped at 1).
+    limit = max(0, default_limit or 0)
+    if limit == 0:
+        return []  # explicitly disabled
     return media_items[:limit]
 
 
@@ -129,10 +133,22 @@ def schedule_room_media(
 
     countdown = start_countdown
 
+    # Read limits directly from config — no forced floor so admin-set values take effect
+    prop_img_limit = config.initial_property_image_limit or 0
+    room_img_limit = config.initial_room_image_limit or 0
+    video_limit    = getattr(config, "initial_video_limit", 1) or 0
+
+    logger.debug(
+        "[share.media_dispatcher] conv=%s room=%s | config limits: prop_img=%d room_img=%d video=%d "
+        "| available: prop_imgs=%d room_imgs=%d videos=%d",
+        conversation.id, room_uuid,
+        prop_img_limit, room_img_limit, video_limit,
+        len(prop_images), len(room_images), len(prop_videos),
+    )
+
     # 1. Property images
     send_prop_imgs = share_options.get("images_property", config.initial_send_property_images)
-    prop_limit = max(1, config.initial_property_image_limit or 1)
-    selected_prop = filter_selected_media(prop_images, "images_property", send_prop_imgs, prop_limit, share_options)
+    selected_prop = filter_selected_media(prop_images, "images_property", send_prop_imgs, prop_img_limit, share_options)
     if selected_prop:
         n, countdown = schedule_media_sends(
             conversation.id, selected_prop, "image", sent_keys, room_uuid, is_initial, countdown
@@ -142,9 +158,8 @@ def schedule_room_media(
 
     # 2. Room images
     send_room_imgs = share_options.get("images_room", config.initial_send_room_images)
-    room_limit = max(1, config.initial_room_image_limit or 1)
     fallback_room_imgs = room_images or (prop_images if not send_prop_imgs else [])
-    selected_room = filter_selected_media(fallback_room_imgs, "images_room", send_room_imgs, room_limit, share_options)
+    selected_room = filter_selected_media(fallback_room_imgs, "images_room", send_room_imgs, room_img_limit, share_options)
     if selected_room:
         n, countdown = schedule_media_sends(
             conversation.id, selected_room, "image", sent_keys, room_uuid, is_initial, countdown
@@ -154,7 +169,6 @@ def schedule_room_media(
 
     # 3. Property videos
     send_videos = share_options.get("videos_property", config.initial_send_videos)
-    video_limit = max(1, getattr(config, "initial_video_limit", 1) or 1)
     selected_vids = filter_selected_media(prop_videos, "videos_property", send_videos, video_limit, share_options)
     if selected_vids:
         n, countdown = schedule_media_sends(
