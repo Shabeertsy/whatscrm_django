@@ -95,8 +95,11 @@ def _handle_details_action(conversation, room_uuid: str, config):
         )
         return
 
-    # Collect sent keys once
-    sent_keys = collect_sent_media_keys(conversation)
+    # Collect sent keys scoped to current session — whole-history scan can
+    # falsely dedup images shared across rooms on the same property.
+    from .cache import get_last_share_time
+    session_cutoff = get_last_share_time(conversation.id)
+    sent_keys = collect_sent_media_keys(conversation, since_time=session_cutoff)
     register_initial_sent_media(room, ctx.get("share_options") or {}, config, conversation, sent_keys)
 
     # Schedule detail media sends; get countdown for when they'll finish
@@ -166,8 +169,12 @@ def _handle_next_action(
             ShareCacheKey.session(conversation.id): ctx,
         }, timeout=SESSION_TTL_S)
 
-    # Schedule media sends
-    sent_keys = collect_sent_media_keys(conversation)
+    # Schedule media sends — scope dedup to current session only,
+    # NOT the entire conversation history (different rooms on the same
+    # property share image URLs → whole-history scan falsely skips them).
+    from .cache import get_last_share_time
+    session_cutoff = get_last_share_time(conversation.id)
+    sent_keys = collect_sent_media_keys(conversation, since_time=session_cutoff)
     from .media_dispatcher import schedule_room_media
     next_countdown = schedule_room_media(
         conversation, room, next_room_uuid, config, share_options, sent_keys,
