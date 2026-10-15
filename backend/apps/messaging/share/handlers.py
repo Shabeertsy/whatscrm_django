@@ -161,11 +161,10 @@ def _handle_next_action(
     set_active_queue(conversation.id, queue)
     if ctx:
         from django.core.cache import cache
-        from .cache import ShareCacheKey, SESSION_TTL_S
         cache.set_many({
             ShareCacheKey.room(conversation.id, next_room_uuid): ctx,
             ShareCacheKey.session(conversation.id): ctx,
-        }, timeout=SESSION_TTL_S)
+        }, timeout=SESSION_TTL_S)  # SESSION_TTL_S imported from .constants at top
 
     # Schedule media sends
     sent_keys = collect_sent_media_keys(conversation)
