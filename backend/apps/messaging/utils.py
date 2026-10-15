@@ -353,7 +353,8 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
             try:
                 media_id = upload_whatsapp_media(phone_number_id, access_token, storage_path, mime_type)
                 if media_id:
-                    cache.set(cache_key, media_id, timeout=86400 * 20)
+                    # Cache for 7 days — safe margin below Meta's 30-day media ID expiry
+                    cache.set(cache_key, media_id, timeout=86400 * 7)
             except Exception as e:
                 import logging
                 logging.getLogger(__name__).error(f"Failed to upload media to Meta: {e}")
@@ -408,6 +409,22 @@ def send_whatsapp_message(phone_number_id, access_token, to_phone, message_text=
     response = requests.post(url, headers=headers, json=data, timeout=10)
     if response.status_code >= 400:
         logger.error(f"[send_whatsapp_message] Meta API Error {response.status_code}: {response.text}")
+        # 131009 = invalid media ID — cached ID has expired; purge it so next retry re-uploads
+        try:
+            resp_json = response.json()
+            if resp_json.get("error", {}).get("code") == 131009:
+                media_key = storage_path or media_url
+                if media_key:
+                    import hashlib
+                    from django.core.cache import cache as _cache
+                    stale_key = f"wa_uploaded_media_id:{phone_number_id}:{hashlib.md5(media_key.encode()).hexdigest()}"
+                    _cache.delete(stale_key)
+                    logger.warning(
+                        "[send_whatsapp_message] Purged stale media ID cache for key=%s",
+                        media_key[:60],
+                    )
+        except Exception:
+            pass
     response.raise_for_status()
     return response.json()
 
