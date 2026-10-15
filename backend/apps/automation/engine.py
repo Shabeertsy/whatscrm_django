@@ -1048,25 +1048,14 @@ class AutomationEngine(BaseChatbotEngine):
             return self._listing_advance(execution, node, reply, action="exit")
 
         else:
-            # Unknown reply (e.g. user typed "K", "ok", etc.)
-            # Do NOT resend images — uploaded media IDs may have expired and
-            # spamming images on every user message is bad UX.
-            # Just send a short text nudge so buttons context is restored.
+            # Unknown reply (e.g. "K", "ok", free text).
+            # Silently ignore — do NOT resend the card or images.
+            # The user must use the provided buttons to navigate.
             logger.info(
-                "[SendListing] Conv %s — unknown reply '%s', sending button reminder.",
+                "[SendListing] Conv %s — unknown reply '%s', ignoring.",
                 self.conv.id, chosen,
             )
-            if 0 <= index < total:
-                flat_item = flatten_dict(items[index]) if isinstance(items[index], dict) else {}
-                card_vars = {
-                    **execution.variables,
-                    **{str(k): str(v) for k, v in flat_item.items()},
-                    "__index": str(index + 1),
-                    "__total": str(len(items)),
-                }
-                card_text = self._interpolate_text(cfg["card_template"], card_vars)
-                cfg_copy = {**cfg, "enableImages": False, "enableVideos": False}
-                self._send_listing_card(execution, reply, items, index, cfg_copy)
+            return None
 
         return reply if not reply.is_empty else None
 

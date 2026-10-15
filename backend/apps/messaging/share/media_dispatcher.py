@@ -71,10 +71,11 @@ def schedule_media_sends(
 
     Returns (number_scheduled, next_available_countdown_s).
 
-    sent_keys  — cross-session dedup (media sent in earlier actions).
-    batch_keys — within-call dedup (media already scheduled earlier in
-                 THIS call — prevents true URL duplicates across sections
-                 without contaminating the next section's sent_keys check).
+    sent_keys  — cross-session dedup: stem-based keys from DB history.
+    batch_keys — within-call dedup: FULL URL only (no stems), so two
+                 different images that happen to share a filename stem
+                 (e.g. room/img1.jpg vs property/img1.jpg) are NOT
+                 falsely skipped within the same scheduling call.
     """
     from apps.messaging.tasks import send_media_item_task
 
@@ -90,10 +91,14 @@ def schedule_media_sends(
         if not raw_url:
             continue
 
+        # Cross-session dedup: stem-based (catches renamed duplicates)
         cand_keys = extract_media_keys(raw_url)
+        if cand_keys & sent_keys:
+            continue
 
-        # Skip if sent in a previous session/action OR already in this batch
-        if cand_keys & sent_keys or cand_keys & batch_keys:
+        # Within-batch dedup: full URL only (avoids false stem collisions)
+        url_key = raw_url.split("?")[0].rstrip("/").lower()
+        if url_key in batch_keys:
             continue
 
         send_media_item_task.apply_async(
@@ -107,9 +112,9 @@ def schedule_media_sends(
             countdown=int(countdown),
         )
 
-        # Track in batch_keys only (not sent_keys) so the next section
-        # in the same call doesn't falsely skip its own images.
-        batch_keys.update(cand_keys)
+        # Track URL only — not stems — so room images are never blocked by
+        # property images sharing the same filename in a different folder.
+        batch_keys.add(url_key)
         countdown += pacing
         scheduled += 1
 

@@ -256,9 +256,11 @@ def _mark_failed(message_id, error=None):
 )
 def process_inbound_message(self, conversation_id: int):
     """
-    1. Checks Automation flows.
-    2. If handled, stops.
-    3. Otherwise, falls back to AI (honoring AI delays).
+    1. If the inbound message is a manual-share button reply (share_*),
+       delegate to share_button_reply_task and stop — never touch automation.
+    2. Checks Automation flows.
+    3. If handled, stops.
+    4. Otherwise, falls back to AI (honoring AI delays).
     """
     try:
 
@@ -267,6 +269,29 @@ def process_inbound_message(self, conversation_id: int):
         except Conversation.DoesNotExist:
             logger.info(f"[Task] Conversation {conversation_id} no longer exists.")
             return
+
+        # ── Share-button guard ────────────────────────────────────────────────
+        # Manual share button IDs start with share_next / share_book /
+        # share_details / share_exit.  Automation must NEVER touch these.
+        last_msg = conv.messages.filter(direction="inbound").order_by("-timestamp").first()
+        if last_msg and last_msg.raw_data:
+            interactive = last_msg.raw_data.get("interactive", {})
+            btn_id = (
+                interactive.get("button_reply", {}).get("id", "")
+                or interactive.get("list_reply", {}).get("id", "")
+            ).strip().lower()
+            if btn_id.startswith(("share_next:", "share_book:", "share_details:", "share_exit:")):
+                logger.info(
+                    "[Task] Conv %s: share button '%s' — routing to share_button_reply_task only.",
+                    conversation_id, btn_id,
+                )
+                share_button_reply_task.delay(
+                    conversation_id=conversation_id,
+                    button_id=btn_id,
+                    button_title=interactive.get("button_reply", {}).get("title", ""),
+                )
+                return  # do NOT run automation or AI
+        # ─────────────────────────────────────────────────────────────────────
 
         dispatcher = ChatbotDispatcher(conv)
         ctx = dispatcher._build_context()
@@ -338,6 +363,7 @@ def process_inbound_message(self, conversation_id: int):
                 logger.error(f"[Task] Failed to handle max retries fallback: {inner_exc}")
 
         raise self.retry(exc=exc)
+
 
 
 # Share tasks  (one per conversation / one per media item — never blocking)
