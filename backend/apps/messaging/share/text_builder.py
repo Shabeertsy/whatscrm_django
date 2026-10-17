@@ -183,6 +183,7 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
         "basicDetails_roomName":  True,
         "basicDetails_roomType":  True,
         "basicDetails_occupancy": True,
+
         # User's popup selection
         "basicDetails_amenities": share_options.get("basicDetails_amenities", False),
         "searchFilters":          share_options.get("searchFilters",          False),
@@ -193,19 +194,23 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
         "propertyDetails_name":   share_options.get("propertyDetails_name",   False),
         "propertyDetails_type":   share_options.get("propertyDetails_type",   False),
         "propertyDetails_area":   share_options.get("propertyDetails_area",   False),
+
         # Always shown (price is core)
         "price":                  True,
         "price_amount":           True,
         "price_meal_plans":       False,  # meal plans only in 'More Details'
+
         # User's popup selection
         "location":               share_options.get("location",               False),
         "location_name":          share_options.get("location_name",          False),
         "location_city":          share_options.get("location_city",          False),
         "location_state":         False,
+
         # Never in Next card
         "contactDetails":         False,
         "contactDetails_phone":   False,
     }
+
     body = build_share_text(room, _NEXT_CARD_FIELDS, filters=filters)
     if body:
         return body
@@ -220,12 +225,14 @@ def build_next_card_text(room: dict, share_options: dict, filters: dict) -> str:
     city = (room.get("property_location") or {}).get("city", "")
 
     lines = [f"*{name}* — {prop_name}"]
+    
     if city:
         lines.append(f"📍 {city}")
     if price_str:
         lines.append(f"💰 {price_str}")
     cin = filters.get("checkIn")
     cout = filters.get("checkOut")
+
     if cin or cout:
         lines.append(f"📅 {cin or 'Any'} – {cout or 'Any'}")
 

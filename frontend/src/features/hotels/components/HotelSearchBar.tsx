@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, MapPin } from 'lucide-react';
+import { Search, MapPin, X } from 'lucide-react';
 import { GuestSelector } from './GuestSelector';
 import { RoomFilters } from '../hooks/useRoomFilters';
 import { useCurrentUser } from '../../../utils/dataScope';
@@ -35,6 +35,16 @@ export function HotelSearchBar({ filters, updateFilter, onSearch }: HotelSearchB
                 placeholder="Room name, property, location..."
                 className="text-[13px] font-medium text-slate-700 dark:text-slate-200 bg-transparent focus:outline-none w-full placeholder-slate-400"
               />
+              {filters.search && (
+                <button
+                  type="button"
+                  onClick={() => updateFilter('search', '')}
+                  className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded transition-colors"
+                  title="Clear search"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
           </div>
           <div className="px-5 py-3.5 min-w-[150px]">

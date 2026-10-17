@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Bed, MapPin, Users, SlidersHorizontal, Share2, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Bed, MapPin, Users, SlidersHorizontal, Share2, ChevronLeft, ChevronRight, Filter, X, RotateCcw } from 'lucide-react';
 import { useRouter } from '../router';
 import { useHotelStore } from '../store/hotelStore';
 
@@ -8,7 +8,7 @@ import { useHotels } from '../features/hotels/hooks/useHotels';
 import { useShareRoom } from '../features/hotels/hooks/useShareRoom';
 
 import { HotelSearchBar } from '../features/hotels/components/HotelSearchBar';
-import { HotelFilters } from '../features/hotels/components/HotelFilters';
+import { HotelFilters, normalizePropertyTypes, PropertyTypeGroup } from '../features/hotels/components/HotelFilters';
 import { ShareRoomModal } from '../features/hotels/components/ShareRoomModal';
 import { EmptyState } from '../features/hotels/components/EmptyState';
 import { LoadingState } from '../features/hotels/components/LoadingState';
@@ -34,6 +34,109 @@ export function Hotels() {
   const [showFilters, setShowFilters] = useState(false);
   const shareState = useShareRoom(filters, amenityOptions, propertyTypeOptions, rooms);
   const [selectedRoomIds, setSelectedRoomIds] = useState<Set<string>>(new Set());
+
+  // Clean deduplicated property types
+  const normalizedPropertyTypes = useMemo(() => {
+    return normalizePropertyTypes(propertyTypeOptions);
+  }, [propertyTypeOptions]);
+
+  const handlePillClick = (group: PropertyTypeGroup) => {
+    const isSelected = group.ids.some(id => filters.propertyTypes.includes(id));
+    if (isSelected) {
+      const next = filters.propertyTypes.filter(id => !group.ids.includes(id));
+      updateFilter('propertyTypes', next);
+    } else {
+      updateFilter('propertyTypes', group.ids);
+    }
+    setPage(1);
+  };
+
+  const handleClearPropertyTypes = () => {
+    updateFilter('propertyTypes', []);
+    setPage(1);
+  };
+
+  // Build active filters for dismissible tags
+  const activeChips = useMemo(() => {
+    const chips: Array<{ id: string; label: string; onRemove: () => void }> = [];
+
+    if (filters.search) {
+      chips.push({
+        id: 'search',
+        label: `"${filters.search}"`,
+        onRemove: () => { updateFilter('search', ''); setPage(1); }
+      });
+    }
+
+    normalizedPropertyTypes.forEach(g => {
+      if (g.ids.some(id => filters.propertyTypes.includes(id))) {
+        chips.push({
+          id: `prop-${g.key}`,
+          label: g.name,
+          onRemove: () => {
+            const next = filters.propertyTypes.filter(id => !g.ids.includes(id));
+            updateFilter('propertyTypes', next);
+            setPage(1);
+          }
+        });
+      }
+    });
+
+    if (filters.priceMin > 0 || filters.priceMax < 50000) {
+      chips.push({
+        id: 'price',
+        label: `₹${filters.priceMin.toLocaleString()} – ₹${filters.priceMax.toLocaleString()}`,
+        onRemove: () => {
+          updateFilter('priceMin', 0);
+          updateFilter('priceMax', 50000);
+          setPage(1);
+        }
+      });
+    }
+
+    filters.roomTypes.forEach(id => {
+      const match = roomTypeOptions.find(o => (o.uuid || o.id) === id);
+      chips.push({
+        id: `room-${id}`,
+        label: `Room: ${match?.name || id}`,
+        onRemove: () => { toggleArrayFilter('roomTypes', id); setPage(1); }
+      });
+    });
+
+    filters.amenities.forEach(id => {
+      const match = amenityOptions.find(o => (o.uuid || o.id) === id);
+      chips.push({
+        id: `amenity-${id}`,
+        label: match?.name || id,
+        onRemove: () => { toggleArrayFilter('amenities', id); setPage(1); }
+      });
+    });
+
+    filters.areas.forEach(id => {
+      const match = areaOptions.find(o => o.uuid === id);
+      chips.push({
+        id: `area-${id}`,
+        label: `Area: ${match?.name || id}`,
+        onRemove: () => { toggleArrayFilter('areas', id); setPage(1); }
+      });
+    });
+
+    if (filters.hideUnavailable) {
+      chips.push({
+        id: 'hideUnavailable',
+        label: 'Available only',
+        onRemove: () => { updateFilter('hideUnavailable', false); setPage(1); }
+      });
+    }
+
+    return chips;
+  }, [filters, normalizedPropertyTypes, roomTypeOptions, amenityOptions, areaOptions, updateFilter, toggleArrayFilter, setPage]);
+
+  const handleResetAll = () => {
+    clearFilters();
+    updateFilter('search', '');
+    setPage(1);
+  };
 
   const toggleRoomSelection = (uuid: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -96,7 +199,6 @@ export function Hotels() {
       {selectedRoomIds.size > 0 && (
         <div className="flex justify-end">
           <div className="inline-flex items-center gap-3 bg-white dark:bg-slate-900 border border-[#007e3a]/40 shadow-lg shadow-[#007e3a]/10 rounded-2xl px-4 py-2.5">
-            {/* Count badge */}
             <div className="flex items-center gap-2">
               <span className="h-6 w-6 flex items-center justify-center bg-[#007e3a] text-white text-[11px] font-black rounded-full">
                 {selectedRoomIds.size}
@@ -106,7 +208,6 @@ export function Hotels() {
               </span>
             </div>
             <div className="w-px h-5 bg-slate-200 dark:bg-slate-700" />
-            {/* Share button */}
             <button
               onClick={handleShareSelected}
               className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#007e3a] hover:bg-[#00602d] text-white rounded-xl text-xs font-bold transition-colors"
@@ -114,7 +215,6 @@ export function Hotels() {
               <Share2 className="h-3.5 w-3.5" />
               Share
             </button>
-            {/* Clear */}
             <button
               onClick={() => setSelectedRoomIds(new Set())}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-0.5"
@@ -154,26 +254,93 @@ export function Hotels() {
           setPage={setPage}
         />
 
-        {/* Rooms Table */}
-        <div className="flex-1 min-w-0 space-y-4">
-          <div className="flex justify-end items-center mb-1">
-            <select
-              value={filters.sort || 'price_asc'}
-              onChange={e => { updateFilter('sort', e.target.value); setPage(1); }}
-              className="text-sm font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3.5 py-1.5 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#007e3a]/50 focus:border-[#007e3a] hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer appearance-none pr-8 transition-colors"
-              style={{
-                backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 0.6rem center',
-                backgroundSize: '1em'
-              }}
-            >
-              <option value="price_asc">Price: Low to High</option>
-              <option value="price_desc">Price: High to Low</option>
-              <option value="newest">Newest First</option>
-              <option value="oldest">Oldest First</option>
-            </select>
+        {/* Rooms Table Column */}
+        <div className="flex-1 min-w-0 space-y-3">
+          {/* Quick Category Pills & Sort Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            {/* Category Pills */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 [&::-webkit-scrollbar]:h-1 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700">
+              <button
+                type="button"
+                onClick={handleClearPropertyTypes}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                  filters.propertyTypes.length === 0
+                    ? 'bg-[#007e3a] text-white shadow-xs'
+                    : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
+              >
+                All Stays
+              </button>
+              {normalizedPropertyTypes.slice(0, 8).map(group => {
+                const isSelected = group.ids.some(id => filters.propertyTypes.includes(id));
+                return (
+                  <button
+                    key={group.key}
+                    type="button"
+                    onClick={() => handlePillClick(group)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#007e3a] text-white shadow-xs'
+                        : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                    }`}
+                  >
+                    {group.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+              <select
+                value={filters.sort || 'price_asc'}
+                onChange={e => { updateFilter('sort', e.target.value); setPage(1); }}
+                className="text-xs font-medium text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#007e3a] focus:border-[#007e3a] hover:border-slate-300 dark:hover:border-slate-600 cursor-pointer appearance-none pr-7 transition-colors"
+                style={{
+                  backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+                  backgroundRepeat: 'no-repeat',
+                  backgroundPosition: 'right 0.5rem center',
+                  backgroundSize: '0.85em'
+                }}
+              >
+                <option value="price_asc">Price: Low to High</option>
+                <option value="price_desc">Price: High to Low</option>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+              </select>
+            </div>
           </div>
+
+          {/* Active Filter Chips */}
+          {activeChips.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 rounded-lg text-xs animate-in fade-in duration-150">
+              <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1">Active:</span>
+              {activeChips.map(chip => (
+                <span
+                  key={chip.id}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 text-xs font-medium shadow-2xs"
+                >
+                  <span>{chip.label}</span>
+                  <button
+                    type="button"
+                    onClick={chip.onRemove}
+                    className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 p-0.5 rounded transition-colors cursor-pointer"
+                    title="Remove filter"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+              <button
+                type="button"
+                onClick={handleResetAll}
+                className="inline-flex items-center gap-1 ml-auto text-xs font-semibold text-[#007e3a] hover:text-[#00602d] dark:hover:text-[#38b26e] hover:underline px-1 py-0.5 cursor-pointer"
+              >
+                <RotateCcw className="h-3 w-3" /> Reset all
+              </button>
+            </div>
+          )}
+
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
@@ -230,7 +397,26 @@ export function Hotels() {
                         </td>
                         {/* Property */}
                         <td className="px-5 py-3.5">
-                          <p className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]">{room.owner_username || room.owner_brand_name || '—'}</p>
+                          <div className="flex items-center gap-1.5 group/prop">
+                            <p className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]" title={room.owner_username || room.owner_brand_name || ''}>
+                              {room.owner_username || room.owner_brand_name || '—'}
+                            </p>
+                            {(room.owner_username || room.owner_brand_name) && (
+                              <button
+                                type="button"
+                                title={`Filter by property: ${room.owner_username || room.owner_brand_name}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const pName = room.owner_username || room.owner_brand_name;
+                                  updateFilter('search', pName);
+                                  setPage(1);
+                                }}
+                                className="opacity-0 group-hover/prop:opacity-100 transition-opacity p-0.5 text-slate-400 hover:text-[#007e3a] hover:bg-[#007e3a]/10 rounded cursor-pointer"
+                              >
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            )}
+                          </div>
                           <span className="text-[10px] text-slate-400">{room.property_type?.name}</span>
                         </td>
                         {/* Location */}
