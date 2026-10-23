@@ -237,10 +237,10 @@ export function usePipeline() {
         stages
           .map(s => s.id === stageAId ? stage_a : s.id === stageBId ? stage_b : s)
           .sort((a, b) => a.order - b.order);
-      const newStages = activePipeline ? apply(activePipeline.stages) : [];
+      const newStages = apply(activePipeline.stages || []);
       setActivePipeline(prev => prev ? { ...prev, stages: newStages } : prev);
       setPipelines(prev => prev.map(p =>
-        p.id === activePipeline.id ? { ...p, stages: apply(p.stages) } : p
+        p.id === activePipeline.id ? { ...p, stages: apply(p.stages || []) } : p
       ));
 
       const minConfirmed = newStages
@@ -249,9 +249,9 @@ export function usePipeline() {
 
       setDeals(prev =>
         prev.map(d => {
-          const st = newStages.find(s => s.id === d.stage);
+          const st = newStages.find(s => String(s.id) === String(d.stage));
           const isConfirmed = st
-            ? (st.is_confirmed || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
+            ? (Boolean(st.is_confirmed) || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
             : d.is_confirmed_booking;
           return { ...d, is_confirmed_booking: !!isConfirmed };
         })
@@ -272,6 +272,20 @@ export function usePipeline() {
       setPipelines(prev =>
         prev.map(p => p.id === activePipeline.id ? { ...p, stages: renormalizedStages } : p)
       );
+
+      const minConfirmed = renormalizedStages
+        .filter(s => s.is_confirmed)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+
+      setDeals(prev =>
+        prev.map(d => {
+          const st = renormalizedStages.find(s => String(s.id) === String(d.stage));
+          const isConfirmed = st
+            ? (Boolean(st.is_confirmed) || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
+            : d.is_confirmed_booking;
+          return { ...d, is_confirmed_booking: !!isConfirmed };
+        })
+      );
       toast.success("Stage deleted!");
     } catch (err: any) {
       toast.error(getErrorMsg(err, "Failed to delete stage"));
@@ -280,14 +294,14 @@ export function usePipeline() {
 
   const handleMoveDeal = async (id: string, nextStage: string) => {
     const prevDeals = [...deals];
-    const targetStage = activePipeline?.stages?.find(s => s.id === nextStage);
+    const targetStage = activePipeline?.stages?.find(s => String(s.id) === String(nextStage));
     const stages = activePipeline?.stages || [];
     const minConfirmedStage = stages
       .filter(s => s.is_confirmed)
       .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
 
     const isConfirmedTarget = targetStage
-      ? (targetStage.is_confirmed || Boolean(minConfirmedStage && (targetStage.order ?? 0) >= (minConfirmedStage.order ?? 0)))
+      ? (Boolean(targetStage.is_confirmed) || Boolean(minConfirmedStage && (targetStage.order ?? 0) >= (minConfirmedStage.order ?? 0)))
       : false;
 
     setDeals(prev =>
@@ -302,7 +316,7 @@ export function usePipeline() {
     );
     try {
       const updated = await updateDeal(id, { stage: nextStage });
-      setDeals(prev => prev.map(d => (d.id === id ? updated : d)));
+      setDeals(prev => prev.map(d => (d.id === id ? { ...d, ...updated } : d)));
     } catch (err: any) {
       toast.error(getErrorMsg(err, "Failed to move deal"));
       setDeals(prevDeals);

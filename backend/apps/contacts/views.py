@@ -651,7 +651,11 @@ class PipelineDealListCreateView(APIView):
             deal = serializer.save(owner=get_tenant_owner(request.user), pipeline=pipeline)
             sync_deal_confirmation(deal, target_stage=deal.stage, owner=get_tenant_owner(request.user))
             increment_pipeline_cache_version(get_tenant_owner(request.user).id)
-            return Response(PipelineDealSerializer(deal).data, status=status.HTTP_201_CREATED)
+            fresh_deal = scope_by_owner(
+                PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records'),
+                request.user
+            ).get(pk=deal.pk)
+            return Response(PipelineDealSerializer(fresh_deal).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -707,7 +711,10 @@ class PipelineDealDetailView(APIView):
 
             # Bust cache
             increment_pipeline_cache_version(owner.id)
-            return Response(PipelineDealSerializer(updated_deal).data)
+
+            # Re-fetch deal with fresh relations so serializer does not return stale prefetched booking records
+            fresh_deal = self.get_object(updated_deal.pk, request.user)
+            return Response(PipelineDealSerializer(fresh_deal).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):

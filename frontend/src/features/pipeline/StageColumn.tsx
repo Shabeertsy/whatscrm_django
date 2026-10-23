@@ -22,7 +22,7 @@ export function StageColumn({
   title, stage, deals, onMoveDeal, onEditDeal,
   stages, onUpdateStage, onDeleteStage, onMoveLeft, onMoveRight
 }: StageColumnProps) {
-  const stageObj = stages.find(s => s.id === stage);
+  const stageObj = stages.find(s => String(s.id) === String(stage));
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
@@ -38,9 +38,15 @@ export function StageColumn({
     };
   }, []);
 
+  useEffect(() => {
+    if (!isEditing) {
+      setEditTitle(title);
+      setEditColor(stageObj?.color || "#e2e8f0");
+      setEditIsConfirmed(stageObj?.is_confirmed || false);
+    }
+  }, [title, stageObj?.color, stageObj?.is_confirmed, isEditing]);
 
-
-  const columnDeals = deals.filter((d) => d.stage === stage);
+  const columnDeals = deals.filter((d) => String(d.stage) === String(stage));
 
   const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
 
