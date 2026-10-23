@@ -21,7 +21,8 @@ import {
   MessageSquareText,
   FolderOpen,
   Megaphone,
-  Layers
+  Layers,
+  CheckCircle
 } from "lucide-react";
 import { useRouter } from "../../router";
 import { useAuthStore } from "../../store/authStore";
@@ -39,6 +40,7 @@ export function Sidebar() {
     { id: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permitted: permissions.canAccessDashboard },
     { id: "/messaging", label: "Chats", icon: MessageSquare, permitted: permissions.canAccessChats },
     { id: "/pipeline", label: "Pipeline", icon: Sliders, permitted: permissions.canAccessPipeline },
+    { id: "/confirmed-bookings", label: "Confirmed Bookings", icon: CheckCircle, permitted: permissions.canAccessPipeline },
     { id: "/contacts", label: "Contacts", icon: Contact2, permitted: permissions.canAccessContacts },
     { id: "/hotels", label: "Hotels and Resorts", icon: Building2, permitted: permissions.canAccessHotels },
     { id: "/campaigns", label: "Campaigns", icon: Megaphone, permitted: permissions.canAccessTemplates },

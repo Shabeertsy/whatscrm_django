@@ -1,5 +1,5 @@
 import React from "react";
-import { ChevronDown, Zap, Plus, Settings, Check } from "lucide-react";
+import { ChevronDown, Zap, Plus, Settings, Check, Tag } from "lucide-react";
 import { Pipeline } from "../api";
 
 
@@ -75,9 +75,10 @@ interface InfoBarProps {
   activePipeline: Pipeline;
   onToggleAutoCreate: () => void;
   onActivate: (id: string) => void;
+  onManageFields?: () => void;
 }
 
-export function PipelineInfoBar({ activePipeline, onToggleAutoCreate, onActivate }: InfoBarProps) {
+export function PipelineInfoBar({ activePipeline, onToggleAutoCreate, onActivate, onManageFields }: InfoBarProps) {
   return (
     <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-5 py-3">
       <div className="flex items-center gap-3">
@@ -96,6 +97,16 @@ export function PipelineInfoBar({ activePipeline, onToggleAutoCreate, onActivate
         )}
       </div>
       <div className="flex items-center gap-3">
+        {onManageFields && (
+          <button
+            onClick={onManageFields}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#007e3a] bg-slate-50 dark:bg-slate-800 hover:bg-[#007e3a]/10 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors"
+            title="Configure custom fields for this pipeline"
+          >
+            <Tag className="h-3.5 w-3.5 text-[#007e3a]" />
+            <span>Custom Fields ({activePipeline.extra_fields?.length || 0})</span>
+          </button>
+        )}
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-500 dark:text-slate-400">Auto-create deals</span>
           <button

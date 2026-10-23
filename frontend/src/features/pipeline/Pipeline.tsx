@@ -8,7 +8,7 @@ import { CreatePipelineModal } from "./components/CreatePipelineModal";
 import { ManagePipelinesModal } from "./components/ManagePipelinesModal";
 import { AddStageModal } from "./components/AddStageModal";
 import { PipelineSwitcher, PipelineInfoBar } from "./components/PipelineSwitcher";
-import { Pipeline as PipelineType, Deal } from "./api";
+import { Pipeline as PipelineType, Deal, PipelineField } from "./api";
 
 
 
@@ -39,6 +39,19 @@ export function Pipeline() {
   const [showCreatePipelineModal, setShowCreatePipelineModal] = useState(false);
   const [showPipelineSettingsModal, setShowPipelineSettingsModal] = useState(false);
   const [showAddStageModal, setShowAddStageModal] = useState(false);
+
+  const allActiveExtraFields = React.useMemo(() => {
+    const map = new Map<string, PipelineField>();
+    (activePipeline?.extra_fields || []).forEach(f => {
+      if (f && f.key) map.set(f.key, f);
+    });
+    (activePipeline?.stages || []).forEach(s => {
+      (s.extra_fields || []).forEach(f => {
+        if (f && f.key && !map.has(f.key)) map.set(f.key, f);
+      });
+    });
+    return Array.from(map.values());
+  }, [activePipeline]);
 
   return (
     <div className="flex flex-col h-full gap-4">
@@ -75,6 +88,7 @@ export function Pipeline() {
           activePipeline={activePipeline}
           onToggleAutoCreate={handleToggleAutoCreate}
           onActivate={handleActivatePipeline}
+          onManageFields={() => setShowPipelineSettingsModal(true)}
         />
       )}
 
@@ -101,6 +115,7 @@ export function Pipeline() {
         <AddDealModal
           contacts={contacts}
           initialData={editingDeal || undefined}
+          extraFields={allActiveExtraFields}
           onClose={() => {
             setShowAddDealModal(false);
             setEditingDeal(null);
@@ -130,6 +145,7 @@ export function Pipeline() {
       {showPipelineSettingsModal && (
         <ManagePipelinesModal
           pipelines={pipelines}
+          initialPipelineId={activePipeline?.id}
           onClose={() => setShowPipelineSettingsModal(false)}
           onActivate={handleActivatePipeline}
           onDelete={handleDeletePipeline}
@@ -144,8 +160,8 @@ export function Pipeline() {
       {showAddStageModal && (
         <AddStageModal
           onClose={() => setShowAddStageModal(false)}
-          onSubmit={(title, color) => {
-            handleAddStage(title, color);
+          onSubmit={(title, color, isConfirmed) => {
+            handleAddStage(title, color, isConfirmed);
             setShowAddStageModal(false);
           }}
         />

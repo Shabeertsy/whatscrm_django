@@ -3,7 +3,7 @@ import {
   getPipelines, createPipeline, updatePipeline, deletePipeline,
   activatePipeline, createStage, getDeals, createDeal, updateDeal, deleteDeal,
   updateStage, deleteStage, swapStages,
-  Pipeline, Deal, PipelineStage,
+  Pipeline, Deal, PipelineStage, StageField, PipelineField,
 } from "../api";
 import { apiClient } from "../../../api/client";
 import toast from "react-hot-toast";
@@ -145,11 +145,13 @@ export function usePipeline() {
     }
   };
 
-  const handleCreatePipeline = async (data: { name: string; description: string }): Promise<boolean> => {
+  const handleCreatePipeline = async (data: { name: string; description: string; extra_fields?: PipelineField[] }): Promise<boolean> => {
     if (!data.name.trim()) { toast.error("Pipeline name is required"); return false; }
     try {
       const pipeline = await createPipeline(data);
       setPipelines(prev => [...prev, pipeline]);
+      setActivePipeline(pipeline);
+      setDeals([]);
       toast.success(`Pipeline "${pipeline.name}" created!`);
       return true;
     } catch (err: any) {
@@ -158,8 +160,8 @@ export function usePipeline() {
     }
   };
 
-  const handleUpdatePipeline = async (id: string, data: { name: string; description: string }): Promise<boolean> => {
-    if (!data.name.trim()) { toast.error("Pipeline name is required"); return false; }
+  const handleUpdatePipeline = async (id: string, data: Partial<Pipeline>): Promise<boolean> => {
+    if (data.name !== undefined && !data.name.trim()) { toast.error("Pipeline name is required"); return false; }
     try {
       const updated = await updatePipeline(id, data);
       setPipelines(prev => prev.map(p => (p.id === id ? updated : p)));
@@ -174,13 +176,14 @@ export function usePipeline() {
     }
   };
 
-  const handleAddStage = async (title: string, color?: string) => {
+  const handleAddStage = async (title: string, color?: string, isConfirmed?: boolean) => {
     if (!activePipeline || !title) return;
     try {
       const stage = await createStage(activePipeline.id, {
         title,
         color,
         order: (activePipeline.stages?.length || 0) + 1,
+        is_confirmed: isConfirmed || false,
       });
       const updatedStages = [...(activePipeline.stages || []), stage];
       setActivePipeline(prev => prev ? { ...prev, stages: updatedStages } : prev);
@@ -197,20 +200,29 @@ export function usePipeline() {
     if (!activePipeline) return;
     try {
       const updated = await updateStage(stageId, data);
-      setActivePipeline(prev => {
-        if (!prev) return prev;
-        const updatedStages = prev.stages.map(s => s.id === stageId ? updated : s);
-        updatedStages.sort((a, b) => a.order - b.order);
-        return { ...prev, stages: updatedStages };
-      });
+      const updatedStages = (activePipeline.stages || [])
+        .map(s => s.id === stageId ? updated : s)
+        .sort((a, b) => a.order - b.order);
+
+      setActivePipeline(prev => prev ? { ...prev, stages: updatedStages } : prev);
       setPipelines(prev =>
-        prev.map(p => {
-          if (p.id !== activePipeline.id) return p;
-          const updatedStages = p.stages.map(s => s.id === stageId ? updated : s);
-          updatedStages.sort((a, b) => a.order - b.order);
-          return { ...p, stages: updatedStages };
-        })
+        prev.map(p => (p.id === activePipeline.id ? { ...p, stages: updatedStages } : p))
       );
+      if (data.is_confirmed !== undefined) {
+        const minConfirmed = updatedStages
+          .filter(s => s.is_confirmed)
+          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+
+        setDeals(prev =>
+          prev.map(d => {
+            const st = updatedStages.find(s => s.id === d.stage);
+            const isConfirmed = st
+              ? (st.is_confirmed || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
+              : d.is_confirmed_booking;
+            return { ...d, is_confirmed_booking: !!isConfirmed };
+          })
+        );
+      }
     } catch (err: any) {
       toast.error(getErrorMsg(err, "Failed to update stage"));
     }
@@ -225,10 +237,25 @@ export function usePipeline() {
         stages
           .map(s => s.id === stageAId ? stage_a : s.id === stageBId ? stage_b : s)
           .sort((a, b) => a.order - b.order);
-      setActivePipeline(prev => prev ? { ...prev, stages: apply(prev.stages) } : prev);
+      const newStages = activePipeline ? apply(activePipeline.stages) : [];
+      setActivePipeline(prev => prev ? { ...prev, stages: newStages } : prev);
       setPipelines(prev => prev.map(p =>
         p.id === activePipeline.id ? { ...p, stages: apply(p.stages) } : p
       ));
+
+      const minConfirmed = newStages
+        .filter(s => s.is_confirmed)
+        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+
+      setDeals(prev =>
+        prev.map(d => {
+          const st = newStages.find(s => s.id === d.stage);
+          const isConfirmed = st
+            ? (st.is_confirmed || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
+            : d.is_confirmed_booking;
+          return { ...d, is_confirmed_booking: !!isConfirmed };
+        })
+      );
     } catch (err: any) {
       toast.error(getErrorMsg(err, "Failed to reorder stages"));
     }
@@ -253,9 +280,29 @@ export function usePipeline() {
 
   const handleMoveDeal = async (id: string, nextStage: string) => {
     const prevDeals = [...deals];
-    setDeals(prev => prev.map(d => (d.id === id ? { ...d, stage: nextStage } : d)));
+    const targetStage = activePipeline?.stages?.find(s => s.id === nextStage);
+    const stages = activePipeline?.stages || [];
+    const minConfirmedStage = stages
+      .filter(s => s.is_confirmed)
+      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
+
+    const isConfirmedTarget = targetStage
+      ? (targetStage.is_confirmed || Boolean(minConfirmedStage && (targetStage.order ?? 0) >= (minConfirmedStage.order ?? 0)))
+      : false;
+
+    setDeals(prev =>
+      prev.map(d => {
+        if (d.id !== id) return d;
+        return {
+          ...d,
+          stage: nextStage,
+          is_confirmed_booking: isConfirmedTarget,
+        };
+      })
+    );
     try {
-      await updateDeal(id, { stage: nextStage });
+      const updated = await updateDeal(id, { stage: nextStage });
+      setDeals(prev => prev.map(d => (d.id === id ? updated : d)));
     } catch (err: any) {
       toast.error(getErrorMsg(err, "Failed to move deal"));
       setDeals(prevDeals);
@@ -263,7 +310,7 @@ export function usePipeline() {
   };
 
   const handleSaveDeal = async (data: {
-    id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null;
+    id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any>; stage?: string;
   }): Promise<boolean> => {
     if (!activePipeline) { toast.error("No active pipeline selected"); return false; }
     try {

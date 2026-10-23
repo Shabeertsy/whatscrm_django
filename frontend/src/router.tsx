@@ -17,6 +17,7 @@ import CustomMessages from "./pages/CustomMessages";
 import MediaLibrary from "./pages/MediaLibrary";
 import CampaignDetail from "./features/campaigns/CampaignDetail";
 import Flows from "./pages/Flows";
+import ConfirmedBookings from "./pages/ConfirmedBookings";
 
 
 
@@ -58,6 +59,7 @@ export function Router() {
       <Route path="/voice" element={<Voice />} />
       <Route path="/contacts" element={<Contacts />} />
       <Route path="/pipeline" element={<Pipeline />} />
+      <Route path="/confirmed-bookings" element={<ConfirmedBookings />} />
       <Route path="/ai-agent" element={<AiAgent />} />
       <Route path="/login" element={<Analytics />} />
       <Route path="*" element={<Analytics />} />

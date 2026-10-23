@@ -27,6 +27,7 @@ export function StageColumn({
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
   const [editColor, setEditColor] = useState(stageObj?.color || "#e2e8f0");
+  const [editIsConfirmed, setEditIsConfirmed] = useState(stageObj?.is_confirmed || false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const dragCounter = useRef(0);
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -67,15 +68,18 @@ export function StageColumn({
     const newTitle = editTitle.trim();
     const isTitleChanged = newTitle && newTitle !== title;
     const isColorChanged = editColor !== stageObj?.color;
+    const isConfirmedChanged = editIsConfirmed !== (stageObj?.is_confirmed || false);
 
-    if ((isTitleChanged || isColorChanged) && onUpdateStage) {
+    if ((isTitleChanged || isColorChanged || isConfirmedChanged) && onUpdateStage) {
       onUpdateStage(stage, {
         ...(isTitleChanged ? { title: newTitle } : {}),
-        ...(isColorChanged ? { color: editColor } : {})
+        ...(isColorChanged ? { color: editColor } : {}),
+        ...(isConfirmedChanged ? { is_confirmed: editIsConfirmed } : {}),
       });
     } else {
       setEditTitle(title);
       setEditColor(stageObj?.color || "#e2e8f0");
+      setEditIsConfirmed(stageObj?.is_confirmed || false);
     }
     setIsEditing(false);
   };
@@ -107,10 +111,11 @@ export function StageColumn({
       {/* ── Column Header ── */}
       <div className="px-4 pt-4 pb-3 border-b border-slate-200/60 dark:border-slate-800">
 
-        {/* Title row */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          {isEditing ? (
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+        {/* Title row / Edit Mode */}
+        {isEditing ? (
+          <div className="w-full space-y-2 pb-1">
+            {/* Row 1: Color picker + Title input */}
+            <div className="flex items-center gap-1.5 w-full">
               <div className="relative w-8 h-8 flex-shrink-0 rounded-lg overflow-hidden ring-1 ring-slate-200 dark:ring-slate-700 shadow-sm hover:ring-[#007e3a] transition-all">
                 <input
                   type="color"
@@ -126,27 +131,64 @@ export function StageColumn({
                 onChange={(e) => setEditTitle(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleSave();
-                  if (e.key === 'Escape') { setIsEditing(false); setEditTitle(title); setEditColor(stageObj?.color || "#e2e8f0"); }
+                  if (e.key === 'Escape') {
+                    setIsEditing(false);
+                    setEditTitle(title);
+                    setEditColor(stageObj?.color || "#e2e8f0");
+                    setEditIsConfirmed(stageObj?.is_confirmed || false);
+                  }
                 }}
-                className="flex-1 min-w-0 bg-white dark:bg-slate-800 border border-[#007e3a]/50 rounded-lg px-2.5 py-1.5 text-sm text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:border-[#007e3a] focus:ring-2 focus:ring-[#007e3a]/10"
+                className="flex-1 min-w-0 bg-white dark:bg-slate-800 border border-[#007e3a] rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-[#007e3a]/15"
+                placeholder="Stage Title"
                 autoFocus
               />
+            </div>
+
+            {/* Row 2: Confirmed stage toggle */}
+            <div className="flex items-center w-full">
               <button
-                onClick={handleSave}
-                className="flex-shrink-0 p-1.5 bg-[#007e3a] text-white rounded-lg hover:bg-[#00662f] transition-colors"
-                title="Save"
+                type="button"
+                onClick={() => setEditIsConfirmed(v => !v)}
+                className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-all truncate ${
+                  editIsConfirmed
+                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                }`}
+                title="Toggle confirmed booking stage"
               >
-                <Check className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => { setIsEditing(false); setEditTitle(title); setEditColor(stageObj?.color || "#e2e8f0"); }}
-                className="flex-shrink-0 p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
-                title="Cancel"
-              >
-                <X className="h-3.5 w-3.5" />
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                  editIsConfirmed ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                }`} />
+                <span className="truncate">{editIsConfirmed ? 'Confirmed Stage' : 'Not Confirmed Stage'}</span>
               </button>
             </div>
-          ) : (
+
+            {/* Row 3: Cancel and Save action buttons */}
+            <div className="flex items-center justify-end gap-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditing(false);
+                  setEditTitle(title);
+                  setEditColor(stageObj?.color || "#e2e8f0");
+                  setEditIsConfirmed(stageObj?.is_confirmed || false);
+                }}
+                className="px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                className="flex items-center gap-1 px-3 py-1 bg-[#007e3a] hover:bg-[#00662f] text-white text-xs font-bold rounded-md shadow-sm transition-colors"
+              >
+                <Check className="h-3 w-3" />
+                <span>Save</span>
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2 mb-2.5">
             <div className="flex items-center gap-2 flex-1 min-w-0 group">
               {stageObj?.color && (
                 <div
@@ -163,16 +205,18 @@ export function StageColumn({
               >
                 {title}
               </h4>
-
+              {stageObj?.is_confirmed && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded text-[9px] font-bold uppercase tracking-wider flex-shrink-0">
+                  ✓ Confirmed
+                </span>
+              )}
             </div>
-          )}
 
-          {!isEditing && (
             <span className="flex-shrink-0 min-w-[1.75rem] text-center px-2 py-0.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full font-bold text-xs shadow-sm border border-slate-200 dark:border-slate-700">
               {columnDeals.length}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Controls row — always visible, subtle */}
         {!isEditing && (
@@ -262,9 +306,21 @@ export function StageColumn({
                   {deal.note}
                 </p>
               )}
+              {deal.extra_data && Object.keys(deal.extra_data).length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {Object.entries(deal.extra_data).map(([k, v]) => (
+                    <span key={k} className="text-[10px] bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono truncate max-w-full">
+                      {k}: {String(v)}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 dark:border-slate-700 mt-auto">
               <span className="font-extrabold text-[#007e3a] text-sm tracking-wide">₹ {Number(deal.value).toLocaleString()}</span>
+              {deal.is_confirmed_booking && (
+                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded uppercase tracking-wider">✓ Confirmed</span>
+              )}
             </div>
           </div>
         ))}
@@ -277,6 +333,8 @@ export function StageColumn({
           </div>
         )}
       </div>
+
+
     </div>
   );
 }

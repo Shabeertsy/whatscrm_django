@@ -13,7 +13,7 @@ def process_csv_import(csv_file, user):
     Returns a tuple (success, data_or_error_message, status_code).
     """
     try:
-        content = csv_file.read().decode('utf-8-sig')  # utf-8-sig handles BOM
+        content = csv_file.read().decode('utf-8-sig')  
     except UnicodeDecodeError:
         try:
             csv_file.seek(0)
@@ -94,3 +94,115 @@ def increment_pipeline_cache_version(owner_id):
         cache.incr(cache_key)
     except ValueError:
         cache.set(cache_key, 1, timeout=None)
+
+
+def get_first_confirmed_stage(pipeline):
+    """
+    Returns the first confirmed stage (lowest order) in the given pipeline, if any.
+    """
+    if not pipeline:
+        return None
+    from .models import PipelineStage
+    return PipelineStage.objects.filter(
+        pipeline=pipeline,
+        is_confirmed=True
+    ).order_by('order').first()
+
+
+def is_stage_confirmed_or_after(stage):
+    """
+    Returns True if the given stage is marked as is_confirmed=True,
+    OR if it belongs to a pipeline where an earlier (or equal order) stage is marked is_confirmed=True.
+    """
+    if not stage:
+        return False
+    if stage.is_confirmed:
+        return True
+    if not stage.pipeline_id:
+        return False
+    earliest = get_first_confirmed_stage(stage.pipeline)
+    return bool(earliest and stage.order >= earliest.order)
+
+
+
+def sync_deal_confirmation(deal, target_stage=None, owner=None):
+    """
+    Creates or deletes a ConfirmedBooking record based on whether the deal's
+    current/target stage is at or after a confirmed stage in its pipeline.
+    The ConfirmedBooking table is the single source of truth — no snapshot
+    fields are written to PipelineDeal.
+    """
+    from .models import ConfirmedBooking, PipelineStage
+    from django.utils import timezone
+
+    stage = target_stage or deal.stage
+    if not stage:
+        return
+
+    pipeline = stage.pipeline
+    earliest_confirmed_stage = get_first_confirmed_stage(pipeline) if pipeline else None
+
+    # A deal is confirmed if:
+    # 1) Current stage has is_confirmed=True, OR
+    # 2) Pipeline has a confirmed stage and current stage's order is >= that confirmed stage's order
+    confirmed_or_after = False
+    if stage.is_confirmed:
+        confirmed_or_after = True
+    elif earliest_confirmed_stage and stage.order >= earliest_confirmed_stage.order:
+        confirmed_or_after = True
+
+    now_ts = timezone.now()
+
+    if confirmed_or_after:
+        # Resolve the stage title to record
+        confirmed_stage_title = (
+            stage.title if stage.is_confirmed
+            else (earliest_confirmed_stage.title if earliest_confirmed_stage else stage.title)
+        )
+
+        # Resolve contact info
+        c_name = (
+            deal.wa_contact.crm_contact.name
+            if (deal.wa_contact and getattr(deal.wa_contact, 'crm_contact', None))
+            else (deal.wa_contact.name if deal.wa_contact else (deal.manual_contact or ''))
+        )
+        c_phone = (
+            deal.wa_contact.crm_contact.phone
+            if (deal.wa_contact and getattr(deal.wa_contact, 'crm_contact', None))
+            else (deal.wa_contact.phone if deal.wa_contact else '')
+        )
+        crm_contact = (
+            deal.wa_contact.crm_contact
+            if (deal.wa_contact and getattr(deal.wa_contact, 'crm_contact', None))
+            else None
+        )
+
+        tenant_owner = owner or deal.owner
+
+        # Get existing record's confirmed_at so we don't overwrite the original timestamp
+        existing = ConfirmedBooking.objects.filter(deal=deal).first()
+        confirmed_at = existing.confirmed_at if existing else now_ts
+
+        ConfirmedBooking.objects.update_or_create(
+            deal=deal,
+            defaults={
+                'owner': tenant_owner,
+                'contact': crm_contact,
+                'pipeline': pipeline,
+                'stage': stage,
+                'deal_name': deal.name,
+                'contact_name': c_name,
+                'contact_phone': c_phone,
+                'pipeline_name': pipeline.name if pipeline else '',
+                'stage_title': confirmed_stage_title,
+                'value': deal.value or 0.00,
+                'note': deal.note or '',
+                'extra_data': deal.extra_data or {},
+                'confirmed_at': confirmed_at,
+            }
+        )
+    else:
+        # Deal moved back before the confirmed stage — remove the booking record
+        ConfirmedBooking.objects.filter(deal=deal).delete()
+
+

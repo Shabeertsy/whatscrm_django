@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Contact, ContactTag, Pipeline, PipelineStage, PipelineDeal
+from .models import Contact, ContactTag, Pipeline, PipelineStage, PipelineDeal, ConfirmedBooking
 
 
 class ContactTagSerializer(serializers.ModelSerializer):
@@ -70,7 +70,7 @@ class ContactSerializer(serializers.ModelSerializer):
 class PipelineStageSerializer(serializers.ModelSerializer):
     class Meta:
         model = PipelineStage
-        fields = ['id', 'title', 'color', 'order', 'created_at']
+        fields = ['id', 'title', 'color', 'order', 'is_confirmed', 'extra_fields', 'created_at']
         read_only_fields = ['id', 'created_at']
 
 
@@ -80,7 +80,7 @@ class PipelineSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Pipeline
-        fields = ['id', 'name', 'description', 'is_active', 'auto_create_deals', 'stages', 'deal_count', 'created_at']
+        fields = ['id', 'name', 'description', 'is_active', 'auto_create_deals', 'extra_fields', 'stages', 'deal_count', 'created_at']
         read_only_fields = ['id', 'created_at', 'is_active']
 
     def get_deal_count(self, obj):
@@ -90,11 +90,22 @@ class PipelineSerializer(serializers.ModelSerializer):
 class PipelineDealSerializer(serializers.ModelSerializer):
     contact_name = serializers.SerializerMethodField()
     contact_phone = serializers.SerializerMethodField()
+    is_confirmed_booking = serializers.SerializerMethodField()
+    confirmed_at = serializers.SerializerMethodField()
 
     class Meta:
         model = PipelineDeal
-        fields = ['id', 'name', 'value', 'pipeline', 'stage', 'wa_contact', 'manual_contact', 'contact_name', 'contact_phone', 'note', 'created_at']
-        read_only_fields = ['id', 'created_at', 'contact_name', 'contact_phone']
+        fields = [
+            'id', 'name', 'value', 'pipeline', 'stage',
+            'wa_contact', 'manual_contact', 'contact_name', 'contact_phone',
+            'note', 'extra_data',
+            'is_confirmed_booking', 'confirmed_at',
+            'created_at'
+        ]
+        read_only_fields = [
+            'id', 'created_at', 'contact_name', 'contact_phone',
+            'is_confirmed_booking', 'confirmed_at',
+        ]
 
     def get_contact_name(self, obj):
         if obj.wa_contact:
@@ -109,3 +120,36 @@ class PipelineDealSerializer(serializers.ModelSerializer):
                 return obj.wa_contact.crm_contact.phone
             return obj.wa_contact.phone or ''
         return ''
+
+    def _get_confirmed_record(self, obj):
+        """Fetch and cache the confirmed booking record once per deal."""
+        if not hasattr(obj, '_confirmed_record_cache'):
+            obj._confirmed_record_cache = obj.confirmed_booking_records.first()
+        return obj._confirmed_record_cache
+
+    def get_is_confirmed_booking(self, obj):
+        return self._get_confirmed_record(obj) is not None
+
+    def get_confirmed_at(self, obj):
+        record = self._get_confirmed_record(obj)
+        return record.confirmed_at if record else None
+
+
+
+class ConfirmedBookingSerializer(serializers.ModelSerializer):
+    name = serializers.CharField(source='deal_name', read_only=True)
+    confirmed_stage_title = serializers.CharField(source='stage_title', read_only=True)
+    confirmed_pipeline_name = serializers.CharField(source='pipeline_name', read_only=True)
+
+    class Meta:
+        model = ConfirmedBooking
+        fields = [
+            'id', 'deal', 'name', 'deal_name',
+            'contact', 'contact_name', 'contact_phone',
+            'pipeline', 'pipeline_name', 'confirmed_pipeline_name',
+            'stage', 'stage_title', 'confirmed_stage_title',
+            'value', 'note', 'extra_data',
+            'confirmed_at', 'created_at', 'updated_at'
+        ]
+        read_only_fields = fields
+

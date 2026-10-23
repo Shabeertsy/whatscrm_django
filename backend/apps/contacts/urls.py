@@ -7,6 +7,8 @@ from .views import (
     PipelineListCreateView, PipelineDetailView, PipelineActivateView,
     PipelineStageListCreateView, PipelineStageDetailView, PipelineStageSwapView,
     PipelineDealListCreateView, PipelineDealDetailView,
+    ConfirmedBookingsView,
+    ConfirmedBookingDetailView,
 )
 
 urlpatterns = [
@@ -30,5 +32,7 @@ urlpatterns = [
 
     # Deals
     path('pipeline/deals/', PipelineDealListCreateView.as_view(), name='pipeline_deal_list'),
+    path('pipeline/deals/confirmed/', ConfirmedBookingsView.as_view(), name='pipeline_deals_confirmed'),
+    path('pipeline/deals/confirmed/<uuid:pk>/', ConfirmedBookingDetailView.as_view(), name='confirmed_booking_detail'),
     path('pipeline/deals/<uuid:pk>/', PipelineDealDetailView.as_view(), name='pipeline_deal_detail'),
 ]

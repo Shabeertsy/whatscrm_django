@@ -8,7 +8,13 @@ import io
 
 from django.core.cache import cache
 from apps.core.permissions import RequirePermission, Permission
-from .utils import get_pipeline_cache_version
+from .utils import (
+    get_pipeline_cache_version,
+    increment_pipeline_cache_version,
+    sync_deal_confirmation,
+    is_stage_confirmed_or_after,
+    process_csv_import,
+)
 
 
 from apps.core.scoping import (
@@ -23,15 +29,16 @@ from .models import (
     ContactTag, 
     Pipeline, 
     PipelineStage, 
-    PipelineDeal
+    PipelineDeal,
+    ConfirmedBooking
     )
 
 from .serializers import (
     ContactSerializer, ContactTagSerializer,
-    PipelineSerializer, PipelineStageSerializer, PipelineDealSerializer
+    PipelineSerializer, PipelineStageSerializer, PipelineDealSerializer,
+    ConfirmedBookingSerializer
 )
 
-from .utils import process_csv_import
 
 from django.db.models import Q
 from django.db import transaction
@@ -317,6 +324,8 @@ class PipelineListCreateView(APIView):
                 order=1,
                 owner=get_tenant_owner(request.user),
             )
+            from .utils import increment_pipeline_cache_version
+            increment_pipeline_cache_version(get_tenant_owner(request.user).id)
             return Response(PipelineSerializer(pipeline).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -351,6 +360,8 @@ class PipelineDetailView(APIView):
         serializer = PipelineSerializer(pipeline, data=data, partial=True)
         if serializer.is_valid():
             serializer.save()
+            from .utils import increment_pipeline_cache_version
+            increment_pipeline_cache_version(get_tenant_owner(request.user).id)
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -455,9 +466,26 @@ class PipelineStageDetailView(APIView):
         stage = self.get_object(pk, request.user)
         if not stage:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+        old_is_confirmed = stage.is_confirmed
         serializer = PipelineStageSerializer(stage, data=request.data, partial=True)
         if serializer.is_valid():
-            serializer.save()
+            updated_stage = serializer.save()
+            if 'is_confirmed' in request.data and old_is_confirmed != updated_stage.is_confirmed:
+                owner = get_tenant_owner(request.user)
+                pipeline = updated_stage.pipeline
+                if pipeline:
+                    deals = PipelineDeal.objects.filter(
+                        stage__pipeline=pipeline,
+                        owner=owner
+                    ).select_related('stage', 'wa_contact', 'wa_contact__crm_contact', 'stage__pipeline')
+                    for d in deals:
+                        sync_deal_confirmation(d, target_stage=d.stage, owner=owner)
+                else:
+                    deals = PipelineDeal.objects.filter(stage=updated_stage, owner=owner).select_related('stage', 'wa_contact', 'wa_contact__crm_contact')
+                    for d in deals:
+                        sync_deal_confirmation(d, target_stage=d.stage, owner=owner)
+                increment_pipeline_cache_version(owner.id)
+
             return Response(serializer.data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -478,6 +506,16 @@ class PipelineStageDetailView(APIView):
             if s.order != new_order:
                 s.order = new_order
                 s.save(update_fields=['order'])
+
+        owner = get_tenant_owner(request.user)
+        if pipeline:
+            deals = PipelineDeal.objects.filter(
+                stage__pipeline=pipeline,
+                owner=owner
+            ).select_related('stage', 'wa_contact', 'wa_contact__crm_contact', 'stage__pipeline')
+            for d in deals:
+                sync_deal_confirmation(d, target_stage=d.stage, owner=owner)
+        increment_pipeline_cache_version(owner.id)
 
         serializer = PipelineStageSerializer(remaining, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
@@ -516,6 +554,16 @@ class PipelineStageSwapView(APIView):
             stage_a.save(update_fields=['order'])
             stage_b.save(update_fields=['order'])
 
+        owner = get_tenant_owner(request.user)
+        if stage_a.pipeline:
+            deals = PipelineDeal.objects.filter(
+                stage__pipeline=stage_a.pipeline,
+                owner=owner
+            ).select_related('stage', 'wa_contact', 'wa_contact__crm_contact', 'stage__pipeline')
+            for d in deals:
+                sync_deal_confirmation(d, target_stage=d.stage, owner=owner)
+        increment_pipeline_cache_version(owner.id)
+
         return Response({
             'stage_a': PipelineStageSerializer(stage_a).data,
             'stage_b': PipelineStageSerializer(stage_b).data,
@@ -523,7 +571,7 @@ class PipelineStageSwapView(APIView):
 
 
 
-# ─── Deal APIs (scoped to pipeline) ───────────────────────
+# Deal APIs (scoped to pipeline)
 class PipelineDealListCreateView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_PIPELINE
@@ -550,12 +598,12 @@ class PipelineDealListCreateView(APIView):
             pipeline = self._get_pipeline(pipeline_id_param, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records').filter(pipeline=pipeline), request.user)
         else:
             pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
                 return Response([], status=status.HTTP_200_OK)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records').filter(pipeline=pipeline), request.user)
 
         if timeframe_param:
 
@@ -600,8 +648,10 @@ class PipelineDealListCreateView(APIView):
 
         serializer = PipelineDealSerializer(data=data)
         if serializer.is_valid():
-            serializer.save(owner=get_tenant_owner(request.user), pipeline=pipeline)
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            deal = serializer.save(owner=get_tenant_owner(request.user), pipeline=pipeline)
+            sync_deal_confirmation(deal, target_stage=deal.stage, owner=get_tenant_owner(request.user))
+            increment_pipeline_cache_version(get_tenant_owner(request.user).id)
+            return Response(PipelineDealSerializer(deal).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -611,7 +661,7 @@ class PipelineDealDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return scope_by_owner(PipelineDeal.objects.all(), user).get(pk=pk)
+            return scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records').all(), user).get(pk=pk)
         except PipelineDeal.DoesNotExist:
             return None
 
@@ -626,10 +676,38 @@ class PipelineDealDetailView(APIView):
         deal = self.get_object(pk, request.user)
         if not deal:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
-        serializer = PipelineDealSerializer(deal, data=request.data, partial=True)
+
+        # ── Confirmed Booking Logic ───────────────────────────────────────────
+        # When a deal is moved to a stage marked is_confirmed=True,
+        # add / update record in the dedicated ConfirmedBooking table.
+        old_stage_id = str(deal.stage_id or '')
+        new_stage_id = request.data.get('stage')
+        stage_changed = bool(new_stage_id and str(new_stage_id) != old_stage_id)
+        mutable_data = request.data.copy()
+        serializer = PipelineDealSerializer(deal, data=mutable_data, partial=True)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data)
+            updated_deal = serializer.save()
+            owner = get_tenant_owner(request.user)
+
+            # Keep pipeline consistent with stage if stage changed across pipelines
+            if updated_deal.stage and updated_deal.stage.pipeline_id and updated_deal.pipeline_id != updated_deal.stage.pipeline_id:
+                updated_deal.pipeline = updated_deal.stage.pipeline
+                updated_deal.save(update_fields=['pipeline'])
+
+            if stage_changed:
+                sync_deal_confirmation(updated_deal, target_stage=updated_deal.stage, owner=owner)
+            else:
+                # If stage didn't change, keep existing ConfirmedBooking snapshot updated
+                ConfirmedBooking.objects.filter(deal=updated_deal).update(
+                    deal_name=updated_deal.name,
+                    value=updated_deal.value or 0.00,
+                    note=updated_deal.note or '',
+                    extra_data=updated_deal.extra_data or {},
+                )
+
+            # Bust cache
+            increment_pipeline_cache_version(owner.id)
+            return Response(PipelineDealSerializer(updated_deal).data)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
     def delete(self, request, pk):
@@ -637,4 +715,39 @@ class PipelineDealDetailView(APIView):
         if not deal:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
         deal.delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+# Confirmed Bookings 
+class ConfirmedBookingsView(APIView):
+   
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
+
+    def get(self, request):
+        bookings = scope_by_owner(
+            ConfirmedBooking.objects.select_related(
+                'pipeline', 'stage', 'deal', 'contact'
+            ).all(),
+            request.user
+        ).order_by('-confirmed_at', '-created_at')
+
+        serializer = ConfirmedBookingSerializer(bookings, many=True)
+        return Response(serializer.data)
+
+
+class ConfirmedBookingDetailView(APIView):
+
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_PIPELINE
+
+    def delete(self, request, pk):
+        try:
+            booking = scope_by_owner(
+                ConfirmedBooking.objects.all(), request.user
+            ).get(pk=pk)
+        except ConfirmedBooking.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        booking.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

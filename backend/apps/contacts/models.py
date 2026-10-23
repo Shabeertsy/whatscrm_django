@@ -1,6 +1,7 @@
 import uuid
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from apps.core.models import BaseModel, SoftDeleteModel
 
 
@@ -72,6 +73,11 @@ class Pipeline(BaseModel):
         default=False,
         help_text="Only the active pipeline can have this enabled"
     )
+    extra_fields = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='[{"key":"check_in","label":"Check-in Date","type":"date","required":false}]'
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -101,6 +107,19 @@ class PipelineStage(BaseModel):
     title = models.CharField(max_length=100)
     color = models.CharField(max_length=20, default='#e2e8f0')
     order = models.PositiveIntegerField(default=0)
+
+    # Mark this stage as a confirmed booking stage
+    is_confirmed = models.BooleanField(
+        default=False,
+        help_text="Deals moved into this stage are recorded as confirmed bookings"
+    )
+    # Dynamic extra fields definition: [{key, label, type, required, options}]
+    extra_fields = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='[{"key":"check_in","label":"Check-in Date","type":"date","required":false}]'
+    )
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -125,7 +144,9 @@ class PipelineDeal(BaseModel):
     value = models.DecimalField(max_digits=12, decimal_places=2, default=0)
     stage = models.ForeignKey(
         PipelineStage, 
-        on_delete=models.CASCADE, 
+        on_delete=models.SET_NULL,   # Changed from CASCADE — preserves deals when stage deleted
+        null=True,
+        blank=True,
         related_name='deals'
     )
     # connection with whatsapp message contact (apps.messaging.models.Contact)
@@ -142,10 +163,76 @@ class PipelineDeal(BaseModel):
     )
     manual_contact = models.CharField(max_length=255, blank=True, default='')
     note = models.TextField(blank=True, default='')
+    
+
+    # ── Dynamic extra field values (keyed by StageField.key) ────────────────
+    extra_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text='{"check_in":"2026-11-01"}'
+    )
+
+
 
     class Meta:
         ordering = ['-created_at']
 
     def __str__(self):
         return self.name
+
+
+# Confirmed Booking Table 
+# Standalone table that records confirmed bookings independently.
+class ConfirmedBooking(BaseModel):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='confirmed_bookings'
+    )
+    deal = models.ForeignKey(
+        PipelineDeal,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='confirmed_booking_records'
+    )
+    contact = models.ForeignKey(
+        Contact,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='confirmed_bookings'
+    )
+    pipeline = models.ForeignKey(
+        Pipeline,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='confirmed_bookings'
+    )
+    stage = models.ForeignKey(
+        PipelineStage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='confirmed_bookings'
+    )
+
+    # Preserved copies of data (survives deletions of stage/pipeline/deal)
+    deal_name = models.CharField(max_length=255)
+    contact_name = models.CharField(max_length=255, blank=True, default='')
+    contact_phone = models.CharField(max_length=50, blank=True, default='')
+    pipeline_name = models.CharField(max_length=255, blank=True, default='')
+    stage_title = models.CharField(max_length=100, blank=True, default='')
+    value = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
+    note = models.TextField(blank=True, default='')
+    extra_data = models.JSONField(default=dict, blank=True)
+    confirmed_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-confirmed_at', '-created_at']
+
+    def __str__(self):
+        return f"Confirmed Booking: {self.deal_name} ({self.stage_title})"
+
 

@@ -5,7 +5,19 @@ export interface PipelineStage {
   title: string;
   color?: string;
   order: number;
+  is_confirmed: boolean;
+  extra_fields: StageField[];
 }
+
+// Dynamic extra field definition for pipeline deals
+export interface PipelineField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select';
+  options?: string[];
+  required?: boolean;
+}
+export type StageField = PipelineField;
 
 export interface Pipeline {
   id: string;
@@ -13,6 +25,7 @@ export interface Pipeline {
   description: string;
   is_active: boolean;
   auto_create_deals: boolean;
+  extra_fields?: PipelineField[];
   stages: PipelineStage[];
   deal_count: number;
 }
@@ -28,7 +41,20 @@ export interface Deal {
   contact_name?: string;
   contact_phone?: string;
   note?: string | null;
+  extra_data?: Record<string, any>;
+  // Confirmed booking snapshot fields (read-only, set by backend)
+  is_confirmed_booking?: boolean;
+  confirmed_at?: string | null;
+  confirmed_stage_title?: string;
+  confirmed_pipeline_name?: string;
   created_at?: string;
+}
+
+export interface ConfirmedBooking extends Deal {
+  is_confirmed_booking: true;
+  confirmed_at: string;
+  confirmed_stage_title: string;
+  confirmed_pipeline_name: string;
 }
 
 // ─── Pipeline APIs ──────────────────────────────────────────────────────────
@@ -38,7 +64,7 @@ export const getPipelines = async (): Promise<Pipeline[]> => {
   return res.data;
 };
 
-export const createPipeline = async (data: { name: string; description?: string }): Promise<Pipeline> => {
+export const createPipeline = async (data: { name: string; description?: string; extra_fields?: PipelineField[] }): Promise<Pipeline> => {
   const res = await apiClient.post('/contacts/pipelines/', data);
   return res.data;
 };
@@ -65,7 +91,7 @@ export const getStages = async (pipelineId?: string): Promise<PipelineStage[]> =
   return res.data;
 };
 
-export const createStage = async (pipelineId: string, data: { title: string; color?: string; order?: number }): Promise<PipelineStage> => {
+export const createStage = async (pipelineId: string, data: { title: string; color?: string; order?: number; is_confirmed?: boolean; extra_fields?: StageField[] }): Promise<PipelineStage> => {
   const res = await apiClient.post('/contacts/pipeline/stages/', { ...data, pipeline: pipelineId });
   return res.data;
 };
@@ -106,6 +132,7 @@ export const createDeal = async (data: {
   wa_contact?: string | null;
   manual_contact?: string | null;
   note?: string | null;
+  extra_data?: Record<string, any>;
 }): Promise<Deal> => {
   const res = await apiClient.post('/contacts/pipeline/deals/', data);
   return res.data;
@@ -123,4 +150,13 @@ export const deleteDeal = async (id: string): Promise<void> => {
 export const getDeal = async (id: string): Promise<Deal> => {
   const res = await apiClient.get(`/contacts/pipeline/deals/${id}/`);
   return res.data;
+};
+
+export const getConfirmedBookings = async (): Promise<ConfirmedBooking[]> => {
+  const res = await apiClient.get('/contacts/pipeline/deals/confirmed/');
+  return res.data;
+};
+
+export const deleteConfirmedBooking = async (id: string): Promise<void> => {
+  await apiClient.delete(`/contacts/pipeline/deals/confirmed/${id}/`);
 };

@@ -1,18 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { X, Copy, Phone } from "lucide-react";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
-
-
+import { PipelineField, StageField } from "../api";
+import toast from "react-hot-toast";
 
 interface Props {
   contacts: any[];
-  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null };
+  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any> };
+  extraFields?: PipelineField[];
+  stageFields?: StageField[];
   onClose: () => void;
-  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null }) => Promise<boolean>;
+  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any> }) => Promise<boolean>;
   onDelete?: () => void;
 }
 
-export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelete }: Props) {
+export function AddDealModal({ contacts, initialData, extraFields, stageFields, onClose, onSubmit, onDelete }: Props) {
+  const fields = useMemo(() => {
+    const list = [...(extraFields || []), ...(stageFields || [])];
+    const map = new Map<string, PipelineField>();
+    for (const f of list) {
+      if (f && f.key && !map.has(f.key)) {
+        map.set(f.key, f);
+      }
+    }
+    return Array.from(map.values());
+  }, [extraFields, stageFields]);
+
   const [form, setForm] = useState({
     name: initialData?.name || "",
     value: initialData?.value || 0,
@@ -20,9 +33,17 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
     manual_contact: initialData?.manual_contact || "",
     note: initialData?.note || ""
   });
+  const [extraData, setExtraData] = useState<Record<string, any>>(initialData?.extra_data || {});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const handleSubmit = async () => {
+    for (const field of fields) {
+      if (field.required && (!extraData[field.key] || String(extraData[field.key]).trim() === '')) {
+        toast.error(`${field.label} is required`);
+        return;
+      }
+    }
+
     const ok = await onSubmit({
       id: initialData?.id,
       name: form.name,
@@ -30,6 +51,7 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
       wa_contact: form.wa_contact || undefined,
       manual_contact: form.manual_contact || undefined,
       note: form.note || undefined,
+      extra_data: Object.keys(extraData).length > 0 ? extraData : undefined,
     });
     if (ok) onClose();
   };
@@ -131,6 +153,43 @@ export function AddDealModal({ contacts, initialData, onClose, onSubmit, onDelet
               placeholder="Additional details..."
             />
           </div>
+
+          {/* Dynamic Pipeline Extra Fields */}
+          {fields.length > 0 && (
+            <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-3">
+              <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                Custom Deal Fields
+              </p>
+              {fields.map(field => (
+                <div key={field.key}>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                    {field.label}
+                    {field.required && <span className="text-red-500 ml-0.5">*</span>}
+                  </label>
+                  {field.type === 'select' && field.options ? (
+                    <select
+                      value={extraData[field.key] || ''}
+                      onChange={e => setExtraData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+                    >
+                      <option value="">-- Select --</option>
+                      {field.options.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type={field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'}
+                      value={extraData[field.key] || ''}
+                      onChange={e => setExtraData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      required={field.required}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
           <div>
