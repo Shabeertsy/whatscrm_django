@@ -35,10 +35,15 @@ export function ManagePipelinesModal({
     setEditFields(p.extra_fields ? [...p.extra_fields] : []);
   };
 
+  const hasInitializedRef = React.useRef(false);
+
   useEffect(() => {
-    if (initialPipelineId) {
+    if (!hasInitializedRef.current && initialPipelineId && pipelines.length > 0) {
       const target = pipelines.find(p => p.id === initialPipelineId);
-      if (target) startEditing(target);
+      if (target) {
+        hasInitializedRef.current = true;
+        startEditing(target);
+      }
     }
   }, [initialPipelineId, pipelines]);
 

@@ -702,12 +702,15 @@ class PipelineDealDetailView(APIView):
                 sync_deal_confirmation(updated_deal, target_stage=updated_deal.stage, owner=owner)
             else:
                 # If stage didn't change, keep existing ConfirmedBooking snapshot updated
-                ConfirmedBooking.objects.filter(deal=updated_deal).update(
-                    deal_name=updated_deal.name,
-                    value=updated_deal.value or 0.00,
-                    note=updated_deal.note or '',
-                    extra_data=updated_deal.extra_data or {},
-                )
+                if updated_deal.stage and updated_deal.stage.is_confirmed:
+                    ConfirmedBooking.objects.filter(deal=updated_deal).update(
+                        deal_name=updated_deal.name,
+                        value=updated_deal.value or 0.00,
+                        note=updated_deal.note or '',
+                        extra_data=updated_deal.extra_data or {},
+                    )
+                else:
+                    ConfirmedBooking.objects.filter(deal=updated_deal).delete()
 
             # Bust cache
             increment_pipeline_cache_version(owner.id)
@@ -747,6 +750,22 @@ class ConfirmedBookingDetailView(APIView):
 
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_PIPELINE
+
+    def patch(self, request, pk):
+        try:
+            booking = scope_by_owner(
+                ConfirmedBooking.objects.all(), request.user
+            ).get(pk=pk)
+        except ConfirmedBooking.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        if 'note' in request.data:
+            booking.note = request.data.get('note') or ''
+            booking.save(update_fields=['note', 'updated_at'])
+            if booking.deal_id:
+                PipelineDeal.objects.filter(pk=booking.deal_id).update(note=booking.note)
+
+        return Response(ConfirmedBookingSerializer(booking).data)
 
     def delete(self, request, pk):
         try:

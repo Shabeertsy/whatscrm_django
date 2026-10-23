@@ -182,7 +182,6 @@ class PipelineDeal(BaseModel):
 
 
 # Confirmed Booking Table 
-# Standalone table that records confirmed bookings independently.
 class ConfirmedBooking(BaseModel):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,

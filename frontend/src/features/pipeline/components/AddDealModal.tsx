@@ -65,93 +65,95 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-md md:max-w-2xl lg:max-w-3xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between flex-shrink-0">
           <h3 className="font-bold text-lg text-slate-900 dark:text-white">{initialData ? "Edit Deal" : "Add New Deal"}</h3>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
         </div>
-        <div className="p-6 space-y-4">
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Deal Name *</label>
-            <input
-              type="text" value={form.name}
-              onChange={e => setForm({ ...form, name: e.target.value })}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
-              placeholder="e.g. New deal"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Deal Value (₹)</label>
-            <input
-              type="number" value={form.value}
-              onChange={e => setForm({ ...form, value: parseFloat(e.target.value) || 0 })}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1"> Contact (WhatsApp)</label>
-            <select
-              value={form.wa_contact}
-              onChange={e => setForm({ ...form, wa_contact: e.target.value })}
-              disabled={!!initialData}
-              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a] disabled:opacity-60 disabled:cursor-not-allowed ${initialData ? 'appearance-none' : ''}`}
-            >
-              <option value="">-- Select Contact (Optional) --</option>
-              {contacts.map(c => (
-                <option key={c.id} value={c.id}>{c.name || c.phone}</option>
-              ))}
-            </select>
-          </div>
-
-          {selectedContact && selectedContact.phone && (
+        <div className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  value={selectedContact.phone}
-                  readOnly
-                  className="flex-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 cursor-not-allowed outline-none"
-                />
-                <button
-                  onClick={(e) => { e.preventDefault(); handleCopyPhone(); }}
-                  title="Copy Phone Number"
-                  className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 transition-colors"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-                <a
-                  href={`tel:${selectedContact.phone}`}
-                  title="Call Contact"
-                  className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#007e3a] transition-colors"
-                >
-                  <Phone className="h-4 w-4" />
-                </a>
-              </div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Deal Name *</label>
+              <input
+                type="text" value={form.name}
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+                placeholder="e.g. New deal"
+              />
             </div>
-          )}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Deal Value (₹)</label>
+              <input
+                type="number" value={form.value}
+                onChange={e => setForm({ ...form, value: parseFloat(e.target.value) || 0 })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact (WhatsApp)</label>
+              <select
+                value={form.wa_contact}
+                onChange={e => setForm({ ...form, wa_contact: e.target.value })}
+                disabled={!!initialData}
+                className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a] disabled:opacity-60 disabled:cursor-not-allowed ${initialData ? 'appearance-none' : ''}`}
+              >
+                <option value="">-- Select Contact (Optional) --</option>
+                {contacts.map(c => (
+                  <option key={c.id} value={c.id}>{c.name || c.phone}</option>
+                ))}
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-              Manual Contact <span className="text-slate-400 font-normal">(Optional — name or phone)</span>
-            </label>
-            <input
-              type="text"
-              value={form.manual_contact}
-              onChange={e => setForm({ ...form, manual_contact: e.target.value })}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
-            />
-          </div>
+            {selectedContact && selectedContact.phone ? (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Phone Number</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={selectedContact.phone}
+                    readOnly
+                    className="flex-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 cursor-not-allowed outline-none"
+                  />
+                  <button
+                    onClick={(e) => { e.preventDefault(); handleCopyPhone(); }}
+                    title="Copy Phone Number"
+                    className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 transition-colors"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </button>
+                  <a
+                    href={`tel:${selectedContact.phone}`}
+                    title="Call Contact"
+                    className="p-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-[#007e3a] transition-colors"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                </div>
+              </div>
+            ) : null}
 
-          <div>
-            <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Note (Optional)</label>
-            <textarea
-              value={form.note}
-              onChange={e => setForm({ ...form, note: e.target.value })}
-              className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a] min-h-[80px]"
-              placeholder="Additional details..."
-            />
+            <div className={selectedContact && selectedContact.phone ? "md:col-span-2" : ""}>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                Manual Contact <span className="text-slate-400 font-normal">(Optional — name or phone)</span>
+              </label>
+              <input
+                type="text"
+                value={form.manual_contact}
+                onChange={e => setForm({ ...form, manual_contact: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Note (Optional)</label>
+              <textarea
+                value={form.note}
+                onChange={e => setForm({ ...form, note: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a] min-h-[70px]"
+                placeholder="Additional details..."
+              />
+            </div>
           </div>
 
           {/* Dynamic Pipeline Extra Fields */}
@@ -160,38 +162,40 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
               <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
                 Custom Deal Fields
               </p>
-              {fields.map(field => (
-                <div key={field.key}>
-                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
-                    {field.label}
-                    {field.required && <span className="text-red-500 ml-0.5">*</span>}
-                  </label>
-                  {field.type === 'select' && field.options ? (
-                    <select
-                      value={extraData[field.key] || ''}
-                      onChange={e => setExtraData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
-                    >
-                      <option value="">-- Select --</option>
-                      {field.options.map(opt => (
-                        <option key={opt} value={opt}>{opt}</option>
-                      ))}
-                    </select>
-                  ) : (
-                    <input
-                      type={field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'}
-                      value={extraData[field.key] || ''}
-                      onChange={e => setExtraData(prev => ({ ...prev, [field.key]: e.target.value }))}
-                      required={field.required}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
-                    />
-                  )}
-                </div>
-              ))}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {fields.map(field => (
+                  <div key={field.key}>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      {field.label}
+                      {field.required && <span className="text-red-500 ml-0.5">*</span>}
+                    </label>
+                    {field.type === 'select' && field.options ? (
+                      <select
+                        value={extraData[field.key] || ''}
+                        onChange={e => setExtraData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+                      >
+                        <option value="">-- Select --</option>
+                        {field.options.map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input
+                        type={field.type === 'date' ? 'date' : field.type === 'number' ? 'number' : 'text'}
+                        value={extraData[field.key] || ''}
+                        onChange={e => setExtraData(prev => ({ ...prev, [field.key]: e.target.value }))}
+                        required={field.required}
+                        className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center flex-shrink-0">
           <div>
             {initialData && onDelete && (
               <button

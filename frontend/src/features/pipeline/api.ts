@@ -157,6 +157,11 @@ export const getConfirmedBookings = async (): Promise<ConfirmedBooking[]> => {
   return res.data;
 };
 
+export const updateConfirmedBooking = async (id: string, data: { note?: string }): Promise<ConfirmedBooking> => {
+  const res = await apiClient.patch(`/contacts/pipeline/deals/confirmed/${id}/`, data);
+  return res.data;
+};
+
 export const deleteConfirmedBooking = async (id: string): Promise<void> => {
   await apiClient.delete(`/contacts/pipeline/deals/confirmed/${id}/`);
 };

@@ -76,15 +76,11 @@ export function PipelineFieldsEditor({ fields, onChange }: PipelineFieldsEditorP
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-          <Tag className="h-3.5 w-3.5 text-[#007e3a]" />
           Custom Deal Fields
           <span className="text-[11px] font-bold bg-[#007e3a]/10 text-[#007e3a] px-2 py-0.5 rounded-full">
             {fields.length}
           </span>
         </label>
-        <span className="text-[11px] text-slate-400">
-          Collected when creating/editing deals
-        </span>
       </div>
 
       {/* Existing Fields List */}
@@ -132,14 +128,13 @@ export function PipelineFieldsEditor({ fields, onChange }: PipelineFieldsEditorP
       ) : (
         <div className="text-center py-4 px-3 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50/50 dark:bg-slate-800/30">
           <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">No custom fields yet</p>
-          <p className="text-[11px] text-slate-400 mt-0.5">Add fields below like Check-in Date, Room Type, or Budget</p>
         </div>
       )}
 
       {/* Add Field Section */}
       <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 space-y-3">
         <div className="text-xs font-bold text-slate-700 dark:text-slate-300">
-          + Add New Field
+          Add New Field
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -152,7 +147,7 @@ export function PipelineFieldsEditor({ fields, onChange }: PipelineFieldsEditorP
               value={newLabel}
               onChange={e => { setNewLabel(e.target.value); setKeyError(""); }}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddField(); } }}
-              placeholder="e.g. Check-in Date"
+              placeholder=""
               className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] focus:ring-1 focus:ring-[#007e3a]"
             />
           </div>

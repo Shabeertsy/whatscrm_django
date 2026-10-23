@@ -124,13 +124,20 @@ class PipelineDealSerializer(serializers.ModelSerializer):
     def _get_confirmed_record(self, obj):
         """Fetch and cache the confirmed booking record once per deal."""
         if not hasattr(obj, '_confirmed_record_cache'):
-            obj._confirmed_record_cache = obj.confirmed_booking_records.first()
+            if not (obj.stage and obj.stage.is_confirmed):
+                obj._confirmed_record_cache = None
+            else:
+                obj._confirmed_record_cache = obj.confirmed_booking_records.first()
         return obj._confirmed_record_cache
 
     def get_is_confirmed_booking(self, obj):
+        if not (obj.stage and obj.stage.is_confirmed):
+            return False
         return self._get_confirmed_record(obj) is not None
 
     def get_confirmed_at(self, obj):
+        if not (obj.stage and obj.stage.is_confirmed):
+            return None
         record = self._get_confirmed_record(obj)
         return record.confirmed_at if record else None
 

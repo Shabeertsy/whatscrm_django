@@ -209,16 +209,10 @@ export function usePipeline() {
         prev.map(p => (p.id === activePipeline.id ? { ...p, stages: updatedStages } : p))
       );
       if (data.is_confirmed !== undefined) {
-        const minConfirmed = updatedStages
-          .filter(s => s.is_confirmed)
-          .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
-
         setDeals(prev =>
           prev.map(d => {
             const st = updatedStages.find(s => s.id === d.stage);
-            const isConfirmed = st
-              ? (st.is_confirmed || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
-              : d.is_confirmed_booking;
+            const isConfirmed = st ? Boolean(st.is_confirmed) : d.is_confirmed_booking;
             return { ...d, is_confirmed_booking: !!isConfirmed };
           })
         );
@@ -243,16 +237,10 @@ export function usePipeline() {
         p.id === activePipeline.id ? { ...p, stages: apply(p.stages || []) } : p
       ));
 
-      const minConfirmed = newStages
-        .filter(s => s.is_confirmed)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
-
       setDeals(prev =>
         prev.map(d => {
           const st = newStages.find(s => String(s.id) === String(d.stage));
-          const isConfirmed = st
-            ? (Boolean(st.is_confirmed) || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
-            : d.is_confirmed_booking;
+          const isConfirmed = st ? Boolean(st.is_confirmed) : d.is_confirmed_booking;
           return { ...d, is_confirmed_booking: !!isConfirmed };
         })
       );
@@ -273,16 +261,10 @@ export function usePipeline() {
         prev.map(p => p.id === activePipeline.id ? { ...p, stages: renormalizedStages } : p)
       );
 
-      const minConfirmed = renormalizedStages
-        .filter(s => s.is_confirmed)
-        .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
-
       setDeals(prev =>
         prev.map(d => {
           const st = renormalizedStages.find(s => String(s.id) === String(d.stage));
-          const isConfirmed = st
-            ? (Boolean(st.is_confirmed) || Boolean(minConfirmed && (st.order ?? 0) >= (minConfirmed.order ?? 0)))
-            : d.is_confirmed_booking;
+          const isConfirmed = st ? Boolean(st.is_confirmed) : d.is_confirmed_booking;
           return { ...d, is_confirmed_booking: !!isConfirmed };
         })
       );
@@ -295,14 +277,7 @@ export function usePipeline() {
   const handleMoveDeal = async (id: string, nextStage: string) => {
     const prevDeals = [...deals];
     const targetStage = activePipeline?.stages?.find(s => String(s.id) === String(nextStage));
-    const stages = activePipeline?.stages || [];
-    const minConfirmedStage = stages
-      .filter(s => s.is_confirmed)
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))[0];
-
-    const isConfirmedTarget = targetStage
-      ? (Boolean(targetStage.is_confirmed) || Boolean(minConfirmedStage && (targetStage.order ?? 0) >= (minConfirmedStage.order ?? 0)))
-      : false;
+    const isConfirmedTarget = targetStage ? Boolean(targetStage.is_confirmed) : false;
 
     setDeals(prev =>
       prev.map(d => {

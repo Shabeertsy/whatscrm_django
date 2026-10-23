@@ -38,6 +38,7 @@ export function Pipeline() {
   const [editingDeal, setEditingDeal] = useState<Deal | null>(null);
   const [showCreatePipelineModal, setShowCreatePipelineModal] = useState(false);
   const [showPipelineSettingsModal, setShowPipelineSettingsModal] = useState(false);
+  const [managePipelineInitialId, setManagePipelineInitialId] = useState<string | null>(null);
   const [showAddStageModal, setShowAddStageModal] = useState(false);
 
   const allActiveExtraFields = React.useMemo(() => {
@@ -64,7 +65,10 @@ export function Pipeline() {
           activePipeline={activePipeline}
           onSwitch={handleSwitchPipeline}
           onCreateNew={() => setShowCreatePipelineModal(true)}
-          onManage={() => setShowPipelineSettingsModal(true)}
+          onManage={() => {
+            setManagePipelineInitialId(null);
+            setShowPipelineSettingsModal(true);
+          }}
         />
         <button
           onClick={() => setShowAddStageModal(true)}
@@ -88,7 +92,10 @@ export function Pipeline() {
           activePipeline={activePipeline}
           onToggleAutoCreate={handleToggleAutoCreate}
           onActivate={handleActivatePipeline}
-          onManageFields={() => setShowPipelineSettingsModal(true)}
+          onManageFields={() => {
+            setManagePipelineInitialId(activePipeline.id);
+            setShowPipelineSettingsModal(true);
+          }}
         />
       )}
 
@@ -145,14 +152,18 @@ export function Pipeline() {
       {showPipelineSettingsModal && (
         <ManagePipelinesModal
           pipelines={pipelines}
-          initialPipelineId={activePipeline?.id}
-          onClose={() => setShowPipelineSettingsModal(false)}
+          initialPipelineId={managePipelineInitialId}
+          onClose={() => {
+            setShowPipelineSettingsModal(false);
+            setManagePipelineInitialId(null);
+          }}
           onActivate={handleActivatePipeline}
           onDelete={handleDeletePipeline}
           onUpdate={handleUpdatePipeline}
           onCreateNew={() => {
             setShowCreatePipelineModal(true);
             setShowPipelineSettingsModal(false);
+            setManagePipelineInitialId(null);
           }}
         />
       )}
