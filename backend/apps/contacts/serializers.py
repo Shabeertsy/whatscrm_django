@@ -92,6 +92,29 @@ class PipelineDealSerializer(serializers.ModelSerializer):
     contact_phone = serializers.SerializerMethodField()
     is_confirmed_booking = serializers.SerializerMethodField()
     confirmed_at = serializers.SerializerMethodField()
+    manual_contact = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+    note = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
+
+    def to_internal_value(self, data):
+        data = data.copy() if hasattr(data, 'copy') else dict(data)
+        if 'note' in data and data['note'] is None:
+            data['note'] = ''
+        if 'manual_contact' in data and data['manual_contact'] is None:
+            data['manual_contact'] = ''
+        if 'wa_contact' in data:
+            val = data['wa_contact']
+            if val in ('', 'null', None):
+                data['wa_contact'] = None
+            else:
+                from apps.messaging.models import Contact as MessagingContact
+                from apps.contacts.models import Contact as CrmContact
+                if not MessagingContact.objects.filter(pk=val).exists():
+                    crm = CrmContact.objects.filter(pk=val).first()
+                    if crm and hasattr(crm, 'wa_contact') and crm.wa_contact:
+                        data['wa_contact'] = str(crm.wa_contact.id)
+                    else:
+                        data['wa_contact'] = None
+        return super().to_internal_value(data)
 
     class Meta:
         model = PipelineDeal

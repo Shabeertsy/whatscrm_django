@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 import { accountsApi } from "./api/accounts";
 import { tokenService } from "./api/token";
 
+
 function AppContent() {
   const [authState, setAuthState] = useAuthStore();
 
@@ -36,10 +37,11 @@ function AppContent() {
   );
 }
 
+
 export function App() {
   return (
     <>
-      <Toaster 
+      <Toaster
         position="top-right"
         containerStyle={{ zIndex: 999999 }}
         toastOptions={{

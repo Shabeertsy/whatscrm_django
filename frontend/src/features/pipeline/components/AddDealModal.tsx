@@ -1,20 +1,22 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { X, Copy, Phone } from "lucide-react";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
-import { PipelineField, StageField } from "../api";
+import { PipelineField, StageField, PipelineStage } from "../api";
 import toast from "react-hot-toast";
+
 
 interface Props {
   contacts: any[];
-  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any> };
+  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any>; stage?: string };
   extraFields?: PipelineField[];
   stageFields?: StageField[];
+  stages?: PipelineStage[];
   onClose: () => void;
-  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any> }) => Promise<boolean>;
+  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any>; stage?: string }) => Promise<boolean>;
   onDelete?: () => void;
 }
 
-export function AddDealModal({ contacts, initialData, extraFields, stageFields, onClose, onSubmit, onDelete }: Props) {
+export function AddDealModal({ contacts, initialData, extraFields, stageFields, stages, onClose, onSubmit, onDelete }: Props) {
   const fields = useMemo(() => {
     const list = [...(extraFields || []), ...(stageFields || [])];
     const map = new Map<string, PipelineField>();
@@ -29,12 +31,25 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
   const [form, setForm] = useState({
     name: initialData?.name || "",
     value: initialData?.value || 0,
+    stage: initialData?.stage || (stages && stages[0]?.id) || "",
     wa_contact: initialData?.wa_contact || "",
     manual_contact: initialData?.manual_contact || "",
     note: initialData?.note || ""
   });
   const [extraData, setExtraData] = useState<Record<string, any>>(initialData?.extra_data || {});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
+  useEffect(() => {
+    setForm({
+      name: initialData?.name || "",
+      value: initialData?.value || 0,
+      stage: initialData?.stage || (stages && stages[0]?.id) || "",
+      wa_contact: initialData?.wa_contact || "",
+      manual_contact: initialData?.manual_contact || "",
+      note: initialData?.note || ""
+    });
+    setExtraData(initialData?.extra_data || {});
+  }, [initialData, stages]);
 
   const handleSubmit = async () => {
     for (const field of fields) {
@@ -46,11 +61,12 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
 
     const ok = await onSubmit({
       id: initialData?.id,
-      name: form.name,
-      value: Number(form.value),
+      name: form.name.trim(),
+      value: Number(form.value) || 0,
+      stage: form.stage || undefined,
       wa_contact: form.wa_contact || undefined,
-      manual_contact: form.manual_contact || undefined,
-      note: form.note || undefined,
+      manual_contact: form.manual_contact?.trim() ?? "",
+      note: form.note?.trim() ?? "",
       extra_data: Object.keys(extraData).length > 0 ? extraData : undefined,
     });
     if (ok) onClose();
@@ -90,6 +106,22 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
               />
             </div>
+            {stages && stages.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Stage</label>
+                <select
+                  value={form.stage}
+                  onChange={e => setForm({ ...form, stage: e.target.value })}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+                >
+                  {stages.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.title} {s.is_confirmed ? '(Confirmed)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact (WhatsApp)</label>
               <select

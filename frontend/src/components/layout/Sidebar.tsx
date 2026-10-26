@@ -4,16 +4,11 @@ import {
   MessageSquare,
   GitFork,
   Radio,
-  Users,
-  CreditCard,
-  Plus,
   ChevronLeft,
   ChevronRight,
-  Menu,
   User,
   Settings,
   Sliders,
-  PhoneCall,
   Contact2,
   Bot,
   Building2,
@@ -22,11 +17,13 @@ import {
   FolderOpen,
   Megaphone,
   Layers,
-  CheckCircle
+  CheckCircle,
+  LayoutList,
 } from "lucide-react";
 import { useRouter } from "../../router";
 import { useAuthStore } from "../../store/authStore";
 import { getUserPermissions } from "../../utils/permissions";
+
 
 
 export function Sidebar() {
@@ -40,9 +37,11 @@ export function Sidebar() {
     { id: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permitted: permissions.canAccessDashboard },
     { id: "/messaging", label: "Chats", icon: MessageSquare, permitted: permissions.canAccessChats },
     { id: "/pipeline", label: "Pipeline", icon: Sliders, permitted: permissions.canAccessPipeline },
+    { id: "/hotels", label: "Hotels and Resorts", icon: Building2, permitted: permissions.canAccessHotels },
+
     { id: "/confirmed-bookings", label: "Confirmed Bookings", icon: CheckCircle, permitted: permissions.canAccessPipeline },
     { id: "/contacts", label: "Contacts", icon: Contact2, permitted: permissions.canAccessContacts },
-    { id: "/hotels", label: "Hotels and Resorts", icon: Building2, permitted: permissions.canAccessHotels },
+    { id: "/pipeline-table", label: "Pipeline Table", icon: LayoutList, permitted: permissions.canAccessPipeline },
     { id: "/campaigns", label: "Campaigns", icon: Megaphone, permitted: permissions.canAccessTemplates },
     { id: "/templates", label: "Templates", icon: FileText, permitted: permissions.canAccessTemplates },
     { id: "/custom-messages", label: "Custom Messages", icon: MessageSquareText, permitted: permissions.canAccessCustomMessages },
@@ -54,6 +53,7 @@ export function Sidebar() {
   ];
 
   const navItems = allNavItems.filter((item) => item.permitted);
+
 
   return (
     <aside className={`${isCollapsed ? "w-20" : "w-64"} bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between z-10 h-screen transition-all duration-300 relative`}>
@@ -91,8 +91,8 @@ export function Sidebar() {
                 onClick={() => navigate(item.id)}
                 title={isCollapsed ? item.label : undefined}
                 className={`w-full flex items-center py-2.5 rounded-lg text-sm font-semibold transition-colors duration-200 group ${isActive
-                    ? "bg-[#007e3a] text-white shadow-lg shadow-[#007e3a]/15"
-                    : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
+                  ? "bg-[#007e3a] text-white shadow-lg shadow-[#007e3a]/15"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
                   }`}
               >
                 <div className="w-14 flex items-center justify-center shrink-0">

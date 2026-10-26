@@ -149,16 +149,20 @@ export function DataChatPanel({ onClose, anchorPos }: DataChatPanelProps) {
     const panelWidth = 380;
     const padding = 16;
 
-    const top = calculateTopPosition(anchorPos.y, panelHeight, padding, window.innerHeight);
-    panelStyle.top = `${top}px`;
+    if (anchorPos.y < 120) {
+      panelStyle.top = `${anchorPos.y}px`;
+    } else {
+      const top = calculateTopPosition(anchorPos.y, panelHeight, padding, window.innerHeight);
+      panelStyle.top = `${top}px`;
+    }
 
     let left = anchorPos.x - panelWidth + 52;
     if (left < padding) left = padding;
     if (left + panelWidth > window.innerWidth - padding) left = window.innerWidth - panelWidth - padding;
     panelStyle.left = `${left}px`;
   } else {
-    panelStyle.bottom = "84px";
-    panelStyle.right = "24px";
+    panelStyle.top = "72px";
+    panelStyle.right = "20px";
   }
 
   return (

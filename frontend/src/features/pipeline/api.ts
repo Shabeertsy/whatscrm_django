@@ -42,7 +42,8 @@ export interface Deal {
   contact_phone?: string;
   note?: string | null;
   extra_data?: Record<string, any>;
-  // Confirmed booking snapshot fields (read-only, set by backend)
+
+  // Confirmed booking snapshot fields 
   is_confirmed_booking?: boolean;
   confirmed_at?: string | null;
   confirmed_stage_title?: string;
@@ -51,13 +52,17 @@ export interface Deal {
 }
 
 export interface ConfirmedBooking extends Deal {
+  deal_name?: string;
+  stage_title?: string;
+  pipeline_name?: string;
   is_confirmed_booking: true;
   confirmed_at: string;
   confirmed_stage_title: string;
   confirmed_pipeline_name: string;
+  updated_at?: string;
 }
 
-// ─── Pipeline APIs ──────────────────────────────────────────────────────────
+// Pipeline APIs 
 
 export const getPipelines = async (): Promise<Pipeline[]> => {
   const res = await apiClient.get('/contacts/pipelines/');
@@ -83,7 +88,8 @@ export const activatePipeline = async (id: string): Promise<Pipeline> => {
   return res.data;
 };
 
-// ─── Stage APIs ─────────────────────────────────────────────────────────────
+
+// Stage APIs 
 
 export const getStages = async (pipelineId?: string): Promise<PipelineStage[]> => {
   const params = pipelineId ? { pipeline: pipelineId } : {};
@@ -113,7 +119,20 @@ export const swapStages = async (stageAId: string, stageBId: string): Promise<{ 
   return res.data;
 };
 
-// ─── Deal APIs ───────────────────────────────────────────────────────────────
+
+// Deal APIs 
+
+export interface PaginatedDealsResult {
+  count: number;
+  total_pages: number;
+  current_page: number;
+  page_size: number;
+  next: string | null;
+  previous: string | null;
+  results: Deal[];
+  total_value?: number;
+  confirmed_count?: number;
+}
 
 export const getDeals = async (pipelineId: string, timeframe?: string): Promise<Deal[]> => {
   const params: any = { pipeline: pipelineId };
@@ -121,6 +140,28 @@ export const getDeals = async (pipelineId: string, timeframe?: string): Promise<
     params.timeframe = timeframe;
   }
   const res = await apiClient.get('/contacts/pipeline/deals/', { params });
+  return Array.isArray(res.data) ? res.data : res.data.results || [];
+};
+
+export const getPaginatedDeals = async (params: {
+  pipeline: string;
+  page?: number;
+  page_size?: number;
+  stage?: string;
+  search?: string;
+  timeframe?: string;
+}): Promise<PaginatedDealsResult> => {
+  const queryParams: Record<string, any> = {
+    pipeline: params.pipeline,
+    paginate: 'true',
+    page: params.page || 1,
+    page_size: params.page_size || 10,
+  };
+  if (params.stage && params.stage !== 'all') queryParams.stage = params.stage;
+  if (params.search && params.search.trim()) queryParams.search = params.search.trim();
+  if (params.timeframe && params.timeframe !== 'all') queryParams.timeframe = params.timeframe;
+
+  const res = await apiClient.get('/contacts/pipeline/deals/', { params: queryParams });
   return res.data;
 };
 
@@ -152,12 +193,54 @@ export const getDeal = async (id: string): Promise<Deal> => {
   return res.data;
 };
 
+
+export interface PaginatedConfirmedBookingsResult {
+  count: number;
+  total_pages: number;
+  current_page: number;
+  page_size: number;
+  next: string | null;
+  previous: string | null;
+  results: ConfirmedBooking[];
+  total_value?: number;
+}
+
 export const getConfirmedBookings = async (): Promise<ConfirmedBooking[]> => {
   const res = await apiClient.get('/contacts/pipeline/deals/confirmed/');
+  return Array.isArray(res.data) ? res.data : res.data.results || [];
+};
+
+export const getPaginatedConfirmedBookings = async (params: {
+  page?: number;
+  page_size?: number;
+  pipeline?: string;
+  search?: string;
+}): Promise<PaginatedConfirmedBookingsResult> => {
+  const queryParams: Record<string, any> = {
+    paginate: 'true',
+    page: params.page || 1,
+    page_size: params.page_size || 10,
+  };
+  if (params.pipeline && params.pipeline !== 'all') queryParams.pipeline = params.pipeline;
+  if (params.search && params.search.trim()) queryParams.search = params.search.trim();
+
+  const res = await apiClient.get('/contacts/pipeline/deals/confirmed/', { params: queryParams });
   return res.data;
 };
 
-export const updateConfirmedBooking = async (id: string, data: { note?: string }): Promise<ConfirmedBooking> => {
+
+export const updateConfirmedBooking = async (
+  id: string,
+  data: {
+    name?: string;
+    deal_name?: string;
+    value?: number;
+    contact_name?: string;
+    contact_phone?: string;
+    note?: string;
+    extra_data?: Record<string, any>;
+  }
+): Promise<ConfirmedBooking> => {
   const res = await apiClient.patch(`/contacts/pipeline/deals/confirmed/${id}/`, data);
   return res.data;
 };

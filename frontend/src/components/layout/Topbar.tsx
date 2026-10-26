@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Bell, Search, Settings, LogOut, User } from "lucide-react";
+import { Bell, Search, Settings, LogOut, User, Bot, X } from "lucide-react";
 import { useTeamStore } from "../../store/teamStore";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore, logoutUser } from "../../store/authStore";
 import { getUserPermissions } from "../../utils/permissions";
 import { ActiveFlowsDropdown } from "./ActiveFlowsDropdown";
+import { DataChatPanel } from "../../features/ai/components/DataChatPanel";
 
 
 
@@ -13,10 +14,13 @@ export function Topbar() {
   const [authState] = useAuthStore();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [aiChatOpen, setAiChatOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const aiButtonRef = useRef<HTMLButtonElement>(null);
 
   const user = authState?.user || { first_name: 'Admin', email: 'admin@whatsacrm.com' };
   const permissions = getUserPermissions(user);
+  const isSuperuser = authState?.user?.is_superuser;
   const displayName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username || user.email?.split('@')[0] || 'User';
   const initial = displayName.charAt(0).toUpperCase() || 'U';
 
@@ -51,6 +55,39 @@ export function Topbar() {
       {/* Right controls */}
       <div className="flex items-center gap-3">
         <ActiveFlowsDropdown />
+
+        {/* AI Assistant Button (fixed in navbar) */}
+        {isSuperuser && (
+          <div className="relative">
+            <button
+              ref={aiButtonRef}
+              onClick={() => setAiChatOpen((prev) => !prev)}
+              className={`h-9 w-9 rounded-xl flex items-center justify-center transition shadow-xs cursor-pointer ${
+                aiChatOpen
+                  ? "bg-[#005f2b] text-white ring-2 ring-[#007e3a]/40"
+                  : "bg-[#007e3a] hover:bg-[#006830] text-white"
+              }`}
+              title={aiChatOpen ? "Close Assistant" : "Open Data Assistant"}
+              aria-label="AI Assistant"
+            >
+              {aiChatOpen ? <X className="h-5 w-5" /> : <Bot className="h-5 w-5" />}
+            </button>
+
+            {aiChatOpen && (
+              <DataChatPanel
+                onClose={() => setAiChatOpen(false)}
+                anchorPos={
+                  aiButtonRef.current
+                    ? {
+                        x: aiButtonRef.current.getBoundingClientRect().right,
+                        y: aiButtonRef.current.getBoundingClientRect().bottom + 8,
+                      }
+                    : undefined
+                }
+              />
+            )}
+          </div>
+        )}
 
         {/* Notifications */}
         <button className="relative p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition">

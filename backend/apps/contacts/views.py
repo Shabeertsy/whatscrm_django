@@ -40,13 +40,13 @@ from .serializers import (
 )
 
 
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
 
 
-class ContactPagination(PageNumberPagination):
+class StandardPagination(PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 100
@@ -128,7 +128,7 @@ class ContactListCreateView(APIView):
         if source_filter:
             qs = qs.filter(source=source_filter)
 
-        paginator = ContactPagination()
+        paginator = StandardPagination()
         paginated_qs = paginator.paginate_queryset(qs, request, view=self)
         serializer = ContactSerializer(paginated_qs, many=True)
         return paginator.get_paginated_response(serializer.data)
@@ -579,20 +579,25 @@ class PipelineDealListCreateView(APIView):
     def _get_pipeline(self, pipeline_id, user):
         try:
             return scope_by_owner(Pipeline.objects.all(), user).get(pk=pipeline_id)
-        except Pipeline.DoesNotExist:
+        except Exception:
             return None
 
     def get(self, request):
         pipeline_id_param = request.query_params.get('pipeline')
         timeframe_param = request.query_params.get('timeframe')
+        stage_id_param = request.query_params.get('stage')
+        search_param = request.query_params.get('search', '').strip()
+        is_paginated = request.query_params.get('paginate') == 'true' or 'page' in request.query_params
 
-        owner_id = get_tenant_owner(request.user).id
-        cache_version = get_pipeline_cache_version(owner_id)
-        cache_key = f"pipeline_deals_{request.user.id}_{pipeline_id_param or 'default'}_{timeframe_param or 'all'}_{cache_version}"
+        # If not paginated and no search/stage filter, we can use the existing pipeline deals cache
+        if not is_paginated and not search_param and not stage_id_param:
+            owner_id = get_tenant_owner(request.user).id
+            cache_version = get_pipeline_cache_version(owner_id)
+            cache_key = f"pipeline_deals_{request.user.id}_{pipeline_id_param or 'default'}_{timeframe_param or 'all'}_{cache_version}"
 
-        cached_data = cache.get(cache_key)
-        if cached_data is not None:
-            return Response(cached_data)
+            cached_data = cache.get(cache_key)
+            if cached_data is not None:
+                return Response(cached_data)
 
         if pipeline_id_param:
             pipeline = self._get_pipeline(pipeline_id_param, request.user)
@@ -602,11 +607,39 @@ class PipelineDealListCreateView(APIView):
         else:
             pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
+                if is_paginated:
+                    return Response({
+                        'count': 0,
+                        'total_pages': 1,
+                        'current_page': 1,
+                        'page_size': 10,
+                        'next': None,
+                        'previous': None,
+                        'results': [],
+                        'total_value': 0,
+                        'confirmed_count': 0,
+                    }, status=status.HTTP_200_OK)
                 return Response([], status=status.HTTP_200_OK)
             deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records').filter(pipeline=pipeline), request.user)
 
-        if timeframe_param:
+        # Stage filter
+        if stage_id_param and stage_id_param != 'all':
+            deals = deals.filter(stage_id=stage_id_param)
 
+        # Search filter
+        if search_param:
+            deals = deals.filter(
+                Q(name__icontains=search_param) |
+                Q(manual_contact__icontains=search_param) |
+                Q(wa_contact__name__icontains=search_param) |
+                Q(wa_contact__phone__icontains=search_param) |
+                Q(wa_contact__crm_contact__name__icontains=search_param) |
+                Q(wa_contact__crm_contact__phone__icontains=search_param) |
+                Q(note__icontains=search_param)
+            )
+
+        # Timeframe filter
+        if timeframe_param and timeframe_param != 'all':
             now = timezone.now()
             if timeframe_param == 'daily':
                 deals = deals.filter(created_at__gte=now - timedelta(days=1))
@@ -616,9 +649,27 @@ class PipelineDealListCreateView(APIView):
                 deals = deals.filter(created_at__gte=now - timedelta(days=30))
 
         deals = scope_by_location(deals, request.user, location_field='wa_contact__location')
+        deals = deals.order_by('-created_at')
+
+        if is_paginated:
+            total_value = float(deals.aggregate(val=Sum('value'))['val'] or 0)
+            confirmed_count = deals.filter(stage__is_confirmed=True).count()
+
+            paginator = StandardPagination()
+            paginated_deals = paginator.paginate_queryset(deals, request, view=self)
+            data = PipelineDealSerializer(paginated_deals, many=True).data
+
+            response = paginator.get_paginated_response(data)
+            response.data['total_value'] = total_value
+            response.data['confirmed_count'] = confirmed_count
+            response.data['current_page'] = paginator.page.number
+            response.data['total_pages'] = paginator.page.paginator.num_pages
+            response.data['page_size'] = paginator.get_page_size(request) or 10
+            return response
 
         data = PipelineDealSerializer(deals, many=True).data
-        cache.set(cache_key, data, timeout=3600)
+        if not search_param and not stage_id_param:
+            cache.set(cache_key, data, timeout=3600)
         return Response(data)
 
     def post(self, request):
@@ -681,6 +732,7 @@ class PipelineDealDetailView(APIView):
         if not deal:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+
         # ── Confirmed Booking Logic ───────────────────────────────────────────
         # When a deal is moved to a stage marked is_confirmed=True,
         # add / update record in the dedicated ConfirmedBooking table.
@@ -688,6 +740,14 @@ class PipelineDealDetailView(APIView):
         new_stage_id = request.data.get('stage')
         stage_changed = bool(new_stage_id and str(new_stage_id) != old_stage_id)
         mutable_data = request.data.copy()
+
+        if 'manual_contact' in mutable_data and mutable_data['manual_contact'] is None:
+            mutable_data['manual_contact'] = ''
+        if 'note' in mutable_data and mutable_data['note'] is None:
+            mutable_data['note'] = ''
+        if 'wa_contact' in mutable_data and mutable_data['wa_contact'] in ('', 'null', None):
+            mutable_data['wa_contact'] = None
+            
         serializer = PipelineDealSerializer(deal, data=mutable_data, partial=True)
         if serializer.is_valid():
             updated_deal = serializer.save()
@@ -735,12 +795,61 @@ class ConfirmedBookingsView(APIView):
     required_permission = Permission.ACCESS_PIPELINE
 
     def get(self, request):
+        pipeline_param = request.query_params.get('pipeline')
+        search_param = request.query_params.get('search', '').strip()
+        is_paginated = request.query_params.get('paginate') == 'true' or 'page' in request.query_params
+
         bookings = scope_by_owner(
             ConfirmedBooking.objects.select_related(
                 'pipeline', 'stage', 'deal', 'contact'
             ).all(),
             request.user
-        ).order_by('-confirmed_at', '-created_at')
+        )
+
+        if pipeline_param and pipeline_param != 'all':
+            is_uuid = False
+            try:
+                import uuid
+                uuid.UUID(str(pipeline_param))
+                is_uuid = True
+            except (ValueError, TypeError, AttributeError):
+                is_uuid = False
+
+            if is_uuid:
+                bookings = bookings.filter(
+                    Q(pipeline_id=pipeline_param) |
+                    Q(pipeline__name=pipeline_param) |
+                    Q(pipeline_name=pipeline_param)
+                )
+            else:
+                bookings = bookings.filter(
+                    Q(pipeline__name=pipeline_param) |
+                    Q(pipeline_name=pipeline_param)
+                )
+
+        if search_param:
+            bookings = bookings.filter(
+                Q(deal_name__icontains=search_param) |
+                Q(contact_name__icontains=search_param) |
+                Q(contact_phone__icontains=search_param) |
+                Q(stage_title__icontains=search_param) |
+                Q(pipeline_name__icontains=search_param) |
+                Q(note__icontains=search_param)
+            )
+
+        bookings = bookings.order_by('-confirmed_at', '-created_at')
+
+        if is_paginated:
+            total_value = float(bookings.aggregate(val=Sum('value'))['val'] or 0)
+            paginator = StandardPagination()
+            paginated_bookings = paginator.paginate_queryset(bookings, request, view=self)
+            serializer = ConfirmedBookingSerializer(paginated_bookings, many=True)
+            response = paginator.get_paginated_response(serializer.data)
+            response.data['total_value'] = total_value
+            response.data['current_page'] = paginator.page.number
+            response.data['total_pages'] = paginator.page.paginator.num_pages
+            response.data['page_size'] = paginator.get_page_size(request) or 10
+            return response
 
         serializer = ConfirmedBookingSerializer(bookings, many=True)
         return Response(serializer.data)
@@ -751,6 +860,19 @@ class ConfirmedBookingDetailView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_PIPELINE
 
+    def get(self, request, pk):
+        try:
+            booking = scope_by_owner(
+                ConfirmedBooking.objects.select_related(
+                    'pipeline', 'stage', 'deal', 'contact'
+                ).all(),
+                request.user
+            ).get(pk=pk)
+        except ConfirmedBooking.DoesNotExist:
+            return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        return Response(ConfirmedBookingSerializer(booking).data)
+
     def patch(self, request, pk):
         try:
             booking = scope_by_owner(
@@ -759,11 +881,53 @@ class ConfirmedBookingDetailView(APIView):
         except ConfirmedBooking.DoesNotExist:
             return Response({'detail': 'Not found.'}, status=status.HTTP_404_NOT_FOUND)
 
+        update_fields = ['updated_at']
+        deal_updates = {}
+
+        if 'name' in request.data or 'deal_name' in request.data:
+            name_val = request.data.get('name') if 'name' in request.data else request.data.get('deal_name')
+            if name_val is not None:
+                booking.deal_name = str(name_val).strip()
+                update_fields.append('deal_name')
+                deal_updates['name'] = booking.deal_name
+
+        if 'value' in request.data:
+            try:
+                booking.value = float(request.data['value'])
+                update_fields.append('value')
+                deal_updates['value'] = booking.value
+            except (ValueError, TypeError):
+                pass
+
+        if 'contact_name' in request.data:
+            booking.contact_name = str(request.data.get('contact_name') or '').strip()
+            update_fields.append('contact_name')
+            if not booking.contact_id:
+                deal_updates['manual_contact'] = booking.contact_name
+
+        if 'contact_phone' in request.data:
+            booking.contact_phone = str(request.data.get('contact_phone') or '').strip()
+            update_fields.append('contact_phone')
+
         if 'note' in request.data:
             booking.note = request.data.get('note') or ''
-            booking.save(update_fields=['note', 'updated_at'])
-            if booking.deal_id:
-                PipelineDeal.objects.filter(pk=booking.deal_id).update(note=booking.note)
+            update_fields.append('note')
+            deal_updates['note'] = booking.note
+
+        if 'extra_data' in request.data:
+            extra_data_val = request.data.get('extra_data')
+            if isinstance(extra_data_val, dict):
+                booking.extra_data = extra_data_val
+                update_fields.append('extra_data')
+                deal_updates['extra_data'] = booking.extra_data
+
+        booking.save(update_fields=list(set(update_fields)))
+
+        if booking.deal_id and deal_updates:
+            PipelineDeal.objects.filter(pk=booking.deal_id).update(**deal_updates)
+
+        owner = get_tenant_owner(request.user)
+        increment_pipeline_cache_version(owner.id)
 
         return Response(ConfirmedBookingSerializer(booking).data)
 
