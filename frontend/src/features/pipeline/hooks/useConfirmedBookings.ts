@@ -14,6 +14,7 @@ import {
   EditingBookingFormData,
 } from '../components/confirmed_bookings/types';
 
+
 export function useConfirmedBookings() {
   const [bookings, setBookings] = useState<ConfirmedBooking[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
@@ -263,9 +264,9 @@ export function useConfirmedBookings() {
     setEditingBookingData(prev =>
       prev
         ? {
-            ...prev,
-            extra_data: { ...prev.extra_data, [key]: value },
-          }
+          ...prev,
+          extra_data: { ...prev.extra_data, [key]: value },
+        }
         : null
     );
   };
