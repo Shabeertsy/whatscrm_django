@@ -1,5 +1,6 @@
-import React from 'react';
-import { Search } from 'lucide-react';
+import { Search, User2, Users, Inbox } from 'lucide-react';
+import type { AssignmentFilter } from '../../hooks/useChatFilters';
+
 
 interface ChatFiltersProps {
   searchQuery: string;
@@ -9,6 +10,8 @@ interface ChatFiltersProps {
   stageFilter: string;
   setStageFilter: (s: string) => void;
   availableStages: string[];
+  assignmentFilter: AssignmentFilter;
+  setAssignmentFilter: (f: AssignmentFilter) => void;
 }
 
 export function ChatFilters({
@@ -18,12 +21,14 @@ export function ChatFilters({
   setStatusFilter,
   stageFilter,
   setStageFilter,
-  availableStages
+  availableStages,
+  assignmentFilter,
+  setAssignmentFilter,
 }: ChatFiltersProps) {
   return (
     <>
       {/* Search Input */}
-      <div className="relative mb-6">
+      <div className="relative mb-3">
         <Search className="h-3.5 w-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
         <input
           type="text"
@@ -34,8 +39,30 @@ export function ChatFilters({
         />
       </div>
 
-      {/* Filter Pills and Sort */}
-      <div className="flex items-center justify-between">
+      {/* Assignment Filter Tabs */}
+      <div className="flex items-center gap-1 mb-3">
+        {[
+          { id: 'all' as AssignmentFilter, label: 'All Chats', Icon: Inbox },
+          { id: 'mine' as AssignmentFilter, label: 'Mine', Icon: User2 },
+          { id: 'unassigned' as AssignmentFilter, label: 'Unassigned', Icon: Users },
+        ].map(({ id, label, Icon }) => (
+          <button
+            key={id}
+            onClick={() => setAssignmentFilter(id)}
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all flex-shrink-0
+              ${assignmentFilter === id
+                ? 'bg-[#007e3a]/10 dark:bg-[#007e3a]/20 text-[#007e3a] dark:text-emerald-400 border border-[#007e3a]/20 dark:border-emerald-500/30'
+                : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-transparent'
+              }`}
+          >
+            <Icon className="h-3 w-3" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Status Filter Pills and Stage Sort */}
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
           {[
             { id: "all", label: "All" },
@@ -65,7 +92,7 @@ export function ChatFilters({
           >
             <option value="all">Stage: All</option>
             {availableStages.map(stage => (
-               <option key={stage} value={stage}>{stage}</option>
+              <option key={stage} value={stage}>{stage}</option>
             ))}
           </select>
         )}

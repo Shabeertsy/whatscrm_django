@@ -11,6 +11,7 @@ from .views import (
     CustomMessageViewSet, MediaLibraryViewSet,
     PropertyShareConfigAPIView,
     InitialShareAPIView,
+    AssignableAgentsAPIView,
 )
 
 router = DefaultRouter()
@@ -29,6 +30,9 @@ urlpatterns = [
     # Conversations
     path('conversations/', ConversationListAPIView.as_view(), name='conversation-list'),
     path('conversations/start/', StartConversationAPIView.as_view(), name='conversation-start'),
+ 
+    # Must be BEFORE conversations/<int:pk>/ to avoid URL conflict
+    path('conversations/assignable-agents/', AssignableAgentsAPIView.as_view(), name='assignable-agents'),
     path('conversations/<int:pk>/', ConversationDetailAPIView.as_view(), name='conversation-detail'),
     path('conversations/<int:pk>/messages/', ConversationMessagesAPIView.as_view(), name='conversation-messages'),
     path('conversations/<int:pk>/send/', ConversationSendMessageAPIView.as_view(), name='conversation-send-message'),

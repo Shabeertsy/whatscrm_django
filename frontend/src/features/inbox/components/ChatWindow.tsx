@@ -8,6 +8,7 @@ import { useRouter } from "../../../router";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { MessageBubble } from './chat/MessageBubble';
 import { StagePopup } from './stage-popup/StagePopup';
+import { AssignAgentDropdown } from './AssignAgentDropdown';
 
 
 
@@ -241,11 +242,10 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
             <span className={`w-1.5 h-1.5 rounded-full ${conversation.status === 'resolved' ? 'bg-slate-400' : 'bg-emerald-500 animate-pulse'}`}></span>
             {conversation.status === 'resolved' ? 'Resolved' : 'Open'}
           </button>
-          {conversation.agent_name && (
-            <span className="px-2.5 py-1 text-[9px] bg-[#007e3a]/10 dark:bg-[#007e3a]/20 text-[#007e3a] dark:text-[#007e3a] border border-[#007e3a]/20 rounded-full font-bold">
-              Agent: {conversation.agent_name}
-            </span>
-          )}
+
+          {/* Agent Assignment */}
+          <AssignAgentDropdown conversation={conversation} />
+
           {isAiActive && (
             <button
               onClick={handleToggleAi}

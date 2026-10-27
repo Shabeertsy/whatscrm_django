@@ -42,6 +42,15 @@ export interface Conversation {
   interactive_active?: boolean;
 }
 
+export interface AssignableAgent {
+  id: string;
+  name: string;
+  email: string;
+  user_type: string;
+  location_id: string | null;
+  location_name: string | null;
+}
+
 export interface InteractiveSelectedData {
   key: string;
   label: string;
@@ -137,9 +146,14 @@ export interface FlowExecution {
 
 //  API Functions 
 export const messagingApi = {
-  /** List conversations — optionally filter by status */
-  listConversations(params?: { status?: string; search?: string; limit?: number; offset?: number }) {
+  /** List conversations — optionally filter by status / assigned */
+  listConversations(params?: { status?: string; search?: string; limit?: number; offset?: number; assigned?: 'mine' | 'unassigned' | 'all' }) {
     return apiClient.get<PaginatedConversations>(`${BASE}/conversations/`, { params });
+  },
+
+  /** List agents that the current user can assign conversations to */
+  listAssignableAgents(params?: { location?: string }) {
+    return apiClient.get<AssignableAgent[]>(`${BASE}/conversations/assignable-agents/`, { params });
   },
 
   /** Load full conversation with messages */

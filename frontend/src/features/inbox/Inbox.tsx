@@ -26,6 +26,7 @@ export function Inbox() {
   const [showStartChat, setShowStartChat] = useState(false);
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAiActive, setIsAiActive] = useState(false);
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
 
   // Guard: user doesn't have access to chats
   if (!allowed) {
@@ -65,7 +66,7 @@ export function Inbox() {
       messagingStore.setState({ isLoadingConversations: true });
     }
     
-    messagingApi.listConversations({ limit: 30, offset: 0 })
+    messagingApi.listConversations({ limit: 30, offset: 0, ...(assignmentFilter !== 'all' ? { assigned: assignmentFilter } : {}) })
       .then(res => {
         const hasMore = !!res.data.next;
         messagingStore.setConversations(res.data.results, hasMore, 30);
@@ -77,6 +78,12 @@ export function Inbox() {
         console.error("Failed to load conversations:", err);
         messagingStore.setState({ error: "Failed to load conversations", isLoadingConversations: false });
       });
+  }, [assignmentFilter]);
+
+  // Re-fetch conversations when assignment filter changes
+  const handleAssignmentFilterChange = useCallback((filter: 'all' | 'mine' | 'unassigned') => {
+    setAssignmentFilter(filter);
+    // useEffect([assignmentFilter]) will automatically re-fetch from backend
   }, []);
 
   // When active conversation changes, fetch messages and mark as read
@@ -315,6 +322,7 @@ export function Inbox() {
             isLoading={store.isLoadingConversations}
             onSelectChat={handleSelectChat}
             onStartNewChat={() => setShowStartChat(true)}
+            onAssignmentFilterChange={handleAssignmentFilterChange}
           />
           <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
             {!activeConversation ? (

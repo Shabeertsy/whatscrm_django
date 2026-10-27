@@ -2,10 +2,13 @@ import { useState, useMemo, useEffect } from 'react';
 import type { Conversation } from '../../../api/messaging';
 import { getStages, PipelineStage } from '../../pipeline/api';
 
+export type AssignmentFilter = 'all' | 'mine' | 'unassigned';
+
 export function useChatFilters(chats: Conversation[]) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
+  const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
   const [allStages, setAllStages] = useState<PipelineStage[]>([]);
 
   useEffect(() => {
@@ -49,6 +52,8 @@ export function useChatFilters(chats: Conversation[]) {
     setStatusFilter,
     stageFilter,
     setStageFilter,
+    assignmentFilter,
+    setAssignmentFilter,
     availableStages,
     filteredChats
   };

@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 
 from django.conf import settings
+from django.contrib.auth import get_user_model
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone as django_tz
@@ -123,6 +124,7 @@ class ConversationListAPIView(APIView):
         status_filter = request.query_params.get('status')
         instance_id   = request.query_params.get('instance')
         search        = request.query_params.get('search')
+        assigned      = request.query_params.get('assigned')  # 'mine' | 'unassigned' | 'all'
 
         if status_filter:
             qs = qs.filter(status=status_filter)
@@ -131,6 +133,11 @@ class ConversationListAPIView(APIView):
         if search:
             qs = qs.filter(contact__name__icontains=search) | \
                  qs.filter(contact__phone__icontains=search)
+        if assigned == 'mine':
+            qs = qs.filter(assigned_agent=request.user)
+        elif assigned == 'unassigned':
+            qs = qs.filter(assigned_agent__isnull=True)
+        # assigned == 'all' or not provided → no extra filter
 
         qs = qs.order_by('-last_message_at')
         
@@ -161,11 +168,49 @@ class ConversationDetailAPIView(APIView):
         return Response(serializer.data)
 
     def patch(self, request, pk):
-        conv = get_object_or_404(Conversation, pk=pk)
+        qs = Conversation.objects.select_related('contact', 'contact__crm_contact', 'instance', 'assigned_agent')
+        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
+        qs = scope_by_location(qs, request.user, location_field='contact__location')
+        conv = get_object_or_404(qs, pk=pk)
+
+        # Validate assigned_agent if being set (not null/unassign)
+        assigned_agent_id = request.data.get('assigned_agent')
+        if assigned_agent_id:
+            User = get_user_model()
+            # Must belong to the same tenant owner
+            agent_qs = scope_by_owner(
+                User.objects.filter(is_active=True),
+                request.user,
+                owner_field='owner'
+            )
+            try:
+                agent = agent_qs.get(pk=assigned_agent_id)
+            except User.DoesNotExist:
+                return Response(
+                    {'assigned_agent': 'Agent not found or not in your team.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            # Location check: agent must match the contact's location
+            # Superusers (owners) bypass this check to allow cross-location assignment
+            if not request.user.is_superuser:
+                contact_location_id = conv.contact.location_id if conv.contact else None
+                if contact_location_id and agent.location_id != contact_location_id:
+                    return Response(
+                        {'assigned_agent': 'Agent is not assigned to the same location as this contact.'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
         serializer = ConversationUpdateSerializer(conv, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
-        serializer.save()
-        return Response(ConversationListSerializer(conv).data)
+        updated_conv = serializer.save()
+
+        # Broadcast real-time update so other connected clients reflect assignment change
+        try:
+            broadcast_conversation_update(updated_conv)
+        except Exception:
+            pass  
+
+        return Response(ConversationListSerializer(updated_conv).data)
 
     def delete(self, request, pk):
         conv = get_object_or_404(Conversation, pk=pk)
@@ -181,6 +226,49 @@ class ConversationDetailAPIView(APIView):
                 
         conv.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class AssignableAgentsAPIView(APIView):
+    permission_classes = [IsAuthenticated, RequirePermission]
+    required_permission = Permission.ACCESS_CHATS
+
+    def get(self, request):
+        User = get_user_model()
+
+        # 1: Scope to same tenant — only users under the same owner
+        qs = scope_by_owner(
+            User.objects.filter(is_superuser=False, is_active=True).select_related('location', 'department'),
+            request.user,
+            owner_field='owner'
+        )
+
+        # 2: Non-superusers can only assign agents from their own location
+        if not request.user.is_superuser:
+            location_id = getattr(request.user, 'location_id', None)
+            if location_id:
+                qs = qs.filter(location_id=location_id)
+            else:
+                # No location means no visible agents
+                return Response([])
+        else:
+            # Superusers: optionally filter by a specific location
+            location_param = request.query_params.get('location')
+            if location_param:
+                qs = qs.filter(location_id=location_param)
+
+        qs = qs.order_by('first_name', 'last_name', 'email')
+        data = [
+            {
+                'id': str(u.id),
+                'name': u.get_full_name().strip() or u.email,
+                'email': u.email,
+                'user_type': u.user_type,
+                'location_id': str(u.location_id) if u.location_id else None,
+                'location_name': u.location.name if u.location else None,
+            }
+            for u in qs
+        ]
+        return Response(data)
 
 
 class ConversationMessagesAPIView(APIView):
