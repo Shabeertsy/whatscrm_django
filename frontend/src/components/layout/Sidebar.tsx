@@ -111,7 +111,7 @@ export function Sidebar() {
   return (
     <aside
       className={`${isCollapsed ? "w-20" : "w-64"
-        } bg-white dark:bg-[#070b14] border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between z-10 h-screen transition-all duration-300 relative select-none`}
+        } bg-white dark:bg-[#08080b] border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between z-10 h-screen transition-all duration-300 relative select-none`}
     >
       {/* Collapse Toggle Button */}
       <button

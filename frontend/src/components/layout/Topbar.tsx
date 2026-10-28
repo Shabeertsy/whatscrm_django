@@ -41,7 +41,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#070b14] px-6 flex items-center justify-between min-w-0 transition duration-200">
+    <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#08080b] px-6 flex items-center justify-between min-w-0 transition duration-200">
       {/* Search */}
       <div className="flex items-center flex-1 max-w-xs md:w-80 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 focus-within:border-[#007e3a] transition duration-200">
         <Search className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />

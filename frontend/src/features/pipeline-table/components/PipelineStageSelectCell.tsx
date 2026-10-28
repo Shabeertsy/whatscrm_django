@@ -129,11 +129,6 @@ export function PipelineStageSelectCell({
           <span className="truncate font-semibold tracking-tight">
             {currentStage?.title || 'Select stage'}
           </span>
-          {isConfirmed && (
-            <span className="px-1 py-0.2 rounded text-[9px] font-extrabold uppercase bg-emerald-600 text-white shrink-0">
-              Won
-            </span>
-          )}
         </div>
         <ChevronDown
           className={`w-3 h-3 opacity-50 group-hover/stage:opacity-90 transition-transform shrink-0 ${
@@ -214,11 +209,6 @@ export function PipelineStageSelectCell({
                         >
                           {stage.title}
                         </span>
-                        {sConfirmed && (
-                          <span className="px-1 py-0.2 rounded text-[8px] font-bold uppercase tracking-wider bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-300 shrink-0">
-                            Won
-                          </span>
-                        )}
                       </div>
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 block truncate">
                         Step {idx + 1}
