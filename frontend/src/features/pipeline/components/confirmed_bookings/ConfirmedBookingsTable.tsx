@@ -45,21 +45,21 @@ export function ConfirmedBookingsTable({
   const totalColumns = 5 + extraFieldColumns.length;
 
   return (
-    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-      <div className="overflow-x-auto">
+    <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-lg overflow-hidden">
+      <div className="overflow-x-auto w-full custom-scrollbar">
         <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
-          <thead className="bg-slate-50/80 dark:bg-slate-800/50 text-[11px] uppercase tracking-wider font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800">
-            <tr>
-              <th className="px-4 py-3">Deal / Contact</th>
-              <th className="px-4 py-3">Pipeline</th>
-              <th className="px-4 py-3">Value</th>
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
+              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Deal / Contact</th>
+              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pipeline</th>
+              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Value</th>
               {extraFieldColumns.map(col => (
-                <th key={col.key} className="px-4 py-3 whitespace-nowrap font-medium text-slate-500 dark:text-slate-400">
+                <th key={col.key} className="px-6 py-2.5 whitespace-nowrap text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {col.label}
                 </th>
               ))}
-              <th className="px-4 py-3">Notes</th>
-              <th className="px-4 py-3 text-right min-w-[90px]">Actions</th>
+              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Notes</th>
+              <th className="px-6 py-2.5 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[90px]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">

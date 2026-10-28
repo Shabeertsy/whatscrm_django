@@ -54,7 +54,24 @@ export function Inbox() {
     }
   }, [searchParams, setSearchParams]);
 
-
+  // Handle direct conversation link from URL (e.g. from Users & Roles page "Go to chat")
+  useEffect(() => {
+    const targetConv = searchParams.get('conversation') || searchParams.get('conversation_id');
+    if (targetConv) {
+      messagingStore.setActiveConversation(targetConv);
+      const exists = store.conversations.some(c => c.id === targetConv);
+      if (!exists) {
+        messagingApi.getConversation(targetConv).then(res => {
+          if (res.data) {
+            messagingStore.setState(s => ({
+              conversations: [res.data, ...s.conversations.filter(c => c.id !== targetConv)],
+              activeConversationId: targetConv,
+            }));
+          }
+        }).catch(console.error);
+      }
+    }
+  }, [searchParams]);
 
   // Initialize live WebSocket connection
   useInboxSocket();
@@ -70,7 +87,10 @@ export function Inbox() {
       .then(res => {
         const hasMore = !!res.data.next;
         messagingStore.setConversations(res.data.results, hasMore, 30);
-        if (res.data.results.length > 0 && !store.activeConversationId) {
+        const targetConv = searchParams.get('conversation') || searchParams.get('conversation_id');
+        if (targetConv) {
+          messagingStore.setActiveConversation(targetConv);
+        } else if (res.data.results.length > 0 && !store.activeConversationId) {
           messagingStore.setActiveConversation(res.data.results[0].id);
         }
       })

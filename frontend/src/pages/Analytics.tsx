@@ -26,7 +26,7 @@ export function Analytics() {
     <div className="space-y-6 min-w-0 transition duration-200">
       <PageHeader
         title="Dashboard Overview"
-        description="Welcome back! Manage your WhatsApp CRM campaigns and automations."
+        description="Welcome back! Manage your Click4Trip CRM campaigns and automations."
       >
         {/* <button
           onClick={() => navigate("#campaigns")}

@@ -206,7 +206,7 @@ export function getPermissionSummary(userType: UserType, departmentName?: string
     { key: 'canAccessSettingsProxies', label: 'Settings: Proxy URLs' },
     { key: 'canAccessSettingsAi', label: 'Settings: AI Providers' },
     { key: 'canManageDepartments', label: 'Settings: Departments' },
-    { key: 'canManageUsers', label: 'Settings: Users & Roles' },
+    { key: 'canManageUsers', label: 'Users & Roles' },
     { key: 'canManageRolePermissions', label: 'Settings: Role Permissions' },
   ];
 

@@ -44,8 +44,10 @@ export function PipelineTable() {
 
     // Actions
     handleStageChange,
+    handleAssignUser,
     handleDeleteDeal,
     handleSaveDeal,
+    agents,
 
     // Note Modal
     editingNoteDeal,
@@ -95,11 +97,13 @@ export function PipelineTable() {
         deals={deals}
         totalDealsCount={totalCount}
         stages={stages}
+        agents={agents}
         loading={loading}
         extraFieldColumns={extraFieldColumns}
         deletingId={deletingId}
         pipelineName={activePipeline?.name}
         onStageChange={handleStageChange}
+        onAssignUser={handleAssignUser}
         onView={deal => setActiveDeal(deal)}
         onEdit={deal => setActiveDeal(deal)}
         onDelete={handleDeleteDeal}
@@ -118,6 +122,7 @@ export function PipelineTable() {
           initialData={activeDeal || undefined}
           extraFields={allPipelineFields}
           stages={stages}
+          agents={agents}
           onClose={() => {
             setActiveDeal(null);
             setIsAddingDeal(false);

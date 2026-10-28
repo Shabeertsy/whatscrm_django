@@ -12,7 +12,7 @@ export function PipelineTableStats({ stats, loading }: PipelineTableStatsProps) 
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 gap-3.5">
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200/60 dark:border-slate-800 p-4">
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           Total Deals
         </p>
@@ -21,7 +21,7 @@ export function PipelineTableStats({ stats, loading }: PipelineTableStatsProps) 
         </p>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200/60 dark:border-slate-800 p-4">
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           Pipeline Value
         </p>
@@ -31,7 +31,7 @@ export function PipelineTableStats({ stats, loading }: PipelineTableStatsProps) 
       </div>
 
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4">
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200/60 dark:border-slate-800 p-4">
         <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           Confirmed
         </p>

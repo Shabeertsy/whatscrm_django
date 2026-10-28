@@ -19,6 +19,8 @@ import CampaignDetail from "./features/campaigns/CampaignDetail";
 import Flows from "./pages/Flows";
 import ConfirmedBookings from "./pages/ConfirmedBookings";
 import PipelineTable from "./pages/PipelineTable";
+import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
 
 
 
@@ -59,6 +61,10 @@ export function Router() {
       <Route path="/media" element={<MediaLibrary />} />
       <Route path="/voice" element={<Voice />} />
       <Route path="/contacts" element={<Contacts />} />
+      <Route path="/users" element={<Users />} />
+      <Route path="/users/:id" element={<UserDetail />} />
+      <Route path="/users-roles" element={<Users />} />
+      <Route path="/users-roles/:id" element={<UserDetail />} />
       <Route path="/pipeline-table" element={<PipelineTable />} />
       <Route path="/pipeline" element={<Pipeline />} />
       <Route path="/confirmed-bookings" element={<ConfirmedBookings />} />

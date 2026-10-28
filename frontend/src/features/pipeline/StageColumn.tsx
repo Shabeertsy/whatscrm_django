@@ -304,9 +304,24 @@ export function StageColumn({
           >
             <div className="flex-1 min-h-0 overflow-hidden mb-2">
               <h5 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{deal.name}</h5>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                {deal.contact_name || deal.contact_phone || "No Contact Linked"}
-              </p>
+              <div className="flex items-center justify-between gap-1 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                  {deal.contact_name || deal.contact_phone || "No Contact Linked"}
+                </p>
+                {(deal.chat_started_at || deal.created_at) && (
+                  <span className="text-[10px] text-slate-400 font-mono shrink-0" title="Chat date">
+                    {new Date(deal.chat_started_at || deal.created_at!).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                  </span>
+                )}
+              </div>
+              {deal.assigned_user && (
+                <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
+                  <div className="w-3.5 h-3.5 rounded-full bg-[#007e3a]/15 text-[#007e3a] dark:bg-[#007e3a]/30 dark:text-[#00b355] flex items-center justify-center text-[9px] font-bold shrink-0">
+                    {(deal.assigned_user.name || deal.assigned_user.email || 'U')[0].toUpperCase()}
+                  </div>
+                  <span className="truncate">{deal.assigned_user.name || deal.assigned_user.email}</span>
+                </div>
+              )}
               {deal.note && (
                 <p className="text-[11px] text-slate-500 dark:text-slate-400/80 line-clamp-2 mt-2 italic bg-slate-50 dark:bg-slate-900/50 px-2 py-1.5 rounded-md leading-relaxed">
                   {deal.note}

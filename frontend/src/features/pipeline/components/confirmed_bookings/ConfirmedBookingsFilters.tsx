@@ -1,7 +1,6 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
 
-
 interface ConfirmedBookingsFiltersProps {
   search: string;
   onSearchChange: (value: string) => void;
@@ -18,15 +17,15 @@ export function ConfirmedBookingsFilters({
   pipelineNames,
 }: ConfirmedBookingsFiltersProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-3">
-      <div className="relative flex-1">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+    <div className="flex flex-wrap gap-4 items-center bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200/60 dark:border-slate-800">
+      <div className="flex-1 min-w-[240px] relative group">
+        <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-[#007e3a] transition-colors" />
         <input
           type="text"
           value={search}
           onChange={e => onSearchChange(e.target.value)}
           placeholder="Search by deal name, contact, stage..."
-          className="w-full pl-9 pr-9 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:border-[#007e3a] focus:ring-2 focus:ring-[#007e3a]/10"
+          className="w-full pl-10 pr-9 py-2 bg-slate-50 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/50 rounded-md text-[13px] text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:border-[#007e3a] transition-colors"
         />
         {search && (
           <button
@@ -40,21 +39,23 @@ export function ConfirmedBookingsFilters({
         )}
       </div>
 
-      <select
-        value={selectedPipeline}
-        onChange={e => onPipelineChange(e.target.value)}
-        className="px-4 py-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#007e3a] min-w-[180px]"
-      >
-        {pipelineNames.length === 0 ? (
-          <option value="" disabled>No pipelines</option>
-        ) : (
-          pipelineNames.map(name => (
-            <option key={name} value={name}>
-              {name}
-            </option>
-          ))
-        )}
-      </select>
+      <div className="flex flex-wrap gap-3">
+        <select
+          value={selectedPipeline}
+          onChange={e => onPipelineChange(e.target.value)}
+          className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-md text-[13px] text-slate-700 dark:text-slate-300 focus:outline-none focus:border-[#007e3a] transition-colors cursor-pointer min-w-[180px]"
+        >
+          {pipelineNames.length === 0 ? (
+            <option value="" disabled>No pipelines</option>
+          ) : (
+            pipelineNames.map(name => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))
+          )}
+        </select>
+      </div>
     </div>
   );
 }

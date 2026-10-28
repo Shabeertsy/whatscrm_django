@@ -12,6 +12,8 @@ import {
   PipelineField,
 } from '../../pipeline/api';
 import { apiClient } from '../../../api/client';
+import type { AssignableAgent } from '../../../api/messaging';
+import { messagingApi } from '../../../api/messaging';
 import {
   TimeframeOption,
   PipelineTableStatsData,
@@ -22,6 +24,7 @@ import {
 
 export function usePipelineTable() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [agents, setAgents] = useState<AssignableAgent[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
   const [selectedStageId, setSelectedStageId] = useState<string>('all');
   const [timeframe, setTimeframe] = useState<TimeframeOption>('all');
@@ -70,15 +73,17 @@ export function usePipelineTable() {
 
     async function init() {
       try {
-        const [pipelinesData, contactsRes] = await Promise.all([
+        const [pipelinesData, contactsRes, agentsRes] = await Promise.all([
           getPipelines(),
           apiClient.get('/messaging/contacts/').catch(() => ({ data: [] })),
+          messagingApi.listAssignableAgents().catch(() => ({ data: [] })),
         ]);
 
         if (!isMounted) return;
 
         setPipelines(pipelinesData);
         setContacts(contactsRes.data?.results || contactsRes.data || []);
+        setAgents(agentsRes.data || []);
 
         const active = pipelinesData.find(p => p.is_active);
         const defaultPipeline = active ? active.id : pipelinesData[0]?.id || '';
@@ -213,10 +218,20 @@ export function usePipelineTable() {
       });
     });
 
-    // Also check deals in view
+    // Also check deals in view for user-defined custom fields
     deals.forEach(d => {
       if (d.extra_data && typeof d.extra_data === 'object') {
         Object.keys(d.extra_data).forEach(k => {
+          // Exclude internal/system metadata keys (starting with _) or system field names
+          if (
+            k.startsWith('_') ||
+            k === 'assigned_user' ||
+            k === 'assigned_agent' ||
+            k === 'chat_started_at' ||
+            k === 'conversation_id'
+          ) {
+            return;
+          }
           if (!map.has(k)) {
             const pretty = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
             map.set(k, pretty);
@@ -230,13 +245,20 @@ export function usePipelineTable() {
 
   // All extra fields configs for forms/modals
   const allPipelineFields: PipelineField[] = useMemo(() => {
+    const isReserved = (key: string) =>
+      key.startsWith('_') ||
+      key === 'assigned_user' ||
+      key === 'assigned_agent' ||
+      key === 'chat_started_at' ||
+      key === 'conversation_id';
+
     const map = new Map<string, PipelineField>();
     (activePipeline?.extra_fields || []).forEach(f => {
-      if (f && f.key) map.set(f.key, f);
+      if (f && f.key && !isReserved(f.key)) map.set(f.key, f);
     });
     stages.forEach(s => {
       (s.extra_fields || []).forEach(f => {
-        if (f && f.key && !map.has(f.key)) map.set(f.key, f);
+        if (f && f.key && !isReserved(f.key) && !map.has(f.key)) map.set(f.key, f);
       });
     });
     return Array.from(map.values());
@@ -295,6 +317,36 @@ export function usePipelineTable() {
     }
   };
 
+  const handleAssignUser = async (dealId: string, agentId: string | null) => {
+    const targetAgent = agents.find(a => String(a.id) === String(agentId));
+    // Optimistic update
+    setDeals(prev =>
+      prev.map(d =>
+        d.id === dealId
+          ? {
+              ...d,
+              assigned_user: targetAgent
+                ? { id: targetAgent.id, name: targetAgent.name, email: targetAgent.email }
+                : null,
+            }
+          : d
+      )
+    );
+
+    try {
+      const updated = await updateDeal(dealId, { assigned_agent: agentId });
+      setDeals(prev => prev.map(d => (d.id === dealId ? { ...d, ...updated } : d)));
+      toast.success(
+        targetAgent ? `Assigned to ${targetAgent.name}` : 'Deal unassigned'
+      );
+    } catch {
+      toast.error('Failed to update assigned user');
+      if (selectedPipelineId) {
+        fetchDeals(selectedPipelineId, page, pageSize, selectedStageId, debouncedSearch, timeframe);
+      }
+    }
+  };
+
   const handleSaveDeal = async (formData: DealFormData): Promise<boolean> => {
     if (!selectedPipelineId) {
       toast.error('Please select a pipeline first');
@@ -315,6 +367,7 @@ export function usePipelineTable() {
           manual_contact: formData.manual_contact || '',
           note: formData.note || '',
           extra_data: formData.extra_data || {},
+          assigned_agent: formData.assigned_agent,
         });
         setDeals(prev => prev.map(d => (d.id === formData.id ? updated : d)));
         if (viewingDeal?.id === formData.id) setViewingDeal(updated);
@@ -330,6 +383,7 @@ export function usePipelineTable() {
           manual_contact: formData.manual_contact || '',
           note: formData.note || '',
           extra_data: formData.extra_data || {},
+          assigned_agent: formData.assigned_agent,
         });
         toast.success('Deal created');
       }
@@ -405,8 +459,10 @@ export function usePipelineTable() {
 
     // Actions
     handleStageChange,
+    handleAssignUser,
     handleDeleteDeal,
     handleSaveDeal,
+    agents,
 
     // Modals
     viewingDeal,

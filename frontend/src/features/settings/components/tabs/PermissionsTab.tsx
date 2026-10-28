@@ -45,7 +45,7 @@ const ALL_MODULES: ModuleMeta[] = [
   { key: 'canAccessSettingsProxies', label: 'Settings: Proxy URLs', description: 'Manage outbound request proxy gateways', category: 'Admin' },
   { key: 'canAccessSettingsAi', label: 'Settings: AI Providers', description: 'Manage OpenAI, Claude, and Gemini API keys', category: 'Admin' },
   { key: 'canManageDepartments', label: 'Settings: Departments', description: 'Create and configure organizational departments', category: 'Admin' },
-  { key: 'canManageUsers', label: 'Settings: Users & Roles', description: 'Create, edit and deactivate user accounts', category: 'Admin' },
+  { key: 'canManageUsers', label: 'Users & Roles', description: 'Create, edit and deactivate user accounts', category: 'Admin' },
   { key: 'canManageRolePermissions', label: 'Settings: Role Permissions', description: 'Configure module access matrix for roles', category: 'Admin' },
 ];
 

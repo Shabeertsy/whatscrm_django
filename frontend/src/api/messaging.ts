@@ -147,7 +147,7 @@ export interface FlowExecution {
 //  API Functions 
 export const messagingApi = {
   /** List conversations — optionally filter by status / assigned */
-  listConversations(params?: { status?: string; search?: string; limit?: number; offset?: number; assigned?: 'mine' | 'unassigned' | 'all' }) {
+  listConversations(params?: { status?: string; search?: string; limit?: number; offset?: number; assigned?: string; agent_id?: string }) {
     return apiClient.get<PaginatedConversations>(`${BASE}/conversations/`, { params });
   },
 

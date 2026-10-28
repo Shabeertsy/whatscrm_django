@@ -2,21 +2,44 @@ import React, { useState, useEffect, useMemo } from "react";
 import { X, Copy, Phone } from "lucide-react";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { PipelineField, StageField, PipelineStage } from "../api";
+import type { AssignableAgent } from "../../../api/messaging";
 import toast from "react-hot-toast";
 
 
 interface Props {
   contacts: any[];
-  initialData?: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any>; stage?: string };
+  initialData?: {
+    id?: string;
+    name: string;
+    value: number;
+    wa_contact?: string | null;
+    manual_contact?: string | null;
+    note?: string | null;
+    extra_data?: Record<string, any>;
+    stage?: string;
+    assigned_user?: { id: string; name: string; email?: string } | null;
+    chat_started_at?: string | null;
+  };
   extraFields?: PipelineField[];
   stageFields?: StageField[];
   stages?: PipelineStage[];
+  agents?: AssignableAgent[];
   onClose: () => void;
-  onSubmit: (data: { id?: string; name: string; value: number; wa_contact?: string | null; manual_contact?: string | null; note?: string | null; extra_data?: Record<string, any>; stage?: string }) => Promise<boolean>;
+  onSubmit: (data: {
+    id?: string;
+    name: string;
+    value: number;
+    wa_contact?: string | null;
+    manual_contact?: string | null;
+    note?: string | null;
+    extra_data?: Record<string, any>;
+    stage?: string;
+    assigned_agent?: string | null;
+  }) => Promise<boolean>;
   onDelete?: () => void;
 }
 
-export function AddDealModal({ contacts, initialData, extraFields, stageFields, stages, onClose, onSubmit, onDelete }: Props) {
+export function AddDealModal({ contacts, initialData, extraFields, stageFields, stages, agents = [], onClose, onSubmit, onDelete }: Props) {
   const fields = useMemo(() => {
     const list = [...(extraFields || []), ...(stageFields || [])];
     const map = new Map<string, PipelineField>();
@@ -34,7 +57,8 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
     stage: initialData?.stage || (stages && stages[0]?.id) || "",
     wa_contact: initialData?.wa_contact || "",
     manual_contact: initialData?.manual_contact || "",
-    note: initialData?.note || ""
+    note: initialData?.note || "",
+    assigned_agent: initialData?.assigned_user?.id || "",
   });
   const [extraData, setExtraData] = useState<Record<string, any>>(initialData?.extra_data || {});
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -46,7 +70,8 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
       stage: initialData?.stage || (stages && stages[0]?.id) || "",
       wa_contact: initialData?.wa_contact || "",
       manual_contact: initialData?.manual_contact || "",
-      note: initialData?.note || ""
+      note: initialData?.note || "",
+      assigned_agent: initialData?.assigned_user?.id || "",
     });
     setExtraData(initialData?.extra_data || {});
   }, [initialData, stages]);
@@ -68,6 +93,7 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
       manual_contact: form.manual_contact?.trim() ?? "",
       note: form.note?.trim() ?? "",
       extra_data: Object.keys(extraData).length > 0 ? extraData : undefined,
+      assigned_agent: form.assigned_agent || null,
     });
     if (ok) onClose();
   };
@@ -88,6 +114,21 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><X className="h-5 w-5" /></button>
         </div>
         <div className="p-6 space-y-5 overflow-y-auto flex-1 min-h-0">
+          {initialData?.chat_started_at && (
+            <div className="flex items-center justify-between px-3 py-2 bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200/80 dark:border-emerald-800/60 rounded-lg text-xs text-emerald-800 dark:text-emerald-300">
+              <span className="font-semibold">Chat Started:</span>
+              <span className="font-mono">
+                {new Date(initialData.chat_started_at).toLocaleDateString('en-IN', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Deal Name *</label>
@@ -122,6 +163,21 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
                 </select>
               </div>
             )}
+            <div>
+              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned User</label>
+              <select
+                value={form.assigned_agent}
+                onChange={e => setForm({ ...form, assigned_agent: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+              >
+                <option value="">-- Unassigned --</option>
+                {agents.map(a => (
+                  <option key={a.id} value={a.id}>
+                    {a.name || a.email} {a.user_type ? `(${a.user_type})` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact (WhatsApp)</label>
               <select

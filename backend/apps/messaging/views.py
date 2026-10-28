@@ -124,7 +124,8 @@ class ConversationListAPIView(APIView):
         status_filter = request.query_params.get('status')
         instance_id   = request.query_params.get('instance')
         search        = request.query_params.get('search')
-        assigned      = request.query_params.get('assigned')  # 'mine' | 'unassigned' | 'all'
+        assigned      = request.query_params.get('assigned')  # 'mine' | 'unassigned' | 'all' | <user_id>
+        agent_id      = request.query_params.get('agent_id') or request.query_params.get('user_id')
 
         if status_filter:
             qs = qs.filter(status=status_filter)
@@ -133,11 +134,14 @@ class ConversationListAPIView(APIView):
         if search:
             qs = qs.filter(contact__name__icontains=search) | \
                  qs.filter(contact__phone__icontains=search)
-        if assigned == 'mine':
+        if agent_id:
+            qs = qs.filter(assigned_agent_id=agent_id)
+        elif assigned == 'mine':
             qs = qs.filter(assigned_agent=request.user)
         elif assigned == 'unassigned':
             qs = qs.filter(assigned_agent__isnull=True)
-        # assigned == 'all' or not provided → no extra filter
+        elif assigned and assigned not in ('all', ''):
+            qs = qs.filter(assigned_agent_id=assigned)
 
         qs = qs.order_by('-last_message_at')
         

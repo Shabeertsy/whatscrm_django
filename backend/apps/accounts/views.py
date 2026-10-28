@@ -182,3 +182,56 @@ class UserViewSet(viewsets.ModelViewSet):
         if password and len(password.strip()) > 0:
             user.set_password(password)
             user.save()
+
+    @action(detail=True, methods=['get'], url_path='analytics')
+    def analytics(self, request, pk=None):
+        user = self.get_object()
+        from apps.messaging.models import Conversation, Message
+        from apps.contacts.models import PipelineDeal
+        from django.utils import timezone
+        from datetime import timedelta
+
+        user_convs = Conversation.objects.filter(assigned_agent=user)
+        total_assigned = user_convs.count()
+        open_chats = user_convs.filter(status='open').count()
+        pending_chats = user_convs.filter(status='pending').count()
+        resolved_chats = user_convs.filter(status='resolved').count()
+        unread_messages = sum(user_convs.values_list('unread_count', flat=True) or [0])
+
+        total_messages_sent = Message.objects.filter(sent_by=user).count()
+
+        latest_msg = Message.objects.filter(sent_by=user).order_by('-timestamp').first()
+        last_active = latest_msg.timestamp.isoformat() if latest_msg else (user.last_login.isoformat() if user.last_login else None)
+
+        now = timezone.now()
+        status_trend = []
+        for i in range(6, -1, -1):
+            day_start = (now - timedelta(days=i)).replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = day_start + timedelta(days=1)
+            daily_open = user_convs.filter(status='open', messages__timestamp__gte=day_start, messages__timestamp__lt=day_end).distinct().count()
+            daily_pending = user_convs.filter(status='pending', messages__timestamp__gte=day_start, messages__timestamp__lt=day_end).distinct().count()
+            daily_resolved = user_convs.filter(status='resolved', messages__timestamp__gte=day_start, messages__timestamp__lt=day_end).distinct().count()
+            status_trend.append({
+                'date': day_start.strftime('%d %b'),
+                'day': day_start.strftime('%a'),
+                'open': daily_open,
+                'pending': daily_pending,
+                'resolved': daily_resolved,
+            })
+
+        user_deals = PipelineDeal.objects.filter(wa_contact__conversations__assigned_agent=user).distinct()
+        deal_count = user_deals.count()
+        total_deal_value = float(sum(user_deals.values_list('value', flat=True) or [0]))
+
+        return Response({
+            'total_assigned': total_assigned,
+            'open_chats': open_chats,
+            'pending_chats': pending_chats,
+            'resolved_chats': resolved_chats,
+            'unread_messages': unread_messages,
+            'total_messages_sent': total_messages_sent,
+            'last_active': last_active,
+            'deal_count': deal_count,
+            'total_deal_value': total_deal_value,
+            'status_trend': status_trend,
+        })

@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Bell, Search, Settings, LogOut, User, Bot, X } from "lucide-react";
-import { useTeamStore } from "../../store/teamStore";
+import { Bell, Search, Settings, LogOut, User, Bot, X, Sun, Moon } from "lucide-react";
+import { useTeamStore, toggleTheme } from "../../store/teamStore";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore, logoutUser } from "../../store/authStore";
 import { getUserPermissions } from "../../utils/permissions";
@@ -41,7 +41,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 flex items-center justify-between min-w-0 transition duration-200">
+    <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#070b14] px-6 flex items-center justify-between min-w-0 transition duration-200">
       {/* Search */}
       <div className="flex items-center flex-1 max-w-xs md:w-80 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 focus-within:border-[#007e3a] transition duration-200">
         <Search className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
@@ -89,6 +89,21 @@ export function Topbar() {
           </div>
         )}
 
+        {/* Dark Mode Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleTheme}
+          className="p-2 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition cursor-pointer"
+          title={teamState.theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          aria-label="Toggle dark mode"
+        >
+          {teamState.theme === "dark" ? (
+            <Sun className="h-5 w-5 text-amber-400 hover:text-amber-300 transition-transform duration-200 hover:rotate-45" />
+          ) : (
+            <Moon className="h-5 w-5 text-slate-600 hover:text-slate-900 transition-transform duration-200 hover:-rotate-12" />
+          )}
+        </button>
+
         {/* Notifications */}
         <button className="relative p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-full transition">
           <Bell className="h-5 w-5" />
@@ -134,6 +149,24 @@ export function Topbar() {
                 >
                   <User className="h-4 w-4 text-slate-400" />
                   My Profile
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { toggleTheme(); }}
+                  className="w-full flex items-center justify-between px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition text-left"
+                >
+                  <div className="flex items-center gap-2.5">
+                    {teamState.theme === "dark" ? (
+                      <Sun className="h-4 w-4 text-amber-400" />
+                    ) : (
+                      <Moon className="h-4 w-4 text-slate-400" />
+                    )}
+                    <span>{teamState.theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    {teamState.theme === "dark" ? "On" : "Off"}
+                  </span>
                 </button>
               </div>
 

@@ -6,4 +6,5 @@ export * from './PipelineTablePagination';
 export * from './ViewDealModal';
 export * from './EditDealModal';
 export * from './DealNoteModal';
-
+export * from './PipelineAssignUserCell';
+export * from './PipelineStageSelectCell';

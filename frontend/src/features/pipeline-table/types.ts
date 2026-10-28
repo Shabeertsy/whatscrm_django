@@ -31,4 +31,5 @@ export interface DealFormData {
   manual_contact?: string | null;
   note?: string | null;
   extra_data?: Record<string, any>;
+  assigned_agent?: string | null;
 }

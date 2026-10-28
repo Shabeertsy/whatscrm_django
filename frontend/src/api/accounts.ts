@@ -103,6 +103,27 @@ export interface UserPayload {
   is_active?: boolean;
 }
 
+export interface ChatStatusPoint {
+  date: string;
+  day?: string;
+  open: number;
+  pending: number;
+  resolved: number;
+}
+
+export interface UserChatAnalytics {
+  total_assigned: number;
+  open_chats: number;
+  pending_chats: number;
+  resolved_chats: number;
+  unread_messages: number;
+  total_messages_sent: number;
+  last_active: string | null;
+  deal_count: number;
+  total_deal_value: number;
+  status_trend?: ChatStatusPoint[];
+}
+
 export const accountsApi = {
   // Locations CRUD
   listLocations: () => apiClient.get<Location[]>('/accounts/locations/'),
@@ -136,6 +157,7 @@ export const accountsApi = {
   getMe: () => apiClient.get<User>('/accounts/me/'),
   listUsers: (params?: { department?: string; user_type?: string }) => apiClient.get<User[]>('/accounts/users/', { params }),
   getUser: (id: string) => apiClient.get<User>(`/accounts/users/${id}/`),
+  getUserAnalytics: (id: string) => apiClient.get<UserChatAnalytics>(`/accounts/users/${id}/analytics/`),
   createUser: (payload: UserPayload) => apiClient.post<User>('/accounts/users/', payload),
   updateUser: (id: string, payload: Partial<UserPayload>) => apiClient.patch<User>(`/accounts/users/${id}/`, payload),
   deleteUser: (id: string) => apiClient.delete(`/accounts/users/${id}/`),

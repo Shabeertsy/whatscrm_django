@@ -30,6 +30,12 @@ export interface Pipeline {
   deal_count: number;
 }
 
+export interface DealAssignedUser {
+  id: string;
+  name: string;
+  email?: string;
+}
+
 export interface Deal {
   id: string;
   name: string;
@@ -42,6 +48,11 @@ export interface Deal {
   contact_phone?: string;
   note?: string | null;
   extra_data?: Record<string, any>;
+
+  // Chat date & user assignment
+  chat_started_at?: string | null;
+  assigned_user?: DealAssignedUser | null;
+  conversation_id?: string | null;
 
   // Confirmed booking snapshot fields 
   is_confirmed_booking?: boolean;
@@ -174,12 +185,13 @@ export const createDeal = async (data: {
   manual_contact?: string | null;
   note?: string | null;
   extra_data?: Record<string, any>;
+  assigned_agent?: string | null;
 }): Promise<Deal> => {
   const res = await apiClient.post('/contacts/pipeline/deals/', data);
   return res.data;
 };
 
-export const updateDeal = async (id: string, data: Partial<Deal>): Promise<Deal> => {
+export const updateDeal = async (id: string, data: Partial<Deal> & { assigned_agent?: string | null }): Promise<Deal> => {
   const res = await apiClient.patch(`/contacts/pipeline/deals/${id}/`, data);
   return res.data;
 };

@@ -92,6 +92,11 @@ class PipelineDealSerializer(serializers.ModelSerializer):
     contact_phone = serializers.SerializerMethodField()
     is_confirmed_booking = serializers.SerializerMethodField()
     confirmed_at = serializers.SerializerMethodField()
+   
+    chat_started_at = serializers.SerializerMethodField()
+    assigned_user = serializers.SerializerMethodField()
+    conversation_id = serializers.SerializerMethodField()
+   
     manual_contact = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
     note = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
 
@@ -123,11 +128,13 @@ class PipelineDealSerializer(serializers.ModelSerializer):
             'wa_contact', 'manual_contact', 'contact_name', 'contact_phone',
             'note', 'extra_data',
             'is_confirmed_booking', 'confirmed_at',
+            'chat_started_at', 'assigned_user', 'conversation_id',
             'created_at'
         ]
         read_only_fields = [
             'id', 'created_at', 'contact_name', 'contact_phone',
             'is_confirmed_booking', 'confirmed_at',
+            'chat_started_at', 'assigned_user', 'conversation_id',
         ]
 
     def get_contact_name(self, obj):
@@ -163,6 +170,42 @@ class PipelineDealSerializer(serializers.ModelSerializer):
             return None
         record = self._get_confirmed_record(obj)
         return record.confirmed_at if record else None
+
+    def _get_conversation(self, obj):
+        if not hasattr(obj, '_cached_conversation'):
+            if obj.wa_contact:
+                obj._cached_conversation = obj.wa_contact.conversations.order_by('-last_message_at').first()
+            else:
+                obj._cached_conversation = None
+        return obj._cached_conversation
+
+    def get_conversation_id(self, obj):
+        conv = self._get_conversation(obj)
+        return str(conv.id) if conv else None
+
+    def get_chat_started_at(self, obj):
+        conv = self._get_conversation(obj)
+        if conv:
+            first_msg = conv.messages.order_by('timestamp').first()
+            if first_msg and first_msg.timestamp:
+                return first_msg.timestamp.isoformat()
+        if obj.wa_contact and obj.wa_contact.created_at:
+            return obj.wa_contact.created_at.isoformat()
+        return obj.created_at.isoformat() if obj.created_at else None
+
+    def get_assigned_user(self, obj):
+        conv = self._get_conversation(obj)
+        if conv and conv.assigned_agent:
+            agent = conv.assigned_agent
+            name = f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email
+            return {
+                'id': str(agent.id),
+                'name': name,
+                'email': agent.email,
+            }
+        if obj.extra_data and isinstance(obj.extra_data, dict) and obj.extra_data.get('_assigned_user'):
+            return obj.extra_data.get('_assigned_user')
+        return None
 
 
 

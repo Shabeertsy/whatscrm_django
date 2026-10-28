@@ -4,6 +4,7 @@ import type { Conversation, CustomMessage } from "../../../../api/messaging";
 import { messagingApi } from "../../../../api/messaging";
 import { messagingStore } from "../../../../store/messagingStore";
 import { formatChatListTime } from "../../utils";
+import { formatMessagePreview } from "../../utils/formatMessagePreview";
 import { showToast } from "../../../../utils/toast";
 import { ConfirmDialog } from "../../../../components/shared/ConfirmDialog";
 import { useChatFilters } from "../../hooks/useChatFilters";
@@ -407,31 +408,33 @@ export const ChatList = memo(function ChatList({
                         }`}
                     >
                       {c.last_message ? (
-                        <span className="flex items-center gap-1.5 truncate">
-                          {c.last_message.direction === "outbound" && (
-                            <span className="text-slate-400 font-medium">
-                              You:{" "}
+                        (() => {
+                          const preview = formatMessagePreview(c.last_message);
+                          return (
+                            <span className="flex items-center gap-1.5 truncate">
+                              {c.last_message.direction === "outbound" && (
+                                <span className="text-slate-400 font-medium shrink-0">
+                                  You:{" "}
+                                </span>
+                              )}
+                              {preview.mediaUrl && preview.mediaType === "image" && (
+                                <img
+                                  src={preview.mediaUrl}
+                                  alt="preview"
+                                  className="h-3.5 w-3.5 rounded-sm object-cover flex-shrink-0"
+                                />
+                              )}
+                              {preview.badge && (
+                                <span className="text-[#007e3a] font-medium shrink-0">
+                                  [{preview.badge}]
+                                </span>
+                              )}
+                              <span className="truncate">
+                                {preview.text}
+                              </span>
                             </span>
-                          )}
-                          {c.last_message.msg_type === "image" &&
-                            c.last_message.media_url && (
-                              <img
-                                src={c.last_message.media_url}
-                                alt="preview"
-                                className="h-3.5 w-3.5 rounded-sm object-cover flex-shrink-0"
-                              />
-                            )}
-                          {c.last_message.msg_type !== "text" && (
-                            <span className="text-[#007e3a] font-medium">
-                              [{c.last_message.msg_type}]
-                            </span>
-                          )}
-                          {c.last_message.body && (
-                            <span className="truncate">
-                              {c.last_message.body}
-                            </span>
-                          )}
-                        </span>
+                          );
+                        })()
                       ) : (
                         <span className="italic text-slate-400">
                           No messages yet

@@ -44,6 +44,7 @@ from django.db.models import Q, Sum
 from django.db import transaction
 from django.utils import timezone
 from datetime import timedelta
+from django.contrib.auth import get_user_model
 
 
 class StandardPagination(PageNumberPagination):
@@ -603,7 +604,7 @@ class PipelineDealListCreateView(APIView):
             pipeline = self._get_pipeline(pipeline_id_param, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
         else:
             pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
@@ -620,7 +621,7 @@ class PipelineDealListCreateView(APIView):
                         'confirmed_count': 0,
                     }, status=status.HTTP_200_OK)
                 return Response([], status=status.HTTP_200_OK)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
 
         # Stage filter
         if stage_id_param and stage_id_param != 'all':
@@ -697,13 +698,32 @@ class PipelineDealListCreateView(APIView):
                 )
             data['stage'] = str(stage.id)
 
+        assigned_agent_id = data.get('assigned_agent')
         serializer = PipelineDealSerializer(data=data)
         if serializer.is_valid():
             deal = serializer.save(owner=get_tenant_owner(request.user), pipeline=pipeline)
+            if assigned_agent_id:
+                from django.contrib.auth import get_user_model
+                User = get_user_model()
+                agent = User.objects.filter(id=assigned_agent_id).first()
+                if deal.wa_contact:
+                    conv = deal.wa_contact.conversations.order_by('-last_message_at').first()
+                    if conv and agent:
+                        conv.assigned_agent = agent
+                        conv.save(update_fields=['assigned_agent'])
+                elif agent:
+                    extra = dict(deal.extra_data or {})
+                    extra['_assigned_user'] = {
+                        'id': str(agent.id),
+                        'name': f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email,
+                        'email': agent.email,
+                    }
+                    deal.extra_data = extra
+                    deal.save(update_fields=['extra_data'])
             sync_deal_confirmation(deal, target_stage=deal.stage, owner=get_tenant_owner(request.user))
             increment_pipeline_cache_version(get_tenant_owner(request.user).id)
             fresh_deal = scope_by_owner(
-                PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records'),
+                PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent'),
                 request.user
             ).get(pk=deal.pk)
             return Response(PipelineDealSerializer(fresh_deal).data, status=status.HTTP_201_CREATED)
@@ -716,7 +736,7 @@ class PipelineDealDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records').all(), user).get(pk=pk)
+            return scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent').all(), user).get(pk=pk)
         except PipelineDeal.DoesNotExist:
             return None
 
@@ -741,6 +761,13 @@ class PipelineDealDetailView(APIView):
         stage_changed = bool(new_stage_id and str(new_stage_id) != old_stage_id)
         mutable_data = request.data.copy()
 
+        has_assigned_agent = 'assigned_agent' in mutable_data
+        assigned_agent_id = mutable_data.pop('assigned_agent', None)
+        if isinstance(assigned_agent_id, list) and assigned_agent_id:
+            assigned_agent_id = assigned_agent_id[0]
+        if assigned_agent_id in ('', 'null', None):
+            assigned_agent_id = None
+
         if 'manual_contact' in mutable_data and mutable_data['manual_contact'] is None:
             mutable_data['manual_contact'] = ''
         if 'note' in mutable_data and mutable_data['note'] is None:
@@ -752,6 +779,35 @@ class PipelineDealDetailView(APIView):
         if serializer.is_valid():
             updated_deal = serializer.save()
             owner = get_tenant_owner(request.user)
+
+            if has_assigned_agent:
+                User = get_user_model()
+                agent = User.objects.filter(id=assigned_agent_id).first() if assigned_agent_id else None
+
+                if updated_deal.wa_contact:
+                    conv = updated_deal.wa_contact.conversations.order_by('-last_message_at').first()
+                    if conv:
+                        conv.assigned_agent = agent
+                        conv.save(update_fields=['assigned_agent'])
+                        
+                    # If previously in extra_data, clean it up
+                    extra = dict(updated_deal.extra_data or {})
+                    if '_assigned_user' in extra:
+                        extra.pop('_assigned_user', None)
+                        updated_deal.extra_data = extra
+                        updated_deal.save(update_fields=['extra_data'])
+                else:
+                    extra = dict(updated_deal.extra_data or {})
+                    if agent:
+                        extra['_assigned_user'] = {
+                            'id': str(agent.id),
+                            'name': f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email,
+                            'email': agent.email,
+                        }
+                    else:
+                        extra.pop('_assigned_user', None)
+                    updated_deal.extra_data = extra
+                    updated_deal.save(update_fields=['extra_data'])
 
             # Keep pipeline consistent with stage if stage changed across pipelines
             if updated_deal.stage and updated_deal.stage.pipeline_id and updated_deal.pipeline_id != updated_deal.stage.pipeline_id:

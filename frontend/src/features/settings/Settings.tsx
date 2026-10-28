@@ -2,6 +2,7 @@ import React from 'react';
 import { MessageSquare, Globe, Bot, Building2, MapPin, Users, ShieldCheck, Share2 } from 'lucide-react';
 import type { SettingsTab, TabMeta } from './types';
 import { useSettings } from './hooks/useSettings';
+import { useRouter } from '../../router';
 import { useAuthStore } from '../../store/authStore';
 import { getUserPermissions } from '../../utils/permissions';
 import { SettingsHeader } from './components/SettingsHeader';
@@ -19,6 +20,7 @@ import { PropertyShareTab } from './components/tabs/PropertyShareTab';
 
 export function Settings() {
   const { activeTab, setActiveTab } = useSettings();
+  const { navigate } = useRouter();
   const [authState] = useAuthStore();
   const permissions = getUserPermissions(authState?.user);
 
@@ -59,13 +61,6 @@ export function Settings() {
       permitted: !!permissions.canManageDepartments,
     },
     {
-      id: 'users',
-      label: 'Users & Roles',
-      subtitle: 'Manage team agents & department assignments',
-      icon: <Users className="h-4 w-4 flex-shrink-0" />,
-      permitted: !!permissions.canManageUsers,
-    },
-    {
       id: 'permissions',
       label: 'Role Permissions',
       subtitle: 'Per-department module access control',
@@ -84,10 +79,14 @@ export function Settings() {
   const tabs = allTabs.filter((t) => t.permitted) as TabMeta[];
 
   React.useEffect(() => {
+    if (activeTab === 'users') {
+      navigate('/users');
+      return;
+    }
     if (tabs.length > 0 && !tabs.some((t) => t.id === activeTab)) {
       setActiveTab(tabs[0].id);
     }
-  }, [tabs, activeTab, setActiveTab]);
+  }, [tabs, activeTab, setActiveTab, navigate]);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-10">
