@@ -52,6 +52,7 @@ export function Router() {
       <Route path="/hotels/:id" element={<HotelRooms />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/messaging" element={<Inbox />} />
+      <Route path="/inbox" element={<Inbox />} />
       <Route path="/automations" element={<Automation />} />
       <Route path="/flows" element={<Flows />} />
       <Route path="/campaigns" element={<Campaigns />} />

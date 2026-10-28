@@ -43,7 +43,7 @@ export const ChatList = memo(function ChatList({
     assignmentFilter,
     setAssignmentFilter,
     filteredChats
-  } = useChatFilters(chats);
+  } = useChatFilters(chats, selectedChatId);
 
   // When assignmentFilter changes, notify parent (Inbox) to re-fetch
   const handleSetAssignmentFilter = (f: 'all' | 'mine' | 'unassigned') => {
@@ -69,8 +69,9 @@ export const ChatList = memo(function ChatList({
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
 
   const toggleSelect = (id: string) => {
+    const idStr = String(id);
     setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.includes(idStr) ? prev.filter((item) => item !== idStr) : [...prev, idStr]
     );
   };
 
@@ -78,7 +79,7 @@ export const ChatList = memo(function ChatList({
     if (selectedIds.length === filteredChats.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredChats.map((c) => c.id));
+      setSelectedIds(filteredChats.map((c) => String(c.id)));
     }
   };
 
@@ -335,7 +336,7 @@ export const ChatList = memo(function ChatList({
           filteredChats.map((c) => {
             const hasUnread = c.unread_count > 0;
             const timeStr = formatChatListTime(c.last_message_at);
-            const isSelected = selectedIds.includes(c.id);
+            const isSelected = selectedIds.includes(String(c.id));
 
             return (
               <button
@@ -347,7 +348,7 @@ export const ChatList = memo(function ChatList({
                     onSelectChat(c.id);
                   }
                 }}
-                className={`w-full text-left p-3 flex items-center space-x-3 transition-colors relative border-l-2 ${selectedChatId === c.id && !isSelectMode
+                className={`w-full text-left p-3 flex items-center space-x-3 transition-colors relative border-l-2 ${String(selectedChatId) === String(c.id) && !isSelectMode
                   ? "bg-[#007e3a]/5 dark:bg-[#007e3a]/15 border-[#007e3a]"
                   : isSelected
                     ? "bg-[#007e3a]/10 dark:bg-[#007e3a]/20 border-transparent"
@@ -378,7 +379,7 @@ export const ChatList = memo(function ChatList({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h4
-                      className={`text-xs truncate ${selectedChatId === c.id || hasUnread
+                      className={`text-xs truncate ${String(selectedChatId) === String(c.id) || hasUnread
                         ? "font-bold text-slate-900 dark:text-slate-100"
                         : "font-semibold text-slate-700 dark:text-slate-300"
                         }`}

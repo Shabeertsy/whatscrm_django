@@ -56,20 +56,23 @@ export function Inbox() {
 
   // Handle direct conversation link from URL (e.g. from Users & Roles page "Go to chat")
   useEffect(() => {
-    const targetConv = searchParams.get('conversation') || searchParams.get('conversation_id');
+    const targetConv = searchParams.get('conversation') || searchParams.get('conversation_id') || searchParams.get('conversationId');
     if (targetConv) {
-      messagingStore.setActiveConversation(targetConv);
-      const exists = store.conversations.some(c => c.id === targetConv);
-      if (!exists) {
-        messagingApi.getConversation(targetConv).then(res => {
-          if (res.data) {
-            messagingStore.setState(s => ({
-              conversations: [res.data, ...s.conversations.filter(c => c.id !== targetConv)],
-              activeConversationId: targetConv,
-            }));
-          }
-        }).catch(console.error);
-      }
+      const targetConvStr = String(targetConv);
+      messagingStore.setActiveConversation(targetConvStr);
+
+      // Always fetch conversation details to guarantee it's in the store and fresh
+      messagingApi.getConversation(targetConvStr).then(res => {
+        if (res.data) {
+          const conv = { ...res.data, id: String(res.data.id) };
+          messagingStore.setState(s => ({
+            conversations: [conv, ...s.conversations.filter(c => String(c.id) !== targetConvStr)],
+            activeConversationId: targetConvStr,
+          }));
+        }
+      }).catch(err => {
+        console.error("Failed to load target conversation:", err);
+      });
     }
   }, [searchParams]);
 
@@ -86,12 +89,16 @@ export function Inbox() {
     messagingApi.listConversations({ limit: 30, offset: 0, ...(assignmentFilter !== 'all' ? { assigned: assignmentFilter } : {}) })
       .then(res => {
         const hasMore = !!res.data.next;
-        messagingStore.setConversations(res.data.results, hasMore, 30);
-        const targetConv = searchParams.get('conversation') || searchParams.get('conversation_id');
-        if (targetConv) {
-          messagingStore.setActiveConversation(targetConv);
-        } else if (res.data.results.length > 0 && !store.activeConversationId) {
-          messagingStore.setActiveConversation(res.data.results[0].id);
+        const targetConv = searchParams.get('conversation') || searchParams.get('conversation_id') || searchParams.get('conversationId');
+        const targetConvStr = targetConv ? String(targetConv) : null;
+        const convList = res.data.results.map(c => ({ ...c, id: String(c.id) }));
+
+        messagingStore.setConversations(convList, hasMore, 30);
+
+        if (targetConvStr) {
+          messagingStore.setActiveConversation(targetConvStr);
+        } else if (convList.length > 0 && !messagingStore.getState().activeConversationId) {
+          messagingStore.setActiveConversation(convList[0].id);
         }
       })
       .catch(err => {
@@ -110,27 +117,39 @@ export function Inbox() {
   useEffect(() => {
     if (!store.activeConversationId) return;
 
-    const activeConv = store.conversations.find(c => c.id === store.activeConversationId);
+    const activeIdStr = String(store.activeConversationId);
+    const activeConv = store.conversations.find(c => String(c.id) === activeIdStr);
     if (activeConv && activeConv.unread_count > 0) {
       messagingApi.markRead(activeConv.id)
         .then(() => messagingStore.markRead(activeConv.id))
         .catch(console.error);
     }
 
-    if (!store.messagesByConvId[store.activeConversationId]) {
+    if (!store.messagesByConvId[activeIdStr]) {
       messagingStore.setState({ isLoadingMessages: true });
-      const activeId = store.activeConversationId;
       
       Promise.all([
-        messagingApi.getConversation(activeId),
-        messagingApi.getConversationMessages(activeId, 50, 0)
+        messagingApi.getConversation(activeIdStr),
+        messagingApi.getConversationMessages(activeIdStr, 50, 0)
       ])
         .then(([convRes, messagesRes]) => {
           // Backend returns newest messages first due to -timestamp ordering.
           // Reverse them so the oldest is rendered at the top and newest at the bottom.
           const messages = [...messagesRes.data.results].reverse();
           const hasMore = !!messagesRes.data.next;
-          messagingStore.setMessages(activeId, messages, hasMore, 50);
+          messagingStore.setMessages(activeIdStr, messages, hasMore, 50);
+
+          if (convRes?.data) {
+            const fetchedConv = { ...convRes.data, id: String(convRes.data.id) };
+            messagingStore.setState(s => {
+              const exists = s.conversations.some(c => String(c.id) === String(fetchedConv.id));
+              return {
+                conversations: exists
+                  ? s.conversations.map(c => String(c.id) === String(fetchedConv.id) ? { ...c, ...fetchedConv } : c)
+                  : [fetchedConv, ...s.conversations]
+              };
+            });
+          }
         })
         .catch(err => {
           console.error("Failed to load messages:", err);
@@ -140,9 +159,9 @@ export function Inbox() {
     setReplyingTo(null);
   }, [store.activeConversationId]);
 
-  const activeConversation = store.conversations.find(c => c.id === store.activeConversationId);
+  const activeConversation = store.conversations.find(c => String(c.id) === String(store.activeConversationId));
   const activeMessages = store.activeConversationId
-    ? (store.messagesByConvId[store.activeConversationId] || [])
+    ? (store.messagesByConvId[String(store.activeConversationId)] || [])
     : [];
 
   const windowOpen = isWhatsAppWindowOpen(activeConversation, activeMessages, store.isLoadingMessages);

@@ -4,7 +4,7 @@ import { getStages, PipelineStage } from '../../pipeline/api';
 
 export type AssignmentFilter = 'all' | 'mine' | 'unassigned';
 
-export function useChatFilters(chats: Conversation[]) {
+export function useChatFilters(chats: Conversation[], selectedChatId?: string | null) {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
@@ -23,6 +23,10 @@ export function useChatFilters(chats: Conversation[]) {
 
   const filteredChats = useMemo(() => {
     let result = chats.filter((c) => {
+      // If this conversation is currently selected, always keep it visible in the list
+      if (selectedChatId && String(c.id) === String(selectedChatId)) {
+        return true;
+      }
       if (statusFilter !== "all" && c.status !== statusFilter) {
         return false;
       }
@@ -43,7 +47,7 @@ export function useChatFilters(chats: Conversation[]) {
     });
 
     return result;
-  }, [chats, statusFilter, searchQuery, stageFilter]);
+  }, [chats, statusFilter, searchQuery, stageFilter, selectedChatId]);
 
   return {
     searchQuery,

@@ -65,14 +65,36 @@ class MessagingStore {
 
   // ── Actions ─────────────────────────────
 
-  setConversations = (conversations: Conversation[], hasMore: boolean = false, offset: number = 0) =>
-    this.setState({ conversations, hasMoreConversations: hasMore, conversationOffset: offset, isLoadingConversations: false, error: null });
+  setConversations = (conversations: Conversation[], hasMore: boolean = false, offset: number = 0) => {
+    const normalizedConvs = conversations.map(c => ({ ...c, id: String(c.id) }));
+    this.setState((s) => {
+      let finalConversations = normalizedConvs;
+      if (s.activeConversationId) {
+        const activeIdStr = String(s.activeConversationId);
+        const existsInNew = normalizedConvs.some(c => String(c.id) === activeIdStr);
+        if (!existsInNew) {
+          const currentActive = s.conversations.find(c => String(c.id) === activeIdStr);
+          if (currentActive) {
+            finalConversations = [currentActive, ...normalizedConvs];
+          }
+        }
+      }
+      return {
+        conversations: finalConversations,
+        hasMoreConversations: hasMore,
+        conversationOffset: offset,
+        isLoadingConversations: false,
+        error: null,
+      };
+    });
+  };
 
   appendConversations = (olderConversations: Conversation[], hasMore: boolean, offset: number) => {
+    const normalizedOlder = olderConversations.map(c => ({ ...c, id: String(c.id) }));
     this.setState((s) => {
       // Filter out duplicates just in case
-      const existingIds = new Set(s.conversations.map(c => c.id));
-      const uniqueOlder = olderConversations.filter(c => !existingIds.has(c.id));
+      const existingIds = new Set(s.conversations.map(c => String(c.id)));
+      const uniqueOlder = normalizedOlder.filter(c => !existingIds.has(String(c.id)));
       
       return {
         conversations: [...s.conversations, ...uniqueOlder],
@@ -82,92 +104,93 @@ class MessagingStore {
     });
   };
 
-  setActiveConversation = (id: string | null) => {
-    this.setState({ activeConversationId: id });
+  setActiveConversation = (id: string | number | null) => {
+    this.setState({ activeConversationId: id ? String(id) : null });
   };
 
-  removeConversation = (id: string) => {
+  removeConversation = (id: string | number) => {
+    const idStr = String(id);
     this.setState((s) => ({
-      conversations: s.conversations.filter(c => c.id !== id),
-      activeConversationId: s.activeConversationId === id ? null : s.activeConversationId
+      conversations: s.conversations.filter(c => String(c.id) !== idStr),
+      activeConversationId: String(s.activeConversationId) === idStr ? null : s.activeConversationId
     }));
   };
 
 
-  setMessages = (conversationId: string, messages: Message[], hasMore: boolean, offset: number) => {
+  setMessages = (conversationId: string | number, messages: Message[], hasMore: boolean, offset: number) => {
+    const convIdStr = String(conversationId);
     this.setState((s) => ({
-      messagesByConvId: { ...s.messagesByConvId, [conversationId]: messages },
-      hasMoreMessages: { ...s.hasMoreMessages, [conversationId]: hasMore },
-      messageOffsets: { ...s.messageOffsets, [conversationId]: offset },
+      messagesByConvId: { ...s.messagesByConvId, [convIdStr]: messages },
+      hasMoreMessages: { ...s.hasMoreMessages, [convIdStr]: hasMore },
+      messageOffsets: { ...s.messageOffsets, [convIdStr]: offset },
       isLoadingMessages: false,
     }));
   };
 
-  prependMessages = (conversationId: string, olderMessages: Message[], hasMore: boolean, offset: number) => {
+  prependMessages = (conversationId: string | number, olderMessages: Message[], hasMore: boolean, offset: number) => {
+    const convIdStr = String(conversationId);
     this.setState((s) => {
-      const current = s.messagesByConvId[conversationId] || [];
-      // Combine and remove duplicates, older messages should be at the top of the array since they have older timestamps.
-      // But wait, our backend ordered by `-timestamp` which means the newest are first in the paginated response!
-      // So the frontend array needs to be reversed if the UI expects older messages at the top.
-      // Actually, let's see how the frontend renders them. 
-      // If messages.map renders top-down, the oldest must be index 0.
+      const current = s.messagesByConvId[convIdStr] || [];
       return {
         messagesByConvId: {
           ...s.messagesByConvId,
-          [conversationId]: [...olderMessages, ...current]
+          [convIdStr]: [...olderMessages, ...current]
         },
-        hasMoreMessages: { ...s.hasMoreMessages, [conversationId]: hasMore },
-        messageOffsets: { ...s.messageOffsets, [conversationId]: offset },
+        hasMoreMessages: { ...s.hasMoreMessages, [convIdStr]: hasMore },
+        messageOffsets: { ...s.messageOffsets, [convIdStr]: offset },
         isLoadingMoreMessages: false,
       };
     });
   };
 
   /** Add a single new message (from WebSocket or after sending) */
-  pushMessage = (conversationId: string, message: Message) => {
+  pushMessage = (conversationId: string | number, message: Message) => {
+    const convIdStr = String(conversationId);
     this.setState((s) => {
       // IMPORTANT: If we haven't fetched the full history for this chat yet,
       // do NOT create an array with just 1 message. Otherwise, Inbox.tsx
       // will assume the history is loaded and never fetch the older messages.
-      if (!s.messagesByConvId[conversationId]) {
+      if (!s.messagesByConvId[convIdStr]) {
         return {};
       }
 
-      const existing = s.messagesByConvId[conversationId];
+      const existing = s.messagesByConvId[convIdStr];
       // Avoid duplicates (WS + REST could both fire)
-      if (existing.find((m) => m.id === message.id)) return {};
+      if (existing.find((m) => String(m.id) === String(message.id))) return {};
 
       return {
         messagesByConvId: {
           ...s.messagesByConvId,
-          [conversationId]: [...existing, message],
+          [convIdStr]: [...existing, message],
         },
       };
     });
   };
 
   /** Remove a message from the local store */
-  removeMessage = (conversationId: string, messageId: string) => {
+  removeMessage = (conversationId: string | number, messageId: string | number) => {
+    const convIdStr = String(conversationId);
     this.setState((s) => {
-      if (!s.messagesByConvId[conversationId]) return {};
+      if (!s.messagesByConvId[convIdStr]) return {};
       return {
         messagesByConvId: {
           ...s.messagesByConvId,
-          [conversationId]: s.messagesByConvId[conversationId].filter(m => String(m.id) !== String(messageId)),
+          [convIdStr]: s.messagesByConvId[convIdStr].filter(m => String(m.id) !== String(messageId)),
         },
       };
     });
   };
 
   /** Update an existing message in the local store */
-  updateMessage = (conversationId: string, messageId: string, patch: Partial<Message>) => {
+  updateMessage = (conversationId: string | number, messageId: string | number, patch: Partial<Message>) => {
+    const convIdStr = String(conversationId);
     this.setState((s) => {
-      if (!s.messagesByConvId[conversationId]) return {};
+      if (!s.messagesByConvId[convIdStr]) return {};
       return {
         messagesByConvId: {
           ...s.messagesByConvId,
-          [conversationId]: s.messagesByConvId[conversationId].map((m) =>
-            String(m.id) === String(messageId) || m.wa_message_id === messageId
+          [convIdStr]: s.messagesByConvId[convIdStr].map((m) =>
+            String(m.id) === String(messageId) || m.wa_message_id === String(messageId)
               ? { ...m, ...patch }
               : m
           ),
@@ -179,11 +202,12 @@ class MessagingStore {
 
 
   /** Update conversation's last_message preview + unread count */
-  updateConversationMeta = (conversationId: string, patch: Partial<Conversation>) => {
+  updateConversationMeta = (conversationId: string | number, patch: Partial<Conversation>) => {
+    const convIdStr = String(conversationId);
     this.setState((s) => {
       let needsSort = false;
       const updatedConversations = s.conversations.map((c) => {
-        if (c.id === conversationId) {
+        if (String(c.id) === convIdStr) {
           if (patch.last_message_at) {
             needsSort = true;
           }
@@ -204,11 +228,11 @@ class MessagingStore {
     });
   };
 
-  markRead = (conversationId: string) => {
+  markRead = (conversationId: string | number) => {
     this.updateConversationMeta(conversationId, { unread_count: 0 });
   };
 
-  updateStatus = (conversationId: string, status: Conversation['status']) => {
+  updateStatus = (conversationId: string | number, status: Conversation['status']) => {
     this.updateConversationMeta(conversationId, { status });
   };
 

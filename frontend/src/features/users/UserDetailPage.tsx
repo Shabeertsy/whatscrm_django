@@ -818,7 +818,10 @@ export function UserDetailPage() {
                       <td className="px-5 py-3 text-right whitespace-nowrap">
                         <button
                           type="button"
-                          onClick={() => navigate(`/messaging?conversation=${conv.id}`)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/messaging?conversation=${conv.id}`);
+                          }}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-[#007e3a]/10 hover:bg-[#007e3a] text-[#007e3a] hover:text-white dark:bg-emerald-950/40 dark:text-emerald-400 dark:hover:bg-[#007e3a] dark:hover:text-white border border-[#007e3a]/20 dark:border-emerald-800 font-semibold transition"
                           title="Open conversation in Live Chat"
                         >

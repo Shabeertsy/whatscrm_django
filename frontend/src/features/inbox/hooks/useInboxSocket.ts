@@ -42,16 +42,16 @@ export function useInboxSocket() {
             },
             last_message_at: message.timestamp,
             unread_count:
-              activeId === conversation_id
+              String(activeId) === String(conversation_id)
                 ? 0
                 : (messagingStore
                     .getState()
-                    .conversations.find((c) => c.id === conversation_id)
+                    .conversations.find((c) => String(c.id) === String(conversation_id))
                     ?.unread_count ?? 0) + 1,
           });
 
           // Show browser notification if it's an inbound message and not in the currently active chat
-          if (message.direction === 'inbound' && activeId !== conversation_id) {
+          if (message.direction === 'inbound' && String(activeId) !== String(conversation_id)) {
             // Use contact details directly from the websocket payload to ensure it works even for brand new conversations
             const contactName = contact_name || contact_phone || 'Customer';
             const notificationBody = message.msg_type === 'text' ? message.body : `Sent a ${message.msg_type}`;

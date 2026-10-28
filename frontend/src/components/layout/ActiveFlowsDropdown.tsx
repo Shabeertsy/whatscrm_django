@@ -91,7 +91,7 @@ export function ActiveFlowsDropdown() {
 
   const navigateToConversation = (convId: string | null) => {
     if (convId) {
-      navigate(`/inbox?conversationId=${convId}`);
+      navigate(`/messaging?conversation=${convId}`);
       setOpen(false);
     }
   };
