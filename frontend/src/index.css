@@ -50,6 +50,25 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
+/* ── Responsive zoom: scale down UI on smaller screens ── */
+/* @media (max-width: 1440px) {
+  body {
+    zoom: 0.9;
+  }
+}
+
+@media (max-width: 1280px) {
+  body {
+    zoom: 0.85;
+  }
+}
+
+@media (max-width: 1024px) {
+  body {
+    zoom: 0.8;
+  }
+} */
+
 @layer utilities {
   .custom-scrollbar::-webkit-scrollbar {
     width: 6px;

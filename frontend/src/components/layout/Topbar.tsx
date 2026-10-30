@@ -41,7 +41,7 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-16 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#08080b] px-6 flex items-center justify-between min-w-0 transition duration-200">
+    <header className="h-12 border-b border-slate-200 dark:border-slate-800/80 bg-white dark:bg-[#08080b] px-4 flex items-center justify-between min-w-0 transition duration-200">
       {/* Search */}
       <div className="flex items-center flex-1 max-w-xs md:w-80 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5 focus-within:border-[#007e3a] transition duration-200">
         <Search className="h-4 w-4 text-slate-400 mr-2 flex-shrink-0" />
@@ -62,11 +62,10 @@ export function Topbar() {
             <button
               ref={aiButtonRef}
               onClick={() => setAiChatOpen((prev) => !prev)}
-              className={`h-9 w-9 rounded-xl flex items-center justify-center transition shadow-xs cursor-pointer ${
-                aiChatOpen
+              className={`h-9 w-9 rounded-xl flex items-center justify-center transition shadow-xs cursor-pointer ${aiChatOpen
                   ? "bg-[#005f2b] text-white ring-2 ring-[#007e3a]/40"
                   : "bg-[#007e3a] hover:bg-[#006830] text-white"
-              }`}
+                }`}
               title={aiChatOpen ? "Close Assistant" : "Open Data Assistant"}
               aria-label="AI Assistant"
             >
@@ -79,9 +78,9 @@ export function Topbar() {
                 anchorPos={
                   aiButtonRef.current
                     ? {
-                        x: aiButtonRef.current.getBoundingClientRect().right,
-                        y: aiButtonRef.current.getBoundingClientRect().bottom + 8,
-                      }
+                      x: aiButtonRef.current.getBoundingClientRect().right,
+                      y: aiButtonRef.current.getBoundingClientRect().bottom + 8,
+                    }
                     : undefined
                 }
               />

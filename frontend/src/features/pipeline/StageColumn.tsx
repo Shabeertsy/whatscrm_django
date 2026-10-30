@@ -109,7 +109,7 @@ export function StageColumn({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       style={{ backgroundColor: !isDraggingOver && stageObj?.color ? `${stageObj.color}45` : undefined }}
-      className={`flex-1 min-w-[300px] rounded-xl flex flex-col h-full transition-all duration-200 border ${isDraggingOver
+      className={`flex-1 min-w-[240px] rounded-xl flex flex-col h-full transition-all duration-200 border ${isDraggingOver
         ? "bg-[#007e3a]/5 border-[#007e3a] border-dashed shadow-lg shadow-[#007e3a]/10"
         : "border-slate-200 dark:border-slate-800 shadow-sm"
         }`}
