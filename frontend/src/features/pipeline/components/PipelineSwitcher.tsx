@@ -19,28 +19,28 @@ export function PipelineSwitcher({ pipelines, activePipeline, onSwitch, onCreate
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-[#007e3a] transition-colors shadow-sm"
+        className="flex items-center gap-2 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700/80 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200 hover:border-[#007e3a] transition-colors shadow-xs"
       >
-        <span className="max-w-[160px] truncate">{activePipeline?.name || 'Select Pipeline'}</span>
+        <span className="max-w-[150px] truncate">{activePipeline?.name || 'Select Pipeline'}</span>
         {activePipeline?.is_active && <span className="h-2 w-2 rounded-full bg-[#007e3a]" title="Active" />}
-        <ChevronDown className="h-4 w-4 text-slate-400" />
+        <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
       </button>
 
       {open && (
         <div className="absolute right-0 top-full mt-1 z-30 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl w-72 overflow-hidden">
           <div className="p-2 border-b border-slate-100 dark:border-slate-800">
-            <p className="text-[10px] font-bold uppercase text-slate-400 px-2 py-1 tracking-wider">Your Pipelines</p>
+            <p className="text-[10px] font-semibold uppercase text-slate-400 px-2 py-1 tracking-wider">Your Pipelines</p>
           </div>
           <div className="max-h-60 overflow-y-auto">
             {pipelines.map(p => (
               <div
                 key={p.id}
-                className="flex items-center justify-between px-3 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                className="flex items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
                 onClick={() => { onSwitch(p); setOpen(false); }}
               >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className={`h-2 w-2 rounded-full flex-shrink-0 ${p.is_active ? 'bg-[#007e3a]' : 'bg-slate-200 dark:bg-slate-600'}`} />
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{p.name}</span>
+                  <span className="text-xs font-medium text-slate-800 dark:text-slate-200 truncate">{p.name}</span>
                   {p.auto_create_deals && (
                     <span title="Auto-creates deals" className="flex items-center justify-center">
                       <Zap className="h-3 w-3 text-amber-500 flex-shrink-0" />
@@ -54,13 +54,13 @@ export function PipelineSwitcher({ pipelines, activePipeline, onSwitch, onCreate
           <div className="p-2 border-t border-slate-100 dark:border-slate-800 flex gap-2">
             <button
               onClick={() => { onCreateNew(); setOpen(false); }}
-              className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-[#007e3a] hover:bg-[#007e3a]/5 rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-[#007e3a] hover:bg-[#007e3a]/5 rounded-lg transition-colors"
             >
               <Plus className="h-3.5 w-3.5" /> New Pipeline
             </button>
             <button
               onClick={() => { onManage(); setOpen(false); }}
-              className="flex-1 flex items-center justify-center gap-1 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
+              className="flex-1 flex items-center justify-center gap-1 py-1.5 text-xs font-medium text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors"
             >
               <Settings className="h-3.5 w-3.5" /> Manage
             </button>
@@ -80,19 +80,19 @@ interface InfoBarProps {
 
 export function PipelineInfoBar({ activePipeline, onToggleAutoCreate, onActivate, onManageFields }: InfoBarProps) {
   return (
-    <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-5 py-3">
+    <div className="flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-xl px-3.5 py-1.5">
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2">
-          <span className={`h-2.5 w-2.5 rounded-full ${activePipeline.is_active ? 'bg-[#007e3a]' : 'bg-slate-300'}`} />
-          <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{activePipeline.name}</span>
+          <span className={`h-2 w-2 rounded-full ${activePipeline.is_active ? 'bg-[#007e3a]' : 'bg-slate-300'}`} />
+          <span className="font-semibold text-xs text-slate-800 dark:text-slate-200">{activePipeline.name}</span>
           {activePipeline.is_active && (
-            <span className="px-2 py-0.5 bg-[#007e3a]/10 text-[#007e3a] text-[10px] font-bold rounded-full">ACTIVE</span>
+            <span className="px-2 py-0.5 bg-[#007e3a]/10 text-[#007e3a] text-[10px] font-semibold rounded-full">ACTIVE</span>
           )}
         </div>
         {activePipeline.auto_create_deals && (
           <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-full">
             <Zap className="h-3 w-3 text-amber-500" />
-            <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400">Auto-creates deals from new messages</span>
+            <span className="text-[10px] font-medium text-amber-700 dark:text-amber-400">Auto-creates deals from new messages</span>
           </div>
         )}
       </div>
@@ -100,7 +100,7 @@ export function PipelineInfoBar({ activePipeline, onToggleAutoCreate, onActivate
         {onManageFields && (
           <button
             onClick={onManageFields}
-            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-[#007e3a] bg-slate-50 dark:bg-slate-800 hover:bg-[#007e3a]/10 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#007e3a] bg-slate-50 dark:bg-slate-800 hover:bg-[#007e3a]/10 border border-slate-200 dark:border-slate-700 rounded-lg transition-colors"
             title="Configure custom fields for this pipeline"
           >
             <Tag className="h-3.5 w-3.5 text-[#007e3a]" />
@@ -122,7 +122,7 @@ export function PipelineInfoBar({ activePipeline, onToggleAutoCreate, onActivate
         {!activePipeline.is_active && (
           <button
             onClick={() => onActivate(activePipeline.id)}
-            className="px-3 py-1.5 bg-[#007e3a] text-white text-xs font-bold rounded-lg hover:bg-[#00662f] transition-colors flex items-center gap-1"
+            className="px-2.5 py-1 bg-[#007e3a] text-white text-xs font-medium rounded-lg hover:bg-[#00662f] transition-colors flex items-center gap-1 shadow-xs"
           >
             <Check className="h-3.5 w-3.5" /> Set as Active
           </button>

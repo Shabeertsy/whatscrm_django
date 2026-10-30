@@ -113,7 +113,7 @@ export function KanbanBoard({ stages, deals, onMoveDeal, onEditDeal, onUpdateSta
       onDragEnd={stopAutoScroll}
       onDrop={stopAutoScroll}
       onMouseDown={handleMouseDown}
-      className={`flex h-full space-x-4 overflow-x-auto pb-2 select-none ${
+      className={`flex flex-1 min-h-0 h-full space-x-2.5 overflow-x-auto pb-1 select-none custom-scrollbar ${
         isPanning ? 'cursor-grabbing' : 'cursor-grab'
       }`}
     >

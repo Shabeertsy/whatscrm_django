@@ -55,7 +55,7 @@ export function Pipeline() {
   }, [activePipeline]);
 
   return (
-    <div className="flex flex-col h-full gap-4">
+    <div className="flex flex-col flex-1 min-h-0 h-full gap-2">
       <PageHeader
         title="CRM Deal Pipeline"
         description="Track lead conversions, deals value, and sales pipelines."
@@ -72,16 +72,16 @@ export function Pipeline() {
         />
         <button
           onClick={() => setShowAddStageModal(true)}
-          className="px-4 py-2 border border-[#007e3a] text-[#007e3a] hover:bg-[#007e3a]/5 text-xs font-bold rounded-lg transition duration-200 flex items-center space-x-2"
+          className="px-3 py-1.5 border border-[#007e3a]/60 text-[#007e3a] hover:bg-[#007e3a]/5 text-xs font-medium rounded-lg transition duration-200 flex items-center space-x-1.5 shadow-xs"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
           <span>Add Stage</span>
         </button>
         <button
           onClick={() => setShowAddDealModal(true)}
-          className="px-4 py-2 bg-[#007e3a] hover:bg-[#00662f] text-white text-xs font-bold rounded-lg shadow-md transition duration-200 flex items-center space-x-2"
+          className="px-3 py-1.5 bg-[#007e3a] hover:bg-[#00662f] text-white text-xs font-medium rounded-lg shadow-xs hover:shadow-sm transition duration-200 flex items-center space-x-1.5"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-3.5 w-3.5" />
           <span>Add Deal</span>
         </button>
       </PageHeader>
@@ -105,7 +105,7 @@ export function Pipeline() {
         </div>
       ) : (
         /* Kanban board fills remaining height — horizontal scroll handled inside KanbanBoard */
-        <div className="flex-1 min-h-0">
+        <div className="flex-1 min-h-0 flex flex-col">
           <KanbanBoard
             stages={activePipeline?.stages || []}
             deals={deals}

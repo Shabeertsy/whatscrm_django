@@ -110,7 +110,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`${isCollapsed ? "w-20" : "w-64"
+      className={`${isCollapsed ? "w-18" : "w-60"
         } bg-white dark:bg-[#08080b] border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between z-10 h-screen transition-all duration-300 relative select-none`}
     >
       {/* Collapse Toggle Button */}
@@ -168,15 +168,15 @@ export function Sidebar() {
                     onClick={() => navigate(item.id)}
                     title={isCollapsed ? item.label : undefined}
                     className={`w-full flex items-center py-2.5 rounded-lg text-sm font-semibold transition-colors duration-200 group ${isActive
-                        ? "bg-[#007e3a] text-white shadow-lg shadow-[#007e3a]/15"
-                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      ? "bg-[#007e3a] text-white shadow-lg shadow-[#007e3a]/15"
+                      : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
                       }`}
                   >
                     <div className="w-14 flex items-center justify-center shrink-0">
                       <Icon
                         className={`h-5 w-5 ${isActive
-                            ? "text-white"
-                            : "text-slate-400 group-hover:text-[#007e3a] transition-colors"
+                          ? "text-white"
+                          : "text-slate-400 group-hover:text-[#007e3a] transition-colors"
                           }`}
                       />
                     </div>

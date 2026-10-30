@@ -109,13 +109,13 @@ export function StageColumn({
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       style={{ backgroundColor: !isDraggingOver && stageObj?.color ? `${stageObj.color}45` : undefined }}
-      className={`flex-1 min-w-[240px] rounded-xl flex flex-col h-full transition-all duration-200 border ${isDraggingOver
+      className={`flex-1 min-w-[185px] rounded-xl flex flex-col h-full min-h-0 transition-all duration-200 border ${isDraggingOver
         ? "bg-[#007e3a]/5 border-[#007e3a] border-dashed shadow-lg shadow-[#007e3a]/10"
         : "border-slate-200 dark:border-slate-800 shadow-sm"
         }`}
     >
       {/* ── Column Header ── */}
-      <div className="px-4 pt-4 pb-3 border-b border-slate-200/60 dark:border-slate-800">
+      <div className="px-3 pt-3 pb-2 border-b border-slate-200/60 dark:border-slate-800">
 
         {/* Title row / Edit Mode */}
         {isEditing ? (
@@ -194,11 +194,11 @@ export function StageColumn({
             </div>
           </div>
         ) : (
-          <div className="flex items-center justify-between gap-2 mb-2.5">
+          <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2 flex-1 min-w-0 group">
               {stageObj?.color && (
                 <div
-                  className="w-4 h-4 rounded-full flex-shrink-0 cursor-pointer ring-2 ring-white dark:ring-slate-800 shadow-sm hover:scale-110 transition-transform"
+                  className="w-3.5 h-3.5 rounded-full flex-shrink-0 cursor-pointer ring-2 ring-white dark:ring-slate-800 shadow-xs hover:scale-110 transition-transform"
                   style={{ backgroundColor: stageObj.color }}
                   onClick={() => setIsEditing(true)}
                   title="Click to edit color or rename"
@@ -206,19 +206,19 @@ export function StageColumn({
               )}
               <h4
                 onClick={() => setIsEditing(true)}
-                className="font-bold text-xs text-slate-600 dark:text-slate-400 uppercase tracking-widest truncate cursor-pointer group-hover:text-[#007e3a] dark:group-hover:text-[#00b355] transition-colors"
+                className="font-semibold text-xs text-slate-600 dark:text-slate-400 uppercase tracking-wider truncate cursor-pointer group-hover:text-[#007e3a] dark:group-hover:text-[#00b355] transition-colors"
                 title="Click to edit color or rename"
               >
                 {title}
               </h4>
               {stageObj?.is_confirmed && (
-                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded text-[9px] font-bold uppercase tracking-wider flex-shrink-0">
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-emerald-100/80 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-400 rounded text-[9px] font-medium uppercase tracking-wider flex-shrink-0">
                   ✓ Confirmed
                 </span>
               )}
             </div>
 
-            <span className="flex-shrink-0 min-w-[1.75rem] text-center px-2 py-0.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full font-bold text-xs shadow-sm border border-slate-200 dark:border-slate-700">
+            <span className="flex-shrink-0 min-w-[1.5rem] text-center px-1.5 py-0.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full font-medium text-[11px] shadow-xs border border-slate-200/80 dark:border-slate-700/80">
               {columnDeals.length}
             </span>
           </div>
@@ -232,8 +232,8 @@ export function StageColumn({
               <button
                 onClick={onMoveLeft}
                 disabled={!onMoveLeft}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${onMoveLeft
-                  ? "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 hover:shadow-sm"
+                className={`flex items-center gap-1 p-1 rounded-md text-[11px] font-medium transition-all ${onMoveLeft
+                  ? "text-slate-400 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 hover:shadow-xs"
                   : "text-slate-300 dark:text-slate-700 cursor-not-allowed"
                   }`}
                 title="Move stage left"
@@ -243,8 +243,8 @@ export function StageColumn({
               <button
                 onClick={onMoveRight}
                 disabled={!onMoveRight}
-                className={`flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-all ${onMoveRight
-                  ? "text-slate-500 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-slate-100 hover:shadow-sm"
+                className={`flex items-center gap-1 p-1 rounded-md text-[11px] font-medium transition-all ${onMoveRight
+                  ? "text-slate-400 dark:text-slate-400 hover:bg-white dark:hover:bg-slate-800 hover:text-slate-700 dark:hover:text-slate-200 hover:shadow-xs"
                   : "text-slate-300 dark:text-slate-700 cursor-not-allowed"
                   }`}
                 title="Move stage right"
@@ -287,7 +287,7 @@ export function StageColumn({
       </div>
 
       {/* ── Deal Cards ── */}
-      <div className="flex-1 overflow-y-auto space-y-3 p-3">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2 p-2 custom-scrollbar">
         {columnDeals.map((deal) => (
           <div
             key={deal.id}
@@ -300,47 +300,47 @@ export function StageColumn({
               e.dataTransfer.setData("text/plain", deal.id);
               e.dataTransfer.effectAllowed = "move";
             }}
-            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-[0_2px_8px_rgb(0,0,0,0.04)] hover:shadow-md hover:border-[#007e3a] dark:hover:border-[#007e3a] active:scale-[0.98] active:shadow-sm cursor-pointer transition-all duration-200 flex flex-col min-h-[100px]"
+            className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-xs hover:shadow-md hover:border-[#007e3a] dark:hover:border-[#007e3a] active:scale-[0.98] active:shadow-sm cursor-pointer transition-all duration-200 flex flex-col min-h-[90px]"
           >
-            <div className="flex-1 min-h-0 overflow-hidden mb-2">
-              <h5 className="font-bold text-sm text-slate-900 dark:text-slate-100 truncate">{deal.name}</h5>
+            <div className="flex-1 min-h-0 overflow-hidden mb-1.5">
+              <h5 className="font-semibold text-xs text-slate-900 dark:text-slate-100 truncate">{deal.name}</h5>
               <div className="flex items-center justify-between gap-1 mt-0.5">
-                <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">
                   {deal.contact_name || deal.contact_phone || "No Contact Linked"}
                 </p>
                 {(deal.chat_started_at || deal.created_at) && (
-                  <span className="text-[10px] text-slate-400 font-mono shrink-0" title="Chat date">
+                  <span className="text-[9px] text-slate-400 font-mono shrink-0" title="Chat date">
                     {new Date(deal.chat_started_at || deal.created_at!).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
                   </span>
                 )}
               </div>
               {deal.assigned_user && (
-                <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-slate-600 dark:text-slate-400 font-medium">
-                  <div className="w-3.5 h-3.5 rounded-full bg-[#007e3a]/15 text-[#007e3a] dark:bg-[#007e3a]/30 dark:text-[#00b355] flex items-center justify-center text-[9px] font-bold shrink-0">
+                <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-600 dark:text-slate-400">
+                  <div className="w-3.5 h-3.5 rounded-full bg-[#007e3a]/15 text-[#007e3a] dark:bg-[#007e3a]/30 dark:text-[#00b355] flex items-center justify-center text-[8px] font-semibold shrink-0">
                     {(deal.assigned_user.name || deal.assigned_user.email || 'U')[0].toUpperCase()}
                   </div>
                   <span className="truncate">{deal.assigned_user.name || deal.assigned_user.email}</span>
                 </div>
               )}
               {deal.note && (
-                <p className="text-[11px] text-slate-500 dark:text-slate-400/80 line-clamp-2 mt-2 italic bg-slate-50 dark:bg-slate-900/50 px-2 py-1.5 rounded-md leading-relaxed">
+                <p className="text-[11px] text-slate-500 dark:text-slate-400/80 line-clamp-2 mt-1 italic bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-md leading-relaxed">
                   {deal.note}
                 </p>
               )}
               {deal.extra_data && Object.keys(deal.extra_data).length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
+                <div className="flex flex-wrap gap-1 mt-1">
                   {Object.entries(deal.extra_data).map(([k, v]) => (
-                    <span key={k} className="text-[10px] bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono truncate max-w-full">
+                    <span key={k} className="text-[9px] bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono truncate max-w-full">
                       {k}: {String(v)}
                     </span>
                   ))}
                 </div>
               )}
             </div>
-            <div className="flex justify-between items-center pt-2.5 border-t border-slate-100 dark:border-slate-700 mt-auto">
-              <span className="font-extrabold text-[#007e3a] text-sm tracking-wide">₹ {Number(deal.value).toLocaleString()}</span>
+            <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-700/80 mt-auto">
+              <span className="font-bold text-[#007e3a] text-xs tracking-wide">₹ {Number(deal.value).toLocaleString()}</span>
               {deal.is_confirmed_booking && (
-                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded uppercase tracking-wider">✓ Confirmed</span>
+                <span className="text-[8px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 rounded uppercase tracking-wider">✓ Confirmed</span>
               )}
             </div>
           </div>
