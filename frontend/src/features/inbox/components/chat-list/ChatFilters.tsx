@@ -49,7 +49,7 @@ export function ChatFilters({
           <button
             key={id}
             onClick={() => setAssignmentFilter(id)}
-            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-semibold transition-all flex-shrink-0
+            className={`flex items-center gap-1 px-2 py-1 rounded-lg text-[9.5px] font-normal transition-all flex-shrink-0
               ${assignmentFilter === id
                 ? 'bg-[#007e3a]/10 dark:bg-[#007e3a]/20 text-[#007e3a] dark:text-emerald-400 border border-[#007e3a]/20 dark:border-emerald-500/30'
                 : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-transparent'
@@ -72,7 +72,7 @@ export function ChatFilters({
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-2.5 py-1 rounded-full text-[11px] font-semibold transition-all flex-shrink-0 ${statusFilter === tab.id
+              className={`px-2.5 py-1 rounded-full text-[10px] font-normal transition-all flex-shrink-0 ${statusFilter === tab.id
                 ? "bg-[#007e3a] text-white shadow-xs"
                 : "bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60"
                 }`}
@@ -88,7 +88,7 @@ export function ChatFilters({
             onChange={(e) => {
               setStageFilter(e.target.value);
             }}
-            className="text-[11px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md px-1.5 py-1 border-none focus:ring-0 cursor-pointer outline-none ml-2 shrink-0 shadow-sm max-w-[120px] truncate"
+            className="text-[10px] font-normal bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md px-1.5 py-1 border-none focus:ring-0 cursor-pointer outline-none ml-2 shrink-0 shadow-sm max-w-[120px] truncate"
           >
             <option value="all">Stage: All</option>
             {availableStages.map(stage => (

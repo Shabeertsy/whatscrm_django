@@ -89,7 +89,7 @@ export function AudioMessage({ mediaUrl }: AudioMessageProps) {
           onChange={handleSeek}
           className="w-full h-1 bg-black/10 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#007e3a] dark:accent-[#00b359]"
         />
-        <div className="flex justify-between mt-1 text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 dark:text-slate-400 font-medium px-0.5">
+        <div className="flex justify-between mt-1 text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 dark:text-slate-400 font-normal px-0.5">
           <span>{formatTime(audioRef.current?.currentTime || 0)}</span>
           <span>{formatTime(duration)}</span>
         </div>
@@ -98,7 +98,7 @@ export function AudioMessage({ mediaUrl }: AudioMessageProps) {
       <div className="flex items-center gap-1 pr-1">
         <button 
           onClick={toggleSpeed}
-          className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[7.5px] sm:text-[8px] md:text-[8.5px] font-bold text-slate-500 dark:text-slate-400 hover:text-[#007e3a] bg-black/5 rounded-full transition-colors"
+          className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[7.5px] sm:text-[8px] md:text-[8.5px] font-normal text-slate-500 dark:text-slate-400 hover:text-[#007e3a] bg-black/5 rounded-full transition-colors"
         >
           {speed}x
         </button>

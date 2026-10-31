@@ -157,7 +157,7 @@ export function MessageComposer(props: MessageComposerProps) {
   return (
     <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition duration-200 relative">
       {disabled && (
-        <div className="px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[8.5px] sm:text-[9px] md:text-[9.5px] text-center border-b border-amber-100 dark:border-amber-500/20 font-medium">
+        <div className="px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[8px] sm:text-[8.5px] md:text-[9px] text-center border-b border-amber-100 dark:border-amber-500/20 font-normal">
           WhatsApp 24-hour window has expired. You can only send template messages to this customer.
         </div>
       )}
@@ -165,10 +165,10 @@ export function MessageComposer(props: MessageComposerProps) {
       {replyingTo && (
         <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
           <div className="flex-1 flex flex-col min-w-0 pr-3 sm:pr-4">
-            <span className="text-[9.5px] sm:text-[10px] md:text-[11px] font-semibold text-[#007e3a] dark:text-[#00b359] mb-0.5">
+            <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-normal text-[#007e3a] dark:text-[#00b359] mb-0.5">
               Replying to {replyingTo.sent_by_name || (replyingTo.direction === 'inbound' ? 'Customer' : 'Agent')}
             </span>
-            <span className="text-[10px] sm:text-[11px] md:text-xs text-slate-500 truncate">
+            <span className="text-[9.5px] sm:text-[10px] md:text-[11px] text-slate-500 font-normal truncate">
               {replyingTo.msg_type === 'text' ? replyingTo.body : `[${replyingTo.msg_type}] ${replyingTo.body || ''}`}
             </span>
           </div>
@@ -191,7 +191,7 @@ export function MessageComposer(props: MessageComposerProps) {
       {showTemplateModal && (
         <div className="absolute bottom-full left-0 mb-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 flex flex-col max-h-[400px]">
           <div className="flex justify-between items-center p-3 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <h3 className="font-normal text-xs sm:text-[13px] text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <LayoutTemplate className="h-4 w-4 text-[#007e3a]" /> Select Template
             </h3>
             <button onClick={() => setShowTemplateModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -213,7 +213,7 @@ export function MessageComposer(props: MessageComposerProps) {
                         setShowTemplateModal(false);
                      }}>
                   <div className="flex justify-between items-start mb-1">
-                    <span className="font-bold text-xs text-slate-800 dark:text-slate-200">{tmpl.name}</span>
+                    <span className="font-normal text-xs text-slate-800 dark:text-slate-200">{tmpl.name}</span>
                     <span className="text-[10px] uppercase text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">{tmpl.language}</span>
                   </div>
                   <p className="text-[11px] text-slate-500 line-clamp-2">
@@ -230,7 +230,7 @@ export function MessageComposer(props: MessageComposerProps) {
       {showCustomModal && (
         <div className="absolute bottom-full left-0 mb-2 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl rounded-xl z-50 flex flex-col max-h-[400px]">
           <div className="flex justify-between items-center p-3 border-b border-slate-100 dark:border-slate-800">
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <h3 className="font-normal text-xs sm:text-[13px] text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <MessageSquareText className="h-4 w-4 text-blue-600" /> Custom Messages
             </h3>
             <button onClick={() => setShowCustomModal(false)} className="text-slate-400 hover:text-slate-600">
@@ -249,7 +249,7 @@ export function MessageComposer(props: MessageComposerProps) {
                         setValue(prev => (prev ? prev + "\n\n" + msg.text : msg.text));
                         setShowCustomModal(false);
                      }}>
-                  <div className="font-bold text-xs text-slate-800 dark:text-slate-200 mb-1">{msg.title}</div>
+                  <div className="font-normal text-xs text-slate-800 dark:text-slate-200 mb-1">{msg.title}</div>
                   <p className="text-[11px] text-slate-500 whitespace-pre-wrap">{msg.text}</p>
                 </div>
               ))
@@ -287,7 +287,7 @@ export function MessageComposer(props: MessageComposerProps) {
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center text-white shadow-sm">
                 <ImageIcon className="h-5 w-5" />
               </div>
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Photos & Videos</span>
+              <span className="text-xs sm:text-[13px] font-normal text-slate-700 dark:text-slate-200">Photos & Videos</span>
             </button>
             
             <button 
@@ -302,7 +302,7 @@ export function MessageComposer(props: MessageComposerProps) {
               <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white shadow-sm">
                 <FileText className="h-5 w-5" />
               </div>
-              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200">Document</span>
+              <span className="text-xs sm:text-[13px] font-normal text-slate-700 dark:text-slate-200">Document</span>
             </button>
           </div>
         )}
@@ -348,10 +348,10 @@ export function MessageComposer(props: MessageComposerProps) {
           <div className="flex-grow flex items-center bg-slate-50 dark:bg-slate-800 border border-red-200 dark:border-red-900/30 rounded-full px-3 sm:px-4 py-1.5 sm:py-2.5 h-[38px] sm:h-[44px]">
             <div className="flex items-center gap-2 flex-1">
               <div className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-red-500 animate-pulse"></div>
-              <span className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 w-10">{formatDuration(recordingDuration)}</span>
+              <span className="text-xs sm:text-[13px] font-normal text-slate-700 dark:text-slate-200 w-10">{formatDuration(recordingDuration)}</span>
               {recordingStream && <AudioVisualizer stream={recordingStream} />}
             </div>
-            <button type="button" onClick={cancelRecording} className="text-[11px] sm:text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium px-2 py-1">Cancel</button>
+            <button type="button" onClick={cancelRecording} className="text-[10px] sm:text-[11px] text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-normal px-2 py-1">Cancel</button>
           </div>
         ) : (
           <div className="flex-grow relative flex items-center">
@@ -366,7 +366,7 @@ export function MessageComposer(props: MessageComposerProps) {
               }}
               disabled={disabled || isSending}
               placeholder={disabled ? "Messaging disabled..." : "Type an automated response or reply as agent..."}
-              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-3 sm:px-3.5 py-1.5 sm:py-2 text-[10px] sm:text-[10.5px] md:text-[11px] lg:text-[11.5px] placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-[11px] lg:placeholder:text-[11.5px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[34px] sm:min-h-[38px] max-h-[140px] custom-scrollbar ${disabled || isSending ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
+              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-3 sm:px-3.5 py-1.5 sm:py-2 text-[9.5px] sm:text-[10px] md:text-[10.5px] lg:text-[11px] font-normal placeholder:text-[9.5px] sm:placeholder:text-[10px] md:placeholder:text-[10.5px] lg:placeholder:text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[34px] sm:min-h-[38px] max-h-[140px] custom-scrollbar ${disabled || isSending ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
               rows={value.split('\n').length > 1 ? Math.min(value.split('\n').length, 5) : 1}
             />
           </div>

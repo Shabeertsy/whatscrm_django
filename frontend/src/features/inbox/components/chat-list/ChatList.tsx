@@ -203,10 +203,10 @@ export const ChatList = memo(function ChatList({
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-slate-800 dark:text-slate-200 text-sm flex items-center gap-2">
+          <h3 className="font-normal text-slate-800 dark:text-slate-200 text-xs xl:text-[13px] flex items-center gap-2">
             Conversations
             {filteredChats.length > 0 && (
-              <span className="flex items-center justify-center text-[9px] font-bold bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 px-1.5 rounded-full h-[18px] min-w-[18px] border border-slate-200/60 dark:border-slate-700/60">
+              <span className="flex items-center justify-center text-[9px] font-normal bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 px-1.5 rounded-full h-[18px] min-w-[18px] border border-slate-200/60 dark:border-slate-700/60">
                 {filteredChats.length}
               </span>
             )}
@@ -253,7 +253,7 @@ export const ChatList = memo(function ChatList({
             <div className="flex items-center justify-between text-xs text-slate-700 dark:text-slate-200">
               <button
                 onClick={toggleSelectAll}
-                className="flex items-center space-x-2 font-semibold hover:text-[#007e3a] transition-colors"
+                className="flex items-center space-x-2 font-normal hover:text-[#007e3a] transition-colors"
               >
                 <div
                   className={`w-4 h-4 rounded-md border flex items-center justify-center transition-all duration-200 ${filteredChats.length > 0 && selectedIds.length === filteredChats.length
@@ -264,9 +264,9 @@ export const ChatList = memo(function ChatList({
                   <Check className={`h-3 w-3 stroke-[3] transition-all duration-200 ${filteredChats.length > 0 && selectedIds.length === filteredChats.length ? "scale-100 opacity-100" : "scale-50 opacity-0"
                     }`} />
                 </div>
-                <span className="text-xs text-slate-700 dark:text-slate-300 font-medium group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">Select All</span>
+                <span className="text-xs text-slate-700 dark:text-slate-300 font-normal group-hover:text-slate-900 dark:group-hover:text-slate-100 transition-colors">Select All</span>
               </button>
-              <span className="font-bold text-[11px] text-[#007e3a]">
+              <span className="font-normal text-[10.5px] text-[#007e3a]">
                 {selectedIds.length} of {filteredChats.length} selected
               </span>
             </div>
@@ -280,7 +280,7 @@ export const ChatList = memo(function ChatList({
                   }}
                   disabled={isBulkUpdating}
                   title="Send Custom Message"
-                  className="flex-[1.2] flex items-center justify-center gap-1 px-1.5 py-1.5 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
+                  className="flex-[1.2] flex items-center justify-center gap-1 px-1.5 py-1.5 bg-purple-50 dark:bg-purple-950/30 hover:bg-purple-100 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-300 border border-purple-200 dark:border-purple-800/50 text-[9.5px] font-normal rounded-lg shadow-xs transition-colors whitespace-nowrap"
                 >
                   <MessageSquare className="h-3 w-3 shrink-0" />
                   <span>Message</span>
@@ -289,7 +289,7 @@ export const ChatList = memo(function ChatList({
                   onClick={() => handleBulkChangeStatus("resolved")}
                   disabled={isBulkUpdating}
                   title="Mark as Resolved"
-                  className="flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
+                  className="flex-1 flex items-center justify-center gap-1 px-1.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 text-[9.5px] font-normal rounded-lg shadow-xs transition-colors whitespace-nowrap"
                 >
                   <CheckCircle2 className="h-3 w-3 shrink-0" />
                   <span>Resolve</span>
@@ -298,7 +298,7 @@ export const ChatList = memo(function ChatList({
                   onClick={() => handleBulkChangeStatus("open")}
                   disabled={isBulkUpdating}
                   title="Mark as Open"
-                  className="flex-[0.8] flex items-center justify-center gap-1 px-1.5 py-1.5 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
+                  className="flex-[0.8] flex items-center justify-center gap-1 px-1.5 py-1.5 bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800/50 text-[9.5px] font-normal rounded-lg shadow-xs transition-colors whitespace-nowrap"
                 >
                   <Inbox className="h-3 w-3 shrink-0" />
                   <span>Open</span>
@@ -307,7 +307,7 @@ export const ChatList = memo(function ChatList({
                   onClick={() => setShowDeleteConfirmModal(true)}
                   disabled={isBulkUpdating}
                   title="Delete Selected"
-                  className="w-8 shrink-0 flex items-center justify-center gap-1 px-0 py-1.5 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 text-[10px] font-bold rounded-lg shadow-xs transition-colors whitespace-nowrap"
+                  className="w-8 shrink-0 flex items-center justify-center gap-1 px-0 py-1.5 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800/50 text-[9.5px] font-normal rounded-lg shadow-xs transition-colors whitespace-nowrap"
                 >
                   <Trash className="h-3.5 w-3.5 shrink-0" />
                 </button>
@@ -379,15 +379,15 @@ export const ChatList = memo(function ChatList({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h4
-                      className={`text-xs truncate ${String(selectedChatId) === String(c.id) || hasUnread
-                        ? "font-bold text-slate-900 dark:text-slate-100"
-                        : "font-semibold text-slate-700 dark:text-slate-300"
+                      className={`text-[11px] xl:text-[11.5px] truncate ${String(selectedChatId) === String(c.id) || hasUnread
+                        ? "font-semibold text-slate-900 dark:text-slate-100"
+                        : "font-medium text-slate-700 dark:text-slate-300"
                         }`}
                     >
                       {c.contact.name || c.contact.phone}
                     </h4>
                     <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                      <span className="text-[9px] text-slate-400 font-medium whitespace-nowrap">
+                      <span className="text-[8.5px] xl:text-[9px] text-slate-400 font-normal whitespace-nowrap">
                         {timeStr}
                       </span>
                       {c.contact.stage_color && (
@@ -403,18 +403,18 @@ export const ChatList = memo(function ChatList({
 
                   <div className="flex items-center justify-between mt-1">
                     <p
-                      className={`text-[11px] truncate ${hasUnread
-                        ? "text-slate-800 dark:text-slate-200 font-semibold"
-                        : "text-slate-500 dark:text-slate-400"
+                      className={`text-[10px] xl:text-[10.5px] truncate ${hasUnread
+                        ? "text-slate-800 dark:text-slate-200 font-medium"
+                        : "text-slate-500 dark:text-slate-400 font-normal"
                         }`}
                     >
                       {c.last_message ? (
                         (() => {
                           const preview = formatMessagePreview(c.last_message);
                           return (
-                            <span className="flex items-center gap-1.5 truncate">
+                            <span className="flex items-center gap-1.5 truncate font-normal">
                               {c.last_message.direction === "outbound" && (
-                                <span className="text-slate-400 font-medium shrink-0">
+                                <span className="text-slate-400 font-normal shrink-0">
                                   You:{" "}
                                 </span>
                               )}
@@ -437,13 +437,13 @@ export const ChatList = memo(function ChatList({
                           );
                         })()
                       ) : (
-                        <span className="italic text-slate-400">
+                        <span className="italic text-slate-400 font-normal">
                           No messages yet
                         </span>
                       )}
                     </p>
                     {hasUnread && (
-                      <span className="flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-[#007e3a] text-white text-[9px] font-bold ml-1 flex-shrink-0">
+                      <span className="flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-[#007e3a] text-white text-[8.5px] font-medium ml-1 flex-shrink-0">
                         {c.unread_count}
                       </span>
                     )}
@@ -466,7 +466,7 @@ export const ChatList = memo(function ChatList({
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-xs">
           <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl w-full max-w-md p-5 space-y-4 animate-in fade-in zoom-in duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-              <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-2">
+              <h4 className="font-normal text-slate-800 dark:text-slate-100 text-xs xl:text-sm flex items-center gap-2">
                 <MessageSquare className="h-4 w-4 text-[#007e3a]" />
                 Send Custom Message ({selectedIds.length} Contacts)
               </h4>
@@ -488,14 +488,14 @@ export const ChatList = memo(function ChatList({
               </div>
             ) : customMessages.length === 0 ? (
               <div className="py-8 text-center space-y-2">
-                <p className="text-xs text-slate-500 font-medium">No saved custom messages found.</p>
+                <p className="text-xs text-slate-500 font-normal">No saved custom messages found.</p>
                 <p className="text-[11px] text-slate-400">
                   Create custom messages under Saved Custom Messages first.
                 </p>
               </div>
             ) : (
               <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                <p className="text-xs text-slate-500 font-medium mb-2">Select a saved custom message to send:</p>
+                <p className="text-xs text-slate-500 font-normal mb-2">Select a saved custom message to send:</p>
                 {customMessages.map((msg) => (
                   <div
                     key={msg.id}
@@ -505,7 +505,7 @@ export const ChatList = memo(function ChatList({
                       : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/50"
                       }`}
                   >
-                    <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200">{msg.title}</h5>
+                    <h5 className="font-normal text-xs text-slate-800 dark:text-slate-200">{msg.title}</h5>
                     <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 mt-1 whitespace-pre-wrap">
                       {msg.text}
                     </p>
@@ -516,8 +516,8 @@ export const ChatList = memo(function ChatList({
 
             {selectedCustomMsg && (
               <div className="p-3 bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg space-y-1">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Message Preview:</span>
-                <p className="text-xs text-slate-700 dark:text-slate-300 font-medium whitespace-pre-wrap">
+                <span className="text-[9.5px] uppercase font-normal text-slate-400 tracking-wider">Message Preview:</span>
+                <p className="text-xs text-slate-700 dark:text-slate-300 font-normal whitespace-pre-wrap">
                   {selectedCustomMsg.text}
                 </p>
               </div>
@@ -529,14 +529,14 @@ export const ChatList = memo(function ChatList({
                   setShowCustomMsgModal(false);
                   setSelectedCustomMsg(null);
                 }}
-                className="px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                className="px-3 py-1.5 text-xs font-normal text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSendCustomMsgToSelected}
                 disabled={!selectedCustomMsg || isSendingCustomMsg}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#007e3a] hover:bg-[#00662f] disabled:opacity-50 text-white font-bold text-xs rounded-lg shadow-sm transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-[#007e3a] hover:bg-[#00662f] disabled:opacity-50 text-white font-normal text-xs rounded-lg shadow-sm transition-colors cursor-pointer"
               >
                 {isSendingCustomMsg ? (
                   <>

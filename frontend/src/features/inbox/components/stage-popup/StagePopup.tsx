@@ -130,7 +130,7 @@ export function StagePopup({ conversation }: StagePopupProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Edit Pipeline Stage"
-        className="flex items-center gap-1 px-2 py-0.5 rounded-full font-bold transition-all shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900"
+        className="flex items-center gap-1 px-2 py-0.5 rounded-full font-normal transition-all shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900"
       >
         {contact.stage_name ? (
           <>
@@ -146,7 +146,7 @@ export function StagePopup({ conversation }: StagePopupProps) {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="px-3 py-2.5 border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/80">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Update Pipeline Deal</span>
+            <span className="text-[10px] font-normal text-slate-500 uppercase tracking-wider">Update Pipeline Deal</span>
           </div>
 
           <DealNoteSection

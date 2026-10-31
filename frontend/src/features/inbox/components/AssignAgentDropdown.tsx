@@ -104,7 +104,7 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
         onClick={handleToggleOpen}
         disabled={isAssigning}
         title={isAssigned ? `Assigned to ${agentName} — click to change` : 'Assign to an agent'}
-        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] font-bold transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 border
+        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] font-normal transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 border
           ${isAssigned
             ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
             : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'
@@ -113,7 +113,7 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
         {isAssigning ? (
           <Loader2 className="h-3 w-3 animate-spin" />
         ) : isAssigned ? (
-          <div className="h-4 w-4 rounded-full bg-blue-500 dark:bg-blue-400 flex items-center justify-center text-white text-[8px] font-black flex-shrink-0">
+          <div className="h-4 w-4 rounded-full bg-blue-500 dark:bg-blue-400 flex items-center justify-center text-white text-[8px] font-normal flex-shrink-0">
             {getInitials(agentName || '?')}
           </div>
         ) : (
@@ -130,7 +130,7 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
         <div className="absolute right-0 top-full mt-1.5 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-150">
           {/* Header */}
           <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assign to Agent</span>
+            <span className="text-[10px] font-normal text-slate-500 dark:text-slate-400 uppercase tracking-wider">Assign to Agent</span>
             <button
               onClick={() => setIsOpen(false)}
               className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"

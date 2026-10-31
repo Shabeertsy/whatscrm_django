@@ -53,9 +53,9 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
 
       <div
         id={`message-${message.id}`}
-        className={`max-w-[88%] sm:max-w-[82%] md:max-w-[75%] lg:max-w-[70%] rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[9.5px] sm:text-[10px] md:text-[10.5px] lg:text-[11px] xl:text-[11.5px] shadow-sm relative transition-all duration-500 ${isOutbound
-          ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-none"
-          : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-100 dark:border-transparent"
+        className={`max-w-[88%] sm:max-w-[82%] md:max-w-[75%] lg:max-w-[70%] rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[8.5px] sm:text-[9px] md:text-[9.5px] lg:text-[10px] xl:text-[10.5px] font-light [&_strong]:font-light [&_b]:font-light shadow-sm relative transition-all duration-500 ${isOutbound
+          ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-slate-800 dark:text-slate-200 rounded-tr-none"
+          : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-transparent"
           }`}
       >
         {(message as any).replied_to_message && (
@@ -73,7 +73,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           <div className="flex flex-col gap-1">
             <VideoMessage mediaUrl={message.media_url} />
             {message.status === 'pending' && import.meta.env.VITE_CELERY_ENABLED === 'true' && (
-              <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 rounded-md mt-1 animate-pulse">
+              <div className="flex items-center gap-1.5 text-[8.5px] sm:text-[9px] text-amber-600 dark:text-amber-400 font-normal bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 rounded-md mt-1 animate-pulse">
                 <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500"></div>
                 <span>Processing video...</span>
               </div>
@@ -85,7 +85,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
 
         {message.msg_type === 'unsupported' && (
           <div className="flex items-center gap-2 p-2 sm:p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-md border border-red-100 dark:border-red-900/30 max-w-[280px]">
-            <span className="text-[10px] sm:text-xs font-medium">This message type (like some 3rd-party stickers) is not supported by the WhatsApp Business API.</span>
+            <span className="text-[9px] sm:text-[10px] font-normal">This message type (like some 3rd-party stickers) is not supported by the WhatsApp Business API.</span>
           </div>
         )}
 
@@ -109,7 +109,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           {(message as any).related_room_uuid && (
             <button
               onClick={() => navigate(`/hotels/${(message as any).related_room_uuid}`, { state: { fromChat: true } })}
-              className={`flex items-center gap-1 font-medium hover:underline mt-1 text-[8px] sm:text-[8.5px] md:text-[9px] ${isOutbound ? "text-[#005c4b] dark:text-[#dcf8c6]" : "text-[#007e3a] dark:text-[#00b359]"}`}
+              className={`flex items-center gap-1 font-normal hover:underline mt-1 text-[8px] sm:text-[8.5px] md:text-[9px] ${isOutbound ? "text-[#005c4b] dark:text-[#dcf8c6]" : "text-[#007e3a] dark:text-[#00b359]"}`}
               title="View Room Details"
             >
               <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> View Room

@@ -21,10 +21,10 @@ export function DocumentMessage({ msgType, mediaUrl }: DocumentMessageProps) {
       </div>
       
       <div className="flex-1 min-w-0">
-        <p className="text-[9.5px] sm:text-[10px] md:text-[10.5px] font-medium truncate text-slate-800 dark:text-slate-200">
+        <p className="text-[9px] sm:text-[9.5px] md:text-[10px] font-normal truncate text-slate-800 dark:text-slate-200">
           {filename}
         </p>
-        <p className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 uppercase mt-0.5 font-semibold">
+        <p className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 uppercase mt-0.5 font-normal">
           {msgType}
         </p>
       </div>

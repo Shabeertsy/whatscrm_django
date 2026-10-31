@@ -57,7 +57,7 @@ export const ContactAvatar = memo(function ContactAvatar({
     const avatarBg = getAvatarColor(displayName);
     return (
       <div
-        className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-xs shadow-sm flex-shrink-0 ${avatarBg} relative`}
+        className={`h-10 w-10 rounded-full flex items-center justify-center font-normal text-[11px] shadow-sm flex-shrink-0 ${avatarBg} relative`}
       >
         <span>{initial}</span>
       </div>

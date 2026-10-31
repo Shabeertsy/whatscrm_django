@@ -61,12 +61,12 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
   return (
     <div className="flex flex-col w-full min-w-[180px] sm:min-w-[200px] max-w-[280px]">
       {data.header && (
-        <div className="font-semibold text-[9.5px] sm:text-[10px] md:text-[10.5px] text-slate-800 dark:text-slate-100 mb-1">
+        <div className="font-normal text-[9px] sm:text-[9.5px] md:text-[10px] text-slate-800 dark:text-slate-100 mb-1">
           {data.header}
         </div>
       )}
 
-      <div className="text-[9.5px] sm:text-[10px] md:text-[10.5px] lg:text-[11px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-1.5">
+      <div className="text-[9px] sm:text-[9.5px] md:text-[10px] lg:text-[10.5px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-1.5 font-normal">
         {data.body}
       </div>
 
@@ -79,11 +79,11 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
             className="flex items-center justify-between px-2 py-1 rounded-md bg-white/60 dark:bg-white/5 border border-slate-200 dark:border-slate-600 gap-1.5"
           >
             <div className="flex flex-col min-w-0">
-              <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-medium text-slate-800 dark:text-slate-200 truncate">
+              <span className="text-[8.5px] sm:text-[9px] md:text-[9.5px] font-normal text-slate-800 dark:text-slate-200 truncate">
                 {opt.label}
               </span>
               {opt.description && (
-                <span className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-400 dark:text-slate-500 truncate">
+                <span className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-400 dark:text-slate-500 truncate font-normal">
                   {opt.description}
                 </span>
               )}
@@ -96,7 +96,7 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
       {/* WhatsApp-style "View options" button */}
       <div className="border-t border-slate-200 dark:border-slate-600 mt-1 pt-1 flex items-center justify-center gap-1">
         <List className="h-3 w-3 text-[#007e3a] dark:text-[#00b359]" />
-        <span className="text-[9.5px] sm:text-[10px] md:text-[10.5px] font-semibold text-[#007e3a] dark:text-[#00b359]">
+        <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-normal text-[#007e3a] dark:text-[#00b359]">
           {data.button_label || 'View Options'}
         </span>
       </div>
@@ -127,12 +127,12 @@ function InteractiveButtonsOutbound({ data }: { data: InteractiveButtonsPayload 
       )}
 
       {data.header && (
-        <div className="font-semibold text-[9.5px] sm:text-[10px] md:text-[10.5px] text-slate-800 dark:text-slate-100 mb-1">
+        <div className="font-normal text-[9px] sm:text-[9.5px] md:text-[10px] text-slate-800 dark:text-slate-100 mb-1">
           {data.header}
         </div>
       )}
 
-      <div className="text-[9.5px] sm:text-[10px] md:text-[10.5px] lg:text-[11px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-2">
+      <div className="text-[9px] sm:text-[9.5px] md:text-[10px] lg:text-[10.5px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-2 font-normal">
         {data.body}
       </div>
 
@@ -143,7 +143,7 @@ function InteractiveButtonsOutbound({ data }: { data: InteractiveButtonsPayload 
             key={opt.id || i}
             className="flex items-center justify-center px-2 py-1 rounded-lg border border-[#007e3a]/50 dark:border-[#25d366]/30 bg-white/70 dark:bg-white/5 hover:bg-[#007e3a]/5 dark:hover:bg-[#25d366]/10 transition-colors cursor-default"
           >
-            <span className="text-[9.5px] sm:text-[10px] md:text-[10.5px] font-semibold text-[#007e3a] dark:text-[#25d366] text-center">
+            <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-normal text-[#007e3a] dark:text-[#25d366] text-center">
               {opt.label}
             </span>
           </div>
@@ -240,10 +240,10 @@ function InteractiveReplyInbound({ label, interactiveData }: InteractiveReplyInb
             <ClipboardCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-[8px] sm:text-[8.5px] md:text-[9.5px] font-bold uppercase tracking-wider text-[#007e3a] dark:text-[#25d366]">
+            <span className="text-[7.5px] sm:text-[8px] md:text-[9px] font-normal uppercase tracking-wider text-[#007e3a] dark:text-[#25d366]">
               Selection Submitted
             </span>
-            <span className="text-[11px] sm:text-[11.5px] md:text-[12.5px] font-bold text-slate-800 dark:text-slate-100 truncate">
+            <span className="text-[10.5px] sm:text-[11px] md:text-[12px] font-normal text-slate-800 dark:text-slate-100 truncate">
               {title}
             </span>
           </div>
@@ -259,10 +259,10 @@ function InteractiveReplyInbound({ label, interactiveData }: InteractiveReplyInb
               key={item.key || idx}
               className="flex items-baseline justify-between gap-2.5 sm:gap-3 py-0.5 border-b border-[#c3e6cd]/30 dark:border-[#1a4d2e]/30 last:border-b-0"
             >
-              <span className="text-[9.5px] sm:text-[10px] md:text-[11px] font-medium text-slate-600 dark:text-slate-400 shrink-0">
+              <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-normal text-slate-600 dark:text-slate-400 shrink-0">
                 {item.label}:
               </span>
-              <span className="text-[10px] sm:text-[11px] md:text-[12px] font-bold text-slate-900 dark:text-slate-100 text-right break-words bg-white/70 dark:bg-white/10 px-1.5 py-0.5 rounded border border-[#c3e6cd]/40 dark:border-white/5">
+              <span className="text-[9.5px] sm:text-[10.5px] md:text-[11.5px] font-normal text-slate-900 dark:text-slate-100 text-right break-words bg-white/70 dark:bg-white/10 px-1.5 py-0.5 rounded border border-[#c3e6cd]/40 dark:border-white/5">
                 {item.value}
               </span>
             </div>
@@ -286,10 +286,10 @@ function InteractiveReplyInbound({ label, interactiveData }: InteractiveReplyInb
         </svg>
       </div>
       <div className="flex flex-col min-w-0">
-        <span className="text-[8.5px] sm:text-[9px] md:text-[10px] font-bold uppercase tracking-wider text-[#007e3a] dark:text-[#25d366]">
+        <span className="text-[8px] sm:text-[8.5px] md:text-[9.5px] font-normal uppercase tracking-wider text-[#007e3a] dark:text-[#25d366]">
           Option Selected
         </span>
-        <span className="text-[11px] sm:text-[11.5px] md:text-[12.5px] font-bold text-slate-800 dark:text-slate-100 truncate">
+        <span className="text-[10.5px] sm:text-[11px] md:text-[12px] font-normal text-slate-800 dark:text-slate-100 truncate">
           {singleLabel}
         </span>
         {singleDesc && (
