@@ -353,7 +353,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
             <div className="w-10 h-10 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/20 flex items-center justify-center text-[#007e3a]">
               <Megaphone className="h-5 w-5" />
             </div>
-            <h3 className="font-bold text-slate-900 dark:text-white text-lg">
+            <h3 className="font-semibold text-slate-900 dark:text-white text-lg">
               {isEditing ? "Edit Broadcast Campaign" : "Create Broadcast Campaign"}
             </h3>
           </div>
@@ -373,7 +373,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
 
               {/* Column 1: Campaign Details */}
               <div className="bg-slate-50/80 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
                   <Megaphone className="h-4 w-4 text-[#007e3a]" />
                   <span>Campaign Settings</span>
                 </div>
@@ -511,7 +511,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
 
               {/* Column 2: Schedule */}
               <div className="bg-slate-50/80 dark:bg-slate-800/30 p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-4">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <div className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
                   <Calendar className="h-4 w-4 text-[#007e3a]" />
                   <span>Schedule Date Range (Optional)</span>
                 </div>
@@ -573,7 +573,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
             {/* Target Audience */}
             <div className="pt-4 border-t border-slate-100 dark:border-slate-800/80 space-y-4">
               <div className="flex items-center justify-between flex-wrap gap-3">
-                <label className="flex items-center gap-2 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-800 dark:text-slate-200">
                   <Users className="h-4 w-4 text-[#007e3a]" />
                   <span>Target Audience</span>
                 </label>
@@ -581,7 +581,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                   <button
                     type="button"
                     onClick={() => setTargetType("all")}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${targetType === "all"
+                    className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${targetType === "all"
                       ? "bg-white dark:bg-slate-900 text-[#007e3a] shadow-sm"
                       : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"}`}
                   >
@@ -590,7 +590,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                   <button
                     type="button"
                     onClick={() => setTargetType("specific")}
-                    className={`px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${targetType === "specific"
+                    className={`px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${targetType === "specific"
                       ? "bg-white dark:bg-slate-900 text-[#007e3a] shadow-sm"
                       : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"}`}
                   >
@@ -599,14 +599,14 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                   <button
                     type="button"
                     onClick={() => { setTargetType("csv"); resetCSVState(); }}
-                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${targetType === "csv"
+                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded-xl text-xs font-medium transition-all ${targetType === "csv"
                       ? "bg-white dark:bg-slate-900 text-blue-600 dark:text-blue-400 shadow-sm"
                       : "text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"}`}
                   >
                     <FileText className="h-3.5 w-3.5" />
                     Import CSV
                     {targetType === "csv" && importResult && (
-                      <span className="ml-0.5 bg-blue-500 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                      <span className="ml-0.5 bg-blue-500 text-white text-[9px] font-medium px-1.5 py-0.5 rounded-full">
                         {importResult.imported}
                       </span>
                     )}
@@ -857,14 +857,14 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl font-bold text-slate-700 dark:text-slate-300 text-xs transition disabled:opacity-50"
+              className="px-6 py-2.5 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl font-medium text-slate-700 dark:text-slate-300 text-xs transition disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || ((targetType === "specific" || targetType === "csv") && selectedContacts.length === 0)}
-              className="px-7 py-2.5 bg-[#007e3a] hover:bg-[#006b31] text-white rounded-2xl text-xs font-bold transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center min-w-[140px]"
+              className="px-7 py-2.5 bg-[#007e3a] hover:bg-[#006b31] text-white rounded-2xl text-xs font-medium transition-all shadow-md hover:shadow-lg disabled:opacity-50 flex items-center justify-center min-w-[140px]"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin text-white" />

@@ -47,19 +47,19 @@ export function ConfirmedBookingsTable({
   return (
     <div className="bg-white dark:bg-slate-900 border border-slate-200/60 dark:border-slate-800/80 rounded-lg overflow-hidden">
       <div className="overflow-x-auto w-full custom-scrollbar">
-        <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
+        <table className="w-full text-left text-xs xl:text-sm text-slate-600 dark:text-slate-400">
           <thead>
             <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20">
-              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Deal / Contact</th>
-              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pipeline</th>
-              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Value</th>
+              <th className="px-3.5 xl:px-6 py-2 xl:py-2.5 text-[11px] xl:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Deal / Contact</th>
+              <th className="px-3.5 xl:px-6 py-2 xl:py-2.5 text-[11px] xl:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Pipeline</th>
+              <th className="px-3.5 xl:px-6 py-2 xl:py-2.5 text-[11px] xl:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Value</th>
               {extraFieldColumns.map(col => (
-                <th key={col.key} className="px-6 py-2.5 whitespace-nowrap text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <th key={col.key} className="px-3.5 xl:px-6 py-2 xl:py-2.5 whitespace-nowrap text-[11px] xl:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
                   {col.label}
                 </th>
               ))}
-              <th className="px-6 py-2.5 text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Notes</th>
-              <th className="px-6 py-2.5 text-right text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[90px]">Actions</th>
+              <th className="px-3.5 xl:px-6 py-2 xl:py-2.5 text-[11px] xl:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Notes</th>
+              <th className="px-3.5 xl:px-6 py-2 xl:py-2.5 text-right text-[11px] xl:text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider min-w-[80px] xl:min-w-[90px]">Actions</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">

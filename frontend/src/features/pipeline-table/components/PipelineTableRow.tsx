@@ -74,7 +74,7 @@ export function PipelineTableRow({
           className="group/date flex flex-col cursor-pointer text-left select-none"
           title="Click to view/edit deal"
         >
-          <span className="font-semibold text-slate-800 dark:text-slate-200 text-sm group-hover/date:text-[#007e3a] dark:group-hover/date:text-[#00b355] transition-colors">
+          <span className="font-medium text-slate-800 dark:text-slate-200 text-sm group-hover/date:text-[#007e3a] dark:group-hover/date:text-[#00b355] transition-colors">
             {formatDate(chatDate)}
           </span>
           {formatTime(chatDate) && (
@@ -89,12 +89,12 @@ export function PipelineTableRow({
       <td className="px-6 py-3.5">
         <div className="flex flex-col gap-0.5 min-w-[150px]">
           <div className="flex items-center gap-1.5">
-            <span className="font-medium text-slate-800 dark:text-slate-200 text-sm truncate max-w-[150px]">
+            <span className="font-normal text-slate-800 dark:text-slate-200 text-sm truncate max-w-[150px]">
               {contactName || <span className="text-slate-400 italic font-normal text-xs">No contact</span>}
             </span>
             {deal.wa_contact && (
               <span
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-[#007e3a] dark:text-[#00b355] border border-emerald-200/80 dark:border-emerald-800/60 leading-none shrink-0"
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-[#007e3a] dark:text-[#00b355] border border-emerald-200/80 dark:border-emerald-800/60 leading-none shrink-0"
                 title="Linked WhatsApp Contact"
               >
                 WA
@@ -102,7 +102,7 @@ export function PipelineTableRow({
             )}
           </div>
           {phone ? (
-            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tracking-tight">
+            <span className="text-xs text-slate-500 dark:text-slate-400 font-mono tracking-tight font-normal">
               {phone}
             </span>
           ) : contactName ? (
@@ -134,23 +134,26 @@ export function PipelineTableRow({
 
       {/* Value */}
       <td className="px-6 py-3.5 whitespace-nowrap">
-        <span className="font-semibold text-slate-900 dark:text-slate-100 text-sm tabular-nums">
+        <span className="font-medium text-slate-800 dark:text-slate-200 text-sm tabular-nums">
           ₹{Number(deal.value || 0).toLocaleString('en-IN')}
         </span>
       </td>
 
       {/* Dynamic Extra Fields */}
       {extraFieldColumns.map(col => {
-        const val = deal.extra_data?.[col.key];
+        const rawVal = deal.extra_data?.[col.key];
+        const val = typeof rawVal === 'object' && rawVal !== null
+          ? (rawVal.name || rawVal.label || rawVal.username || rawVal.title || JSON.stringify(rawVal))
+          : rawVal;
         const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
         return (
           <td key={col.key} className="px-6 py-3.5 whitespace-nowrap">
             {hasVal ? (
-              <span className="text-xs font-normal text-slate-700 dark:text-slate-300">
+              <span className="text-[12.5px] xl:text-[13px] font-normal text-slate-700 dark:text-slate-300">
                 {String(val)}
               </span>
             ) : (
-              <span className="text-slate-300 dark:text-slate-600 text-xs">—</span>
+              <span className="text-slate-300 dark:text-slate-600 text-[12.5px] xl:text-[13px]">—</span>
             )}
           </td>
         );
@@ -165,14 +168,14 @@ export function PipelineTableRow({
             title={`Note: ${deal.note}`}
           >
             <FileText className="w-3.5 h-3.5 text-slate-400 group-hover/note:text-[#007e3a] shrink-0 transition-colors" />
-            <span className="text-xs truncate">{deal.note}</span>
+            <span className="text-[12.5px] xl:text-[13px] truncate">{deal.note}</span>
             <Pencil className="w-2.5 h-2.5 text-slate-400 opacity-0 group-hover/note:opacity-100 shrink-0 transition-opacity ml-auto" />
           </div>
         ) : (
           <button
             type="button"
             onClick={() => onOpenNote(deal)}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -mx-2 rounded transition-colors"
+            className="inline-flex items-center gap-1 text-[11.5px] xl:text-xs font-medium text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 px-2 py-1 -mx-2 rounded transition-colors"
           >
             <Plus className="w-3 h-3 text-slate-400" />
             <span>Note</span>

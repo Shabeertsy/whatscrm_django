@@ -70,17 +70,17 @@ export function AudioMessage({ mediaUrl }: AudioMessageProps) {
 
 
   return (
-    <div className="mb-2 w-full min-w-[260px] max-w-[320px] h-[52px] flex items-center bg-black/5 dark:bg-white/10 rounded-full px-2 py-1 gap-2.5">
+    <div className="mb-2 w-full min-w-[220px] sm:min-w-[260px] max-w-[320px] h-[46px] sm:h-[52px] flex items-center bg-black/5 dark:bg-white/10 rounded-full px-2 py-1 gap-2 sm:gap-2.5">
       <audio ref={audioRef} src={mediaUrl} preload="metadata" />
       
       <button 
         onClick={togglePlay}
-        className="w-10 h-10 flex-shrink-0 flex items-center justify-center bg-[#007e3a] dark:bg-[#00b359] rounded-full text-white hover:bg-[#00662f] dark:hover:bg-[#00994d] transition-colors shadow-sm"
+        className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 flex items-center justify-center bg-[#007e3a] dark:bg-[#00b359] rounded-full text-white hover:bg-[#00662f] dark:hover:bg-[#00994d] transition-colors shadow-sm"
       >
-        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4 translate-x-[1px]" />}
+        {isPlaying ? <Pause className="h-3.5 w-3.5 sm:h-4 sm:w-4" /> : <Play className="h-3.5 w-3.5 sm:h-4 sm:w-4 translate-x-[1px]" />}
       </button>
       
-      <div className="flex-1 mt-5 flex flex-col justify-center">
+      <div className="flex-1 mt-4 sm:mt-5 flex flex-col justify-center">
         <input 
           type="range" 
           min="0" 
@@ -89,7 +89,7 @@ export function AudioMessage({ mediaUrl }: AudioMessageProps) {
           onChange={handleSeek}
           className="w-full h-1 bg-black/10 dark:bg-white/20 rounded-lg appearance-none cursor-pointer accent-[#007e3a] dark:accent-[#00b359]"
         />
-        <div className="flex justify-between mt-1.5 text-[10px] text-slate-500 dark:text-slate-400 font-medium px-0.5">
+        <div className="flex justify-between mt-1 text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 dark:text-slate-400 font-medium px-0.5">
           <span>{formatTime(audioRef.current?.currentTime || 0)}</span>
           <span>{formatTime(duration)}</span>
         </div>
@@ -98,7 +98,7 @@ export function AudioMessage({ mediaUrl }: AudioMessageProps) {
       <div className="flex items-center gap-1 pr-1">
         <button 
           onClick={toggleSpeed}
-          className="w-6 h-6 flex items-center justify-center text-[10px] font-bold text-slate-500 dark:text-slate-400 hover:text-[#007e3a] bg-black/5 rounded-full transition-colors"
+          className="w-5 h-5 sm:w-6 sm:h-6 flex items-center justify-center text-[7.5px] sm:text-[8px] md:text-[8.5px] font-bold text-slate-500 dark:text-slate-400 hover:text-[#007e3a] bg-black/5 rounded-full transition-colors"
         >
           {speed}x
         </button>

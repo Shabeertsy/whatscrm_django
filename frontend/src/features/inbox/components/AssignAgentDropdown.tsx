@@ -104,7 +104,7 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
         onClick={handleToggleOpen}
         disabled={isAssigning}
         title={isAssigned ? `Assigned to ${agentName} — click to change` : 'Assign to an agent'}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 border
+        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] font-bold transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 border
           ${isAssigned
             ? 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
             : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700'

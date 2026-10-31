@@ -131,9 +131,9 @@ export function Campaigns() {
         />
         <button
           onClick={openCreateModal}
-          className="flex items-center gap-2 bg-[#007e3a] hover:bg-[#006b31] text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md hover:shadow-lg transform hover:-translate-y-0.5 shrink-0"
+          className="flex items-center gap-2 bg-[#007e3a] hover:bg-[#006b31] text-white px-5 xl:px-6 py-2 xl:py-2.5 rounded-xl text-xs xl:text-sm font-medium transition-all shadow-sm hover:shadow transform hover:-translate-y-0.5 shrink-0"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-4 w-4 xl:h-5 xl:w-5" />
           <span>Launch Campaign</span>
         </button>
       </div>
@@ -141,42 +141,42 @@ export function Campaigns() {
       {/* Stats Overview */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#007e3a] flex items-center justify-center">
-            <Megaphone className="h-6 w-6" />
+          <div className="w-11 h-11 xl:w-12 xl:h-12 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-[#007e3a] flex items-center justify-center">
+            <Megaphone className="h-5 w-5 xl:h-6 xl:w-6" />
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium">Total Campaigns</p>
-            <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">{totalCampaigns}</h4>
+            <h4 className="text-lg xl:text-xl font-semibold text-slate-900 dark:text-slate-100">{totalCampaigns}</h4>
           </div>
         </div>
 
         <div className="bg-[#ffffff] dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center">
-            <Send className="h-6 w-6" />
+          <div className="w-11 h-11 xl:w-12 xl:h-12 rounded-xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center">
+            <Send className="h-5 w-5 xl:h-6 xl:w-6" />
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium">Active Broadcasts</p>
-            <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">{activeCampaigns}</h4>
+            <h4 className="text-lg xl:text-xl font-semibold text-slate-900 dark:text-slate-100">{activeCampaigns}</h4>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center">
-            <CheckCircle2 className="h-6 w-6" />
+          <div className="w-11 h-11 xl:w-12 xl:h-12 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 flex items-center justify-center">
+            <CheckCircle2 className="h-5 w-5 xl:h-6 xl:w-6" />
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium">Delivered Messages</p>
-            <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">{totalDelivered.toLocaleString()}</h4>
+            <h4 className="text-lg xl:text-xl font-semibold text-slate-900 dark:text-slate-100">{totalDelivered.toLocaleString()}</h4>
           </div>
         </div>
 
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center">
-            <TrendingUp className="h-6 w-6" />
+          <div className="w-11 h-11 xl:w-12 xl:h-12 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 flex items-center justify-center">
+            <TrendingUp className="h-5 w-5 xl:h-6 xl:w-6" />
           </div>
           <div>
             <p className="text-xs text-slate-500 font-medium">Avg. Read Rate</p>
-            <h4 className="text-xl font-bold text-slate-900 dark:text-slate-100">{avgReadRate}%</h4>
+            <h4 className="text-lg xl:text-xl font-semibold text-slate-900 dark:text-slate-100">{avgReadRate}%</h4>
           </div>
         </div>
       </div>

@@ -212,29 +212,29 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
   return (
     <div className="flex-1 min-h-0 flex flex-col bg-slate-50/10 dark:bg-slate-900/10 transition duration-200 relative">
       {/* Chat Header */}
-      <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center z-10">
-        <div className="flex items-center space-x-3">
-          <div className="h-9 w-9 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
+      <div className="p-2 sm:p-2.5 md:p-3 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-between items-center z-10">
+        <div className="flex items-center space-x-2 sm:space-x-2.5">
+          <div className="h-7 w-7 sm:h-8 sm:w-8 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-slate-400">
             {conversation.contact.profile_pic_url ? (
-              <img src={conversation.contact.profile_pic_url} alt="Profile" className="h-9 w-9 rounded-full object-cover" />
+              <img src={conversation.contact.profile_pic_url} alt="Profile" className="h-7 w-7 sm:h-8 sm:w-8 rounded-full object-cover" />
             ) : (
-              <User2 className="h-5 w-5" />
+              <User2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             )}
           </div>
           <div>
-            <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100">
+            <h3 className="font-bold text-[11.5px] sm:text-xs md:text-[12.5px] text-slate-900 dark:text-slate-100">
               {conversation.contact.name || conversation.contact.phone}
             </h3>
-            <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+            <p className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 dark:text-slate-400 font-medium">
               {conversation.contact.name ? conversation.contact.phone : 'Unsaved Contact'}
             </p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-1.5">
           <button
             onClick={handleToggleStatus}
             title={conversation.status === 'resolved' ? 'Click to mark as Open' : 'Click to mark as Resolved'}
-            className={`flex items-center gap-1.5 px-2.5 py-1 text-[9px] rounded-full font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.status === 'resolved'
+            className={`flex items-center gap-1 px-2 py-0.5 text-[7.5px] sm:text-[8px] md:text-[8.5px] rounded-full font-bold uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.status === 'resolved'
               ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
               : 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 border border-emerald-300/50 dark:border-emerald-500/30'
               }`}
@@ -250,13 +250,13 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
             <button
               onClick={handleToggleAi}
               title={conversation.ai_active ? "Click to disable AI for this contact" : "Click to enable AI for this contact"}
-              className={`flex items-center space-x-1.5 px-2 py-1 rounded-full transition-colors cursor-pointer ${conversation.ai_active
+              className={`flex items-center space-x-1 px-1.5 py-0.5 rounded-full transition-colors cursor-pointer ${conversation.ai_active
                 ? "bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-400 hover:bg-purple-200 dark:hover:bg-purple-500/30"
                 : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700"
                 }`}
             >
-              <Bot className="h-3.5 w-3.5" />
-              <span className="text-[10px] font-bold">
+              <Bot className="h-3 w-3" />
+              <span className="text-[7.5px] sm:text-[8px] md:text-[8.5px] font-bold">
                 {conversation.ai_active ? "AI Active" : "AI Disabled"}
               </span>
             </button>
@@ -266,12 +266,12 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
           <button
             onClick={handleToggleInteractive}
             title={conversation.interactive_active !== false ? "Interactive replies active. Click to pause/stop interactive buttons for this contact (useful for junk leads)" : "Interactive replies paused. Click to enable interactive buttons"}
-            className={`flex items-center space-x-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.interactive_active !== false
+            className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] font-bold transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.interactive_active !== false
               ? "bg-amber-100 hover:bg-amber-200 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-500/30"
               : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 opacity-80"
               }`}
           >
-            <Zap className={`h-3.5 w-3.5 ${conversation.interactive_active !== false ? "fill-amber-500 text-amber-600 dark:text-amber-400" : "text-slate-400"}`} />
+            <Zap className={`h-3 w-3 ${conversation.interactive_active !== false ? "fill-amber-500 text-amber-600 dark:text-amber-400" : "text-slate-400"}`} />
             <span>
               {conversation.interactive_active !== false ? "Interactive Active" : "Interactive Paused"}
             </span>
@@ -285,23 +285,23 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="flex-1 overflow-y-auto p-4 bg-[#efeae2] dark:bg-slate-950/50 relative"
+        className="flex-1 overflow-y-auto p-2 sm:p-2.5 md:p-3 bg-[#efeae2] dark:bg-slate-950/50 relative"
       >
         <div
           className="absolute inset-0 opacity-[0.03] dark:opacity-[0.02] pointer-events-none"
           style={{ backgroundImage: 'url("https://static.whatsapp.net/rsrc.php/v3/yl/r/r_QPEkMbpXb.png")' }}
         />
 
-        <div ref={contentRef} className="space-y-4 relative z-0">
+        <div ref={contentRef} className="space-y-2 sm:space-y-2.5 md:space-y-3 relative z-0">
           {isLoading ? (
-            <div className="flex justify-center p-4">
-              <span className="px-3 py-1 bg-white dark:bg-slate-800 rounded-full text-[10px] text-slate-500 shadow-sm">
+            <div className="flex justify-center p-2.5 sm:p-3">
+              <span className="px-2.5 py-0.5 bg-white dark:bg-slate-800 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 shadow-sm">
                 Loading messages...
               </span>
             </div>
           ) : messages.length === 0 ? (
-            <div className="flex justify-center p-4">
-              <span className="px-3 py-1 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full text-[10px] text-slate-500 shadow-sm">
+            <div className="flex justify-center p-2.5 sm:p-3">
+              <span className="px-2.5 py-0.5 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 shadow-sm">
                 No messages in this conversation yet. Send one below to start.
               </span>
             </div>

@@ -36,13 +36,13 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
               <Megaphone className="h-4 w-4" />
             </div>
             <div className="min-w-0">
-              <span className="font-bold text-sm text-slate-900 dark:text-slate-100 block truncate">{c.name}</span>
+              <span className="font-medium text-sm text-slate-800 dark:text-slate-200 block truncate">{c.name}</span>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[11px] text-slate-400 font-medium">
+                <span className="text-[11px] text-slate-400 font-normal">
                   {c.template_name ? `Template: ${c.template_name}` : "Broadcast Campaign"}
                 </span>
                 <span className="text-slate-300 dark:text-slate-700">•</span>
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-[#007e3a] bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#007e3a] bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded">
                   <Users className="h-2.5 w-2.5" />
                   {isSpecific ? `${contactCount} Specific Contact${contactCount === 1 ? '' : 's'}` : "All Contacts"}
                 </span>
@@ -68,8 +68,8 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
         if (!start && !end) {
           return (
             <div className="flex flex-col gap-1 mt-0.5">
-              <span className="text-xs text-slate-400 font-medium italic">Immediate</span>
-              <span className="text-[10px] text-[#007e3a] font-semibold bg-[#007e3a]/10 px-1.5 py-0.5 rounded w-fit">
+              <span className="text-xs text-slate-400 font-normal italic">Immediate</span>
+              <span className="text-[10px] text-[#007e3a] font-medium bg-[#007e3a]/10 px-1.5 py-0.5 rounded w-fit">
                 {formatFreq(frequency)}
               </span>
             </div>
@@ -77,12 +77,12 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
         }
 
         return (
-          <div className="flex flex-col text-xs text-slate-700 dark:text-slate-300 font-medium gap-1 mt-0.5">
+          <div className="flex flex-col text-xs text-slate-700 dark:text-slate-300 font-normal gap-1 mt-0.5">
             <div>
               {start && <span className="flex items-center gap-1"><span className="text-slate-400 text-[10px]">Start:</span> {start}</span>}
               {end && <span className="flex items-center gap-1"><span className="text-slate-400 text-[10px]">End:</span> {end}</span>}
             </div>
-            <span className="text-[10px] text-[#007e3a] font-semibold bg-[#007e3a]/10 px-1.5 py-0.5 rounded w-fit">
+            <span className="text-[10px] text-[#007e3a] font-medium bg-[#007e3a]/10 px-1.5 py-0.5 rounded w-fit">
               {formatFreq(frequency)}
             </span>
           </div>
@@ -98,7 +98,7 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
 
         return (
           <span
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${isRunning
+            className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] xl:text-xs font-medium border ${isRunning
               ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800/50"
               : isCompleted
                 ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-400 dark:border-blue-800/50"
@@ -120,7 +120,7 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
       header: "Sent / Delivered",
       accessor: (c: Campaign) => (
         <div className="text-right">
-          <span className="font-bold text-xs text-slate-800 dark:text-slate-200">
+          <span className="font-medium text-xs text-slate-700 dark:text-slate-300">
             {(c.sent || 0).toLocaleString()} / {(c.delivered || 0).toLocaleString()}
           </span>
         </div>
@@ -134,7 +134,7 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
         const rate = c.delivered > 0 ? Math.round((c.read / c.delivered) * 100) : 0;
         return (
           <div className="flex flex-col items-end gap-1">
-            <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
+            <span className="font-medium text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1">
               <Eye className="h-3 w-3 text-purple-500 inline" /> {rate}%
             </span>
             <div className="w-20 bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -151,7 +151,7 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
         const rate = c.delivered > 0 ? Math.round((c.replied / c.delivered) * 100) : 0;
         return (
           <div className="flex flex-col items-end gap-1">
-            <span className="font-bold text-xs text-slate-800 dark:text-slate-200 flex items-center gap-1">
+            <span className="font-medium text-xs text-slate-700 dark:text-slate-300 flex items-center gap-1">
               <MessageCircle className="h-3 w-3 text-emerald-500 inline" /> {rate}%
             </span>
             <div className="w-20 bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden">
@@ -236,7 +236,7 @@ export function CampaignList({ campaigns, isLoading, onEdit, onDelete, onLaunch,
         <div className="w-14 h-14 bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl flex items-center justify-center mx-auto mb-4 text-[#007e3a]">
           <Megaphone className="h-7 w-7" />
         </div>
-        <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">No campaigns launched yet</h4>
+        <h4 className="text-base font-medium text-slate-800 dark:text-slate-200">No campaigns launched yet</h4>
         <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-xs mx-auto">Create and broadcast your first marketing campaign to targeted contacts.</p>
       </div>
     );

@@ -18,9 +18,9 @@ export function DataTable<T>({ columns, data, keyExtractor }: DataTableProps<T>)
       <div className="overflow-x-auto always-show-scrollbar pb-1">
         <table className="w-full text-left border-collapse whitespace-nowrap">
           <thead>
-            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 text-[10px] text-slate-400 dark:text-slate-500 font-extrabold uppercase tracking-wider">
+            <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-800/40 text-[11px] xl:text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider">
               {columns.map((col, idx) => (
-                <th key={idx} className={`p-4 ${col.className || ""}`}>
+                <th key={idx} className={`px-3.5 xl:px-4 py-2.5 xl:py-3 ${col.className || ""}`}>
                   {col.header}
                 </th>
               ))}
@@ -37,7 +37,7 @@ export function DataTable<T>({ columns, data, keyExtractor }: DataTableProps<T>)
               data.map((item) => (
                 <tr key={keyExtractor(item)} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition duration-150">
                   {columns.map((col, idx) => (
-                    <td key={idx} className={`p-4 ${col.className || ""}`}>
+                    <td key={idx} className={`px-3.5 xl:px-4 py-3 xl:py-3.5 ${col.className || ""}`}>
                       {typeof col.accessor === "function"
                         ? col.accessor(item)
                         : (item[col.accessor] as React.ReactNode)}

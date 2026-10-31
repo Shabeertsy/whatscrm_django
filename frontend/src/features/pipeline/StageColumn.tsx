@@ -287,7 +287,7 @@ export function StageColumn({
       </div>
 
       {/* ── Deal Cards ── */}
-      <div className="flex-1 min-h-0 overflow-y-auto space-y-2 p-2 custom-scrollbar">
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-2 p-2 scrollbar-none">
         {columnDeals.map((deal) => (
           <div
             key={deal.id}

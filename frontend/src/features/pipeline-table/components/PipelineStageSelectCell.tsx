@@ -110,7 +110,7 @@ export function PipelineStageSelectCell({
         type="button"
         onClick={handleToggle}
         disabled={isUpdating}
-        className={`group/stage inline-flex items-center justify-between gap-2 px-2.5 py-1 rounded-full text-xs font-semibold transition-all duration-150 cursor-pointer select-none min-w-[140px] max-w-[185px] border shadow-xs ${
+        className={`group/stage inline-flex items-center justify-between gap-2 px-2.5 py-1 rounded-full text-xs font-medium transition-all duration-150 cursor-pointer select-none min-w-[140px] max-w-[185px] border shadow-xs ${
           isConfirmed
             ? 'bg-emerald-50 hover:bg-emerald-100/80 dark:bg-emerald-950/40 dark:hover:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-300/80 dark:border-emerald-700/80 shadow-emerald-500/5'
             : 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/70 dark:hover:bg-slate-800 text-slate-800 dark:text-slate-200 border-slate-200/90 dark:border-slate-700/80 hover:border-slate-300 dark:hover:border-slate-600'
@@ -126,7 +126,7 @@ export function PipelineStageSelectCell({
               style={{ backgroundColor: stageColor }}
             />
           )}
-          <span className="truncate font-semibold tracking-tight">
+          <span className="truncate font-medium tracking-tight">
             {currentStage?.title || 'Select stage'}
           </span>
         </div>

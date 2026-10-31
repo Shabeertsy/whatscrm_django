@@ -110,7 +110,7 @@ export function Sidebar() {
 
   return (
     <aside
-      className={`${isCollapsed ? "w-18" : "w-60"
+      className={`${isCollapsed ? "w-18" : "w-60 lg:w-64"
         } bg-white dark:bg-[#08080b] border-r border-slate-200 dark:border-slate-800/80 flex flex-col justify-between z-10 h-screen transition-all duration-300 relative select-none`}
     >
       {/* Collapse Toggle Button */}
@@ -150,7 +150,7 @@ export function Sidebar() {
               )
             ) : (
               <div className="px-3 pt-2 pb-1">
-                <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                <span className="text-[10px] lg:text-[10.5px] xl:text-[11px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                   {cat.title}
                 </span>
               </div>
@@ -167,8 +167,8 @@ export function Sidebar() {
                     key={item.id}
                     onClick={() => navigate(item.id)}
                     title={isCollapsed ? item.label : undefined}
-                    className={`w-full flex items-center py-2.5 rounded-lg text-sm font-semibold transition-colors duration-200 group ${isActive
-                      ? "bg-[#007e3a] text-white shadow-lg shadow-[#007e3a]/15"
+                    className={`w-full flex items-center py-2.5 rounded-lg text-sm lg:text-[13px] xl:text-[13.5px] font-medium transition-colors duration-200 group ${isActive
+                      ? "bg-[#007e3a] text-white shadow-lg shadow-[#007e3a]/15 font-semibold"
                       : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800"
                       }`}
                   >
@@ -181,7 +181,7 @@ export function Sidebar() {
                       />
                     </div>
                     <div
-                      className={`overflow-hidden whitespace-nowrap text-left transition-all duration-300 ${isCollapsed ? "w-0 opacity-0" : "w-36 opacity-100"
+                      className={`overflow-hidden whitespace-nowrap text-left transition-all duration-300 ${isCollapsed ? "w-0 opacity-0" : "w-36 lg:w-40 opacity-100"
                         }`}
                     >
                       {item.label}
@@ -206,7 +206,7 @@ export function Sidebar() {
           </span>
         </div>
         <div
-          className={`overflow-hidden whitespace-nowrap transition-all duration-300 flex items-center text-xs text-slate-500 dark:text-slate-400 font-semibold ${isCollapsed ? "w-0 opacity-0" : "w-36 opacity-100 ml-2 gap-1.5"
+          className={`overflow-hidden whitespace-nowrap transition-all duration-300 flex items-center text-xs lg:text-[11.5px] xl:text-[12px] text-slate-500 dark:text-slate-400 font-medium ${isCollapsed ? "w-0 opacity-0" : "w-36 lg:w-40 opacity-100 ml-2 gap-1.5"
             }`}
         >
           <User className="h-3.5 w-3.5 text-slate-400" />

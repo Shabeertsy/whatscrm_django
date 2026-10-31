@@ -179,7 +179,7 @@ export function HotelFilters({
   const isPriceFiltered = filters.priceMin > 0 || filters.priceMax < 50000;
 
   return (
-    <div className={`w-full lg:w-64 flex-shrink-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full shadow-xs ${showFilters ? 'block' : 'hidden lg:block'}`}>
+    <div className={`w-full lg:w-56 xl:w-60 flex-shrink-0 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-3.5 xl:p-4 space-y-4 lg:sticky lg:top-24 lg:max-h-[calc(100vh-8rem)] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 dark:[&::-webkit-scrollbar-thumb]:bg-slate-700 [&::-webkit-scrollbar-thumb]:rounded-full shadow-xs ${showFilters ? 'block' : 'hidden lg:block'}`}>
 
       {/* Price Section */}
       <div>

@@ -157,23 +157,23 @@ export function MessageComposer(props: MessageComposerProps) {
   return (
     <div className="border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 transition duration-200 relative">
       {disabled && (
-        <div className="px-4 py-2 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-500 text-xs text-center border-b border-amber-100 dark:border-amber-500/20 font-medium">
+        <div className="px-3 py-1 bg-amber-50 dark:bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[8.5px] sm:text-[9px] md:text-[9.5px] text-center border-b border-amber-100 dark:border-amber-500/20 font-medium">
           WhatsApp 24-hour window has expired. You can only send template messages to this customer.
         </div>
       )}
       
       {replyingTo && (
-        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-          <div className="flex-1 flex flex-col min-w-0 pr-4">
-            <span className="text-[11px] font-semibold text-[#007e3a] dark:text-[#00b359] mb-0.5">
+        <div className="px-3 sm:px-4 py-2 sm:py-2.5 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+          <div className="flex-1 flex flex-col min-w-0 pr-3 sm:pr-4">
+            <span className="text-[9.5px] sm:text-[10px] md:text-[11px] font-semibold text-[#007e3a] dark:text-[#00b359] mb-0.5">
               Replying to {replyingTo.sent_by_name || (replyingTo.direction === 'inbound' ? 'Customer' : 'Agent')}
             </span>
-            <span className="text-xs text-slate-500 truncate">
+            <span className="text-[10px] sm:text-[11px] md:text-xs text-slate-500 truncate">
               {replyingTo.msg_type === 'text' ? replyingTo.body : `[${replyingTo.msg_type}] ${replyingTo.body || ''}`}
             </span>
           </div>
           {replyingTo.media_url && (
-            <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-black/10 mr-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded overflow-hidden bg-black/10 mr-2 sm:mr-3">
               {replyingTo.msg_type === 'image' ? (
                 <img src={replyingTo.media_url} alt="" className="w-full h-full object-cover" />
               ) : replyingTo.msg_type === 'video' ? (
@@ -182,7 +182,7 @@ export function MessageComposer(props: MessageComposerProps) {
             </div>
           )}
           <button onClick={onCancelReply} className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
           </button>
         </div>
       )}
@@ -258,7 +258,7 @@ export function MessageComposer(props: MessageComposerProps) {
         </div>
       )}
       
-      <form onSubmit={handleSubmit} className="p-4 flex items-center space-x-2 relative">
+      <form onSubmit={handleSubmit} className="p-2.5 sm:p-3 md:p-4 flex items-center space-x-1.5 sm:space-x-2 relative">
         <input 
           type="file" 
           ref={fileInputRef} 
@@ -311,10 +311,10 @@ export function MessageComposer(props: MessageComposerProps) {
           type="button"
           disabled={props.disabled || isRecording}
           onClick={() => setShowAttachMenu(!showAttachMenu)}
-          className={`p-2 flex items-center justify-center rounded-full transition relative ${props.disabled || isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          className={`p-1.5 sm:p-2 flex items-center justify-center rounded-full transition relative ${props.disabled || isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
           title="Attach File"
         >
-          <Paperclip className="h-5 w-5" />
+          <Paperclip className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
 
         <button
@@ -325,10 +325,10 @@ export function MessageComposer(props: MessageComposerProps) {
             setShowTemplateModal(!showTemplateModal);
             setShowCustomModal(false);
           }}
-          className={`p-2 flex items-center justify-center rounded-full transition ${isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          className={`p-1.5 sm:p-2 flex items-center justify-center rounded-full transition ${isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-[#007e3a] hover:bg-slate-100 dark:hover:bg-slate-800'}`}
           title="Send Template"
         >
-          <LayoutTemplate className="h-5 w-5" />
+          <LayoutTemplate className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
 
         <button
@@ -339,19 +339,19 @@ export function MessageComposer(props: MessageComposerProps) {
             setShowCustomModal(!showCustomModal);
             setShowTemplateModal(false);
           }}
-          className={`p-2 flex items-center justify-center rounded-full transition ${isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
+          className={`p-1.5 sm:p-2 flex items-center justify-center rounded-full transition ${isRecording ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed' : 'text-slate-500 hover:text-blue-600 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
           title="Custom Messages"
         >
-          <MessageSquareText className="h-5 w-5" />
+          <MessageSquareText className="h-4 w-4 sm:h-5 sm:w-5" />
         </button>
         {isRecording ? (
-          <div className="flex-grow flex items-center bg-slate-50 dark:bg-slate-800 border border-red-200 dark:border-red-900/30 rounded-full px-4 py-2.5 h-[44px]">
+          <div className="flex-grow flex items-center bg-slate-50 dark:bg-slate-800 border border-red-200 dark:border-red-900/30 rounded-full px-3 sm:px-4 py-1.5 sm:py-2.5 h-[38px] sm:h-[44px]">
             <div className="flex items-center gap-2 flex-1">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse"></div>
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200 w-10">{formatDuration(recordingDuration)}</span>
+              <div className="w-2 sm:w-2.5 h-2 sm:h-2.5 rounded-full bg-red-500 animate-pulse"></div>
+              <span className="text-xs sm:text-sm font-medium text-slate-700 dark:text-slate-200 w-10">{formatDuration(recordingDuration)}</span>
               {recordingStream && <AudioVisualizer stream={recordingStream} />}
             </div>
-            <button type="button" onClick={cancelRecording} className="text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium px-2 py-1">Cancel</button>
+            <button type="button" onClick={cancelRecording} className="text-[11px] sm:text-xs text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 font-medium px-2 py-1">Cancel</button>
           </div>
         ) : (
           <div className="flex-grow relative flex items-center">
@@ -366,7 +366,7 @@ export function MessageComposer(props: MessageComposerProps) {
               }}
               disabled={disabled || isSending}
               placeholder={disabled ? "Messaging disabled..." : "Type an automated response or reply as agent..."}
-              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-4 py-3 text-sm text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[44px] max-h-[150px] custom-scrollbar ${disabled || isSending ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
+              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-3 sm:px-3.5 py-1.5 sm:py-2 text-[10px] sm:text-[10.5px] md:text-[11px] lg:text-[11.5px] placeholder:text-[10px] sm:placeholder:text-[10.5px] md:placeholder:text-[11px] lg:placeholder:text-[11.5px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[34px] sm:min-h-[38px] max-h-[140px] custom-scrollbar ${disabled || isSending ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
               rows={value.split('\n').length > 1 ? Math.min(value.split('\n').length, 5) : 1}
             />
           </div>
@@ -375,7 +375,7 @@ export function MessageComposer(props: MessageComposerProps) {
           <button
             type="button"
             disabled={true}
-            className="p-2.5 flex items-center justify-center rounded-full transition bg-[#007e3a] text-white shadow-sm cursor-not-allowed opacity-70"
+            className="p-2 sm:p-2.5 flex items-center justify-center rounded-full transition bg-[#007e3a] text-white shadow-sm cursor-not-allowed opacity-70"
           >
             <div className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin"></div>
           </button>
@@ -383,7 +383,7 @@ export function MessageComposer(props: MessageComposerProps) {
           <button
             type="submit"
             disabled={disabled}
-            className={`p-2.5 flex items-center justify-center rounded-full transition ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed' : 'bg-[#007e3a] hover:bg-[#00662f] text-white shadow-sm'}`}
+            className={`p-2 sm:p-2.5 flex items-center justify-center rounded-full transition ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed' : 'bg-[#007e3a] hover:bg-[#00662f] text-white shadow-sm'}`}
           >
             <Send className="h-4 w-4" />
           </button>
@@ -391,7 +391,7 @@ export function MessageComposer(props: MessageComposerProps) {
           <button
             type="button"
             onClick={stopRecording}
-            className={`p-2.5 flex items-center justify-center rounded-full transition bg-red-500 hover:bg-red-600 text-white shadow-sm animate-pulse`}
+            className={`p-2 sm:p-2.5 flex items-center justify-center rounded-full transition bg-red-500 hover:bg-red-600 text-white shadow-sm animate-pulse`}
           >
             <Send className="h-4 w-4 ml-0.5" />
           </button>
@@ -400,7 +400,7 @@ export function MessageComposer(props: MessageComposerProps) {
             type="button"
             disabled={disabled}
             onClick={startRecording}
-            className={`p-2.5 flex items-center justify-center rounded-full transition ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed' : 'bg-[#007e3a] hover:bg-[#00662f] text-white shadow-sm'}`}
+            className={`p-2 sm:p-2.5 flex items-center justify-center rounded-full transition ${disabled ? 'bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-600 cursor-not-allowed' : 'bg-[#007e3a] hover:bg-[#00662f] text-white shadow-sm'}`}
           >
             <Mic className="h-4 w-4" />
           </button>

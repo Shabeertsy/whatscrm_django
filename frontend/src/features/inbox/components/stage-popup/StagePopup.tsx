@@ -130,17 +130,17 @@ export function StagePopup({ conversation }: StagePopupProps) {
       <button
         onClick={() => setIsOpen(!isOpen)}
         title="Edit Pipeline Stage"
-        className="flex items-center gap-1.5 px-2.5 py-1 rounded-full font-bold transition-all shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900"
+        className="flex items-center gap-1 px-2 py-0.5 rounded-full font-bold transition-all shadow-sm border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 bg-white dark:bg-slate-900"
       >
         {contact.stage_name ? (
           <>
-            <span className="h-2 w-2 rounded-full" style={{ background: contact.stage_color || '#ccc' }} />
-            <span className="text-[10px] text-slate-700 dark:text-slate-300 uppercase tracking-wider">{contact.stage_name}</span>
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: contact.stage_color || '#ccc' }} />
+            <span className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-700 dark:text-slate-300 uppercase tracking-wider">{contact.stage_name}</span>
           </>
         ) : (
-          <span className="text-[10px] text-slate-400 uppercase tracking-wider">No Stage</span>
+          <span className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-400 uppercase tracking-wider">No Stage</span>
         )}
-        <ChevronDown className="h-3 w-3 text-slate-400" />
+        <ChevronDown className="h-2.5 w-2.5 text-slate-400" />
       </button>
 
       {isOpen && (

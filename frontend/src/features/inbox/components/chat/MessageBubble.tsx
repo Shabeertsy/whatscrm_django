@@ -29,31 +29,31 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
   const navigate = useNavigate();
 
   return (
-    <div className={`flex w-full ${isOutbound ? 'justify-end' : 'justify-start'} group mb-4`}>
-      <div className={`flex items-center space-x-2 mr-2 ${isOutbound ? 'opacity-0 group-hover:opacity-100 transition-opacity' : 'hidden'}`}>
+    <div className={`flex w-full ${isOutbound ? 'justify-end' : 'justify-start'} group mb-2.5 sm:mb-3 md:mb-3.5`}>
+      <div className={`flex items-center space-x-1 sm:space-x-2 mr-1.5 sm:mr-2 ${isOutbound ? 'opacity-0 group-hover:opacity-100 transition-opacity' : 'hidden'}`}>
         {onReply && (
           <button
             onClick={() => onReply(message)}
-            className="p-1.5 text-slate-400 hover:text-blue-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
+            className="p-1 sm:p-1.5 text-slate-400 hover:text-blue-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
             title="Reply"
           >
-            <Reply className="h-3.5 w-3.5" />
+            <Reply className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </button>
         )}
         {onDelete && (
           <button
             onClick={() => onDelete(message.id)}
-            className="p-1.5 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
+            className="p-1 sm:p-1.5 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
             title="Delete message"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </button>
         )}
       </div>
 
       <div
         id={`message-${message.id}`}
-        className={`max-w-[75%] rounded-lg px-3 py-2 text-[13px] shadow-sm relative transition-all duration-500 ${isOutbound
+        className={`max-w-[88%] sm:max-w-[82%] md:max-w-[75%] lg:max-w-[70%] rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[9.5px] sm:text-[10px] md:text-[10.5px] lg:text-[11px] xl:text-[11.5px] shadow-sm relative transition-all duration-500 ${isOutbound
           ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-slate-900 dark:text-slate-100 rounded-tr-none"
           : "bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-tl-none border border-slate-100 dark:border-transparent"
           }`}
@@ -73,8 +73,8 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           <div className="flex flex-col gap-1">
             <VideoMessage mediaUrl={message.media_url} />
             {message.status === 'pending' && import.meta.env.VITE_CELERY_ENABLED === 'true' && (
-              <div className="flex items-center gap-1.5 text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 rounded-md mt-1 animate-pulse">
-                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+              <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] text-amber-600 dark:text-amber-400 font-medium bg-amber-50 dark:bg-amber-500/10 px-2 py-1.5 rounded-md mt-1 animate-pulse">
+                <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500"></div>
                 <span>Processing video...</span>
               </div>
             )}
@@ -84,8 +84,8 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
         {message.msg_type === 'sticker' && message.media_url && <StickerMessage mediaUrl={message.media_url} />}
 
         {message.msg_type === 'unsupported' && (
-          <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-md border border-red-100 dark:border-red-900/30 max-w-[280px]">
-            <span className="text-xs font-medium">This message type (like some 3rd-party stickers) is not supported by the WhatsApp Business API.</span>
+          <div className="flex items-center gap-2 p-2 sm:p-3 bg-red-50 dark:bg-red-500/10 text-red-600 dark:text-red-400 rounded-md border border-red-100 dark:border-red-900/30 max-w-[280px]">
+            <span className="text-[10px] sm:text-xs font-medium">This message type (like some 3rd-party stickers) is not supported by the WhatsApp Business API.</span>
           </div>
         )}
 
@@ -109,10 +109,10 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           {(message as any).related_room_uuid && (
             <button
               onClick={() => navigate(`/hotels/${(message as any).related_room_uuid}`, { state: { fromChat: true } })}
-              className={`flex items-center gap-1 font-medium hover:underline mt-1 text-[9px] ${isOutbound ? "text-[#005c4b] dark:text-[#dcf8c6]" : "text-[#007e3a] dark:text-[#00b359]"}`}
+              className={`flex items-center gap-1 font-medium hover:underline mt-1 text-[8px] sm:text-[8.5px] md:text-[9px] ${isOutbound ? "text-[#005c4b] dark:text-[#dcf8c6]" : "text-[#007e3a] dark:text-[#00b359]"}`}
               title="View Room Details"
             >
-              <ExternalLink className="h-3 w-3" /> View Room
+              <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> View Room
             </button>
           )}
         </div>
@@ -124,29 +124,29 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
         />
 
         {message.reaction && (
-          <div className={`absolute -bottom-2 ${isOutbound ? 'left-2' : 'right-2'} bg-white dark:bg-slate-800 rounded-full shadow border border-slate-100 dark:border-slate-700 px-1.5 py-0.5 text-xs z-10 flex items-center justify-center min-w-[24px]`}>
+          <div className={`absolute -bottom-2 ${isOutbound ? 'left-2' : 'right-2'} bg-white dark:bg-slate-800 rounded-full shadow border border-slate-100 dark:border-slate-700 px-1 sm:px-1.5 py-0.5 text-[10px] sm:text-xs z-10 flex items-center justify-center min-w-[20px] sm:min-w-[24px]`}>
             {message.reaction}
           </div>
         )}
       </div>
 
-      <div className={`flex items-center space-x-2 ml-2 ${!isOutbound ? 'opacity-0 group-hover:opacity-100 transition-opacity' : 'hidden'}`}>
+      <div className={`flex items-center space-x-1 sm:space-x-2 ml-1.5 sm:mr-2 ${!isOutbound ? 'opacity-0 group-hover:opacity-100 transition-opacity' : 'hidden'}`}>
         {onReply && (
           <button
             onClick={() => onReply(message)}
-            className="p-1.5 text-slate-400 hover:text-blue-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
+            className="p-1 sm:p-1.5 text-slate-400 hover:text-blue-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
             title="Reply"
           >
-            <Reply className="h-3.5 w-3.5" />
+            <Reply className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </button>
         )}
         {onDelete && (
           <button
             onClick={() => onDelete(message.id)}
-            className="p-1.5 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
+            className="p-1 sm:p-1.5 text-slate-400 hover:text-rose-500 bg-white dark:bg-slate-800 rounded-full shadow-sm transition-colors"
             title="Delete message"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
           </button>
         )}
       </div>

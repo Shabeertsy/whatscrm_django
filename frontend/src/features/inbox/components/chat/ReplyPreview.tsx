@@ -26,14 +26,14 @@ export function ReplyPreview({ messageId, senderName, msgType, body, mediaUrl }:
   return (
     <div
       onClick={scrollToMessage}
-      className="mb-2 p-2 rounded bg-black/5 hover:bg-black/10 dark:bg-black/20 dark:hover:bg-black/30 cursor-pointer border-l-2 border-[#007e3a] dark:border-[#00b359] text-xs opacity-90 flex items-center justify-between gap-2 transition-colors"
+      className="mb-1 p-1.5 rounded bg-black/5 hover:bg-black/10 dark:bg-black/20 dark:hover:bg-black/30 cursor-pointer border-l-2 border-[#007e3a] dark:border-[#00b359] text-[8.5px] sm:text-[9px] md:text-[9.5px] opacity-90 flex items-center justify-between gap-1.5 transition-colors"
     >
       <div className="flex-1 min-w-0">
-        <div className="font-semibold text-[10px] text-[#007e3a] dark:text-[#00b359] mb-0.5">
+        <div className="font-semibold text-[7.5px] sm:text-[8px] md:text-[8.5px] text-[#007e3a] dark:text-[#00b359] mb-0.5">
           {senderName || "Customer"}
         </div>
 
-        <div className="line-clamp-1 opacity-80">
+        <div className="line-clamp-1 opacity-80 text-[8.5px] sm:text-[9px] md:text-[9.5px]">
           {(() => {
             if (msgType === 'interactive') {
               try {
@@ -49,7 +49,7 @@ export function ReplyPreview({ messageId, senderName, msgType, body, mediaUrl }:
 
       </div>
       {mediaUrl && (
-        <div className="w-10 h-10 shrink-0 rounded overflow-hidden bg-black/10">
+        <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded overflow-hidden bg-black/10">
           {['image', 'sticker'].includes(msgType) ? (
             <img src={mediaUrl} alt="" className="w-full h-full object-cover" />
           ) : msgType === 'video' ? (

@@ -235,7 +235,7 @@ export function Hotels() {
       <HotelSearchBar filters={filters} updateFilter={updateFilter} onSearch={() => fetchRooms(true)} />
 
       {/* Main Layout */}
-      <div className="flex flex-col lg:flex-row gap-5 items-start">
+      <div className="flex flex-col lg:flex-row gap-3.5 lg:gap-4 items-start">
         
         <HotelFilters 
           filters={filters}
@@ -344,27 +344,27 @@ export function Hotels() {
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm text-slate-600 dark:text-slate-400">
-                <thead className="bg-slate-50 dark:bg-slate-800/50 text-xs uppercase font-semibold text-slate-500 border-b border-slate-200 dark:border-slate-800">
+                <thead className="bg-slate-50 dark:bg-slate-800/50 text-[11px] xl:text-xs uppercase font-semibold text-slate-500 border-b border-slate-200 dark:border-slate-800">
                   <tr>
-                    <th className="px-5 py-3.5">Room</th>
-                    <th className="px-5 py-3.5">Property</th>
-                    <th className="px-5 py-3.5">Location</th>
-                    <th className="px-5 py-3.5">Phone</th>
-                    <th className="px-5 py-3.5">Occupancy</th>
-                    <th className="px-5 py-3.5">Price</th>
-                    <th className="px-5 py-3.5">Status</th>
-                    <th className="px-3 py-3.5 text-center w-10">
+                    <th className="px-2.5 lg:px-3 xl:px-4 py-3">Room</th>
+                    <th className="px-2.5 lg:px-3 xl:px-4 py-3">Property</th>
+                    <th className="px-2.5 lg:px-3 xl:px-4 py-3">Location</th>
+                    <th className="px-2 lg:px-2.5 xl:px-3 py-3">Phone</th>
+                    <th className="px-2 lg:px-2.5 xl:px-3 py-3">Occupancy</th>
+                    <th className="px-2 lg:px-2.5 xl:px-3 py-3">Price</th>
+                    <th className="px-2 lg:px-2.5 xl:px-3 py-3">Status</th>
+                    <th className="px-1.5 lg:px-2 py-3 text-center w-8">
                       <input
                         type="checkbox"
                         checked={rooms.length > 0 && selectedRoomIds.size === rooms.length}
                         ref={el => { if (el) el.indeterminate = selectedRoomIds.size > 0 && selectedRoomIds.size < rooms.length; }}
                         onChange={toggleSelectAll}
                         onClick={e => e.stopPropagation()}
-                        className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer"
+                        className="h-3.5 w-3.5 rounded accent-[#007e3a] cursor-pointer"
                         title="Select all"
                       />
                     </th>
-                    <th className="px-5 py-3.5 text-right">Action</th>
+                    <th className="px-2 lg:px-3 py-3 text-right w-11">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -380,25 +380,25 @@ export function Hotels() {
                         }`}
                         onClick={() => { setSelectedHotel(room); navigate(`/hotels/${room.uuid}`); }}>
                         {/* Room */}
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-3">
-                            <div className="h-11 w-16 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-800">
+                        <td className="px-2.5 lg:px-3 xl:px-4 py-2.5">
+                          <div className="flex items-center gap-2.5">
+                            <div className="h-9 w-12 xl:h-10 xl:w-14 rounded-lg overflow-hidden flex-shrink-0 bg-slate-100 dark:bg-slate-800">
                               {room.room_images?.length > 0 ? (
                                 <img src={room.room_images[0].url || room.room_images[0].image} alt={room.name} className="h-full w-full object-cover" />
                               ) : (
-                                <div className="h-full w-full flex items-center justify-center"><Bed className="h-5 w-5 text-slate-300" /></div>
+                                <div className="h-full w-full flex items-center justify-center"><Bed className="h-4 w-4 text-slate-300" /></div>
                               )}
                             </div>
-                            <div>
-                              <p className="font-semibold text-slate-900 dark:text-white group-hover:text-[#007e3a] transition-colors truncate max-w-[140px]">{room.name}</p>
-                              <span className="text-[10px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium">{room.room_type?.name || '—'}</span>
+                            <div className="min-w-0">
+                              <p className="font-medium text-xs xl:text-[13px] text-slate-900 dark:text-white group-hover:text-[#007e3a] transition-colors truncate max-w-[100px] lg:max-w-[110px] xl:max-w-[140px]">{room.name}</p>
+                              <span className="text-[9.5px] text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-full font-normal inline-block truncate max-w-[90px]">{room.room_type?.name || '—'}</span>
                             </div>
                           </div>
                         </td>
                         {/* Property */}
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1.5 group/prop">
-                            <p className="font-medium text-slate-700 dark:text-slate-300 truncate max-w-[140px]" title={room.owner_username || room.owner_brand_name || ''}>
+                        <td className="px-2.5 lg:px-3 xl:px-4 py-2.5">
+                          <div className="flex items-center gap-1 group/prop">
+                            <p className="font-normal text-xs xl:text-[13px] text-slate-700 dark:text-slate-300 truncate max-w-[90px] lg:max-w-[105px] xl:max-w-[135px]" title={room.owner_username || room.owner_brand_name || ''}>
                               {room.owner_username || room.owner_brand_name || '—'}
                             </p>
                             {(room.owner_username || room.owner_brand_name) && (
@@ -417,17 +417,17 @@ export function Hotels() {
                               </button>
                             )}
                           </div>
-                          <span className="text-[10px] text-slate-400">{room.property_type?.name}</span>
+                          <span className="text-[9.5px] text-slate-400 block truncate max-w-[90px] lg:max-w-[105px] xl:max-w-[135px]">{room.property_type?.name}</span>
                         </td>
                         {/* Location */}
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-start gap-1.5 max-w-[160px]">
-                            <MapPin className="h-3.5 w-3.5 text-slate-400 flex-shrink-0 mt-0.5" />
+                        <td className="px-2.5 lg:px-3 xl:px-4 py-2.5">
+                          <div className="flex items-start gap-1 max-w-[100px] lg:max-w-[115px] xl:max-w-[145px]">
+                            <MapPin className="h-3 w-3 text-slate-400 flex-shrink-0 mt-0.5" />
                             <div className="min-w-0 flex-1">
-                              <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300 line-clamp-2 leading-tight" title={room.property_location?.name || room.property_location?.city || '—'}>
+                              <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate leading-tight" title={room.property_location?.name || room.property_location?.city || '—'}>
                                 {room.property_location?.name || room.property_location?.city || '—'}
                               </p>
-                              <p className="text-[10px] text-slate-400 mt-1 truncate">
+                              <p className="text-[9.5px] text-slate-400 mt-0.5 truncate">
                                 {room.property_location?.name 
                                   ? [room.property_location.city, room.property_location.state].filter(Boolean).join(', ')
                                   : room.property_location?.state}
@@ -436,62 +436,62 @@ export function Hotels() {
                           </div>
                         </td>
                         {/* Phone */}
-                        <td className="px-5 py-3.5">
-                          <p className="text-[13px] font-medium text-slate-700 dark:text-slate-300 truncate max-w-[120px]">
+                        <td className="px-2 lg:px-2.5 xl:px-3 py-2.5">
+                          <p className="text-[11px] xl:text-xs font-medium text-slate-700 dark:text-slate-300 whitespace-nowrap">
                             {room.owner_phone || '—'}
                           </p>
                         </td>
                         {/* Occupancy */}
-                        <td className="px-5 py-3.5">
-                          <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400">
-                            <Users className="h-3.5 w-3.5" />
+                        <td className="px-2 lg:px-2.5 xl:px-3 py-2.5">
+                          <div className="flex items-center gap-1 text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                            <Users className="h-3 w-3" />
                             <span className="text-xs">{room.base_occupancy}–{room.max_occupancy}</span>
                           </div>
-                          {room.room_number && <span className="text-[10px] text-slate-400">Room #{room.room_number}</span>}
+                          {room.room_number && <span className="text-[9.5px] text-slate-400 block">Room #{room.room_number}</span>}
                         </td>
                         {/* Price */}
-                        <td className="px-5 py-3.5">
-                          <span className="font-bold text-slate-900 dark:text-white text-[15px]">
+                        <td className="px-2 lg:px-2.5 xl:px-3 py-2.5">
+                          <span className="font-bold text-slate-900 dark:text-white text-xs xl:text-sm whitespace-nowrap">
                             ₹{(room.price_summary?.grand_total ?? room.grand_total ?? room.price)?.toLocaleString()}
                           </span>
-                          <span className="block text-[10px] text-slate-400">
+                          <span className="block text-[9.5px] text-slate-400 whitespace-nowrap">
                             {room.price_summary?.nights ? `${room.price_summary.nights} night` : 'per night'}
                           </span>
                           {room.price_summary?.gst_amount > 0 && (
-                            <span className="block text-[9px] text-[#007e3a] font-medium mt-0.5">
+                            <span className="block text-[8.5px] text-[#007e3a] font-medium whitespace-nowrap">
                               Incl. {room.price_summary.gst_pct}% GST
                             </span>
                           )}
                         </td>
                         {/* Status */}
-                        <td className="px-5 py-3.5">
+                        <td className="px-2 lg:px-2.5 xl:px-3 py-2.5">
                           {(() => {
                             const { text, badgeClass } = getStatusInfo(room);
                             return (
-                              <span className={`inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider border ${badgeClass}`}>
+                              <span className={`inline-flex px-2 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider border whitespace-nowrap ${badgeClass}`}>
                                 {text}
                               </span>
                             );
                           })()}
                         </td>
                         {/* Select */}
-                        <td className="px-3 py-3.5 text-center" onClick={e => toggleRoomSelection(room.uuid, e)}>
+                        <td className="px-1.5 lg:px-2 py-2.5 text-center" onClick={e => toggleRoomSelection(room.uuid, e)}>
                           <input
                             type="checkbox"
                             checked={selectedRoomIds.has(room.uuid)}
                             onChange={() => {}}
                             onClick={e => toggleRoomSelection(room.uuid, e)}
-                            className="h-4 w-4 rounded accent-[#007e3a] cursor-pointer"
+                            className="h-3.5 w-3.5 rounded accent-[#007e3a] cursor-pointer"
                           />
                         </td>
                         {/* Action */}
-                        <td className="px-5 py-3.5 text-right">
+                        <td className="px-2 lg:px-3 py-2.5 text-right">
                           <button
                             onClick={e => { e.stopPropagation(); shareState.setSelectedShareRoom(room); }}
-                            className="text-slate-500 hover:text-[#007e3a] bg-slate-100 dark:bg-slate-800 hover:bg-[#007e3a]/10 p-2 rounded-lg transition-colors"
+                            className="text-slate-500 hover:text-[#007e3a] bg-slate-100 dark:bg-slate-800 hover:bg-[#007e3a]/10 p-1.5 rounded-lg transition-colors"
                             title="Share Room"
                           >
-                            <Share2 className="h-4 w-4" />
+                            <Share2 className="h-3.5 w-3.5" />
                           </button>
                         </td>
                       </tr>
