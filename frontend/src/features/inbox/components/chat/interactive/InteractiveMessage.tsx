@@ -61,12 +61,12 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
   return (
     <div className="flex flex-col w-full min-w-[180px] sm:min-w-[200px] max-w-[280px]">
       {data.header && (
-        <div className="font-normal text-[9px] sm:text-[9.5px] md:text-[10px] text-slate-800 dark:text-slate-100 mb-1">
+        <div className="font-normal text-[8.5px] sm:text-[9px] text-slate-800 dark:text-slate-100 mb-1">
           {data.header}
         </div>
       )}
 
-      <div className="text-[9px] sm:text-[9.5px] md:text-[10px] lg:text-[10.5px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-1.5 font-normal">
+      <div className="text-[8px] sm:text-[8.5px] md:text-[9px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-1.5 font-light">
         {data.body}
       </div>
 
@@ -76,33 +76,33 @@ function InteractiveListOutbound({ data }: { data: InteractiveListPayload }) {
         {data.options.map((opt, i) => (
           <div
             key={opt.id || i}
-            className="flex items-center justify-between px-2 py-1 rounded-md bg-white/60 dark:bg-white/5 border border-slate-200 dark:border-slate-600 gap-1.5"
+            className="flex items-center justify-between px-2 py-0.5 rounded-md bg-white/60 dark:bg-white/5 border border-slate-200 dark:border-slate-600 gap-1.5"
           >
             <div className="flex flex-col min-w-0">
-              <span className="text-[8.5px] sm:text-[9px] md:text-[9.5px] font-normal text-slate-800 dark:text-slate-200 truncate">
+              <span className="text-[8px] sm:text-[8.5px] font-normal text-slate-800 dark:text-slate-200 truncate">
                 {opt.label}
               </span>
               {opt.description && (
-                <span className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-400 dark:text-slate-500 truncate font-normal">
+                <span className="text-[7px] sm:text-[7.5px] text-slate-400 dark:text-slate-500 truncate font-light">
                   {opt.description}
                 </span>
               )}
             </div>
-            <ChevronRight className="h-2.5 w-2.5 text-slate-400 shrink-0" />
+            <ChevronRight className="h-2 w-2 text-slate-400 shrink-0" />
           </div>
         ))}
       </div>
 
       {/* WhatsApp-style "View options" button */}
       <div className="border-t border-slate-200 dark:border-slate-600 mt-1 pt-1 flex items-center justify-center gap-1">
-        <List className="h-3 w-3 text-[#007e3a] dark:text-[#00b359]" />
-        <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-normal text-[#007e3a] dark:text-[#00b359]">
+        <List className="h-2.5 w-2.5 text-[#007e3a] dark:text-[#00b359]" />
+        <span className="text-[8px] sm:text-[8.5px] font-normal text-[#007e3a] dark:text-[#00b359]">
           {data.button_label || 'View Options'}
         </span>
       </div>
 
       {data.footer && (
-        <div className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-400 dark:text-slate-500 mt-1 text-center">
+        <div className="text-[7px] sm:text-[7.5px] text-slate-400 dark:text-slate-500 mt-1 text-center font-light">
           {data.footer}
         </div>
       )}
@@ -127,12 +127,12 @@ function InteractiveButtonsOutbound({ data }: { data: InteractiveButtonsPayload 
       )}
 
       {data.header && (
-        <div className="font-normal text-[9px] sm:text-[9.5px] md:text-[10px] text-slate-800 dark:text-slate-100 mb-1">
+        <div className="font-normal text-[8.5px] sm:text-[9px] text-slate-800 dark:text-slate-100 mb-1">
           {data.header}
         </div>
       )}
 
-      <div className="text-[9px] sm:text-[9.5px] md:text-[10px] lg:text-[10.5px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-2 font-normal">
+      <div className="text-[8px] sm:text-[8.5px] md:text-[9px] text-slate-800 dark:text-slate-100 leading-snug whitespace-pre-wrap mb-1.5 font-light">
         {data.body}
       </div>
 
@@ -141,9 +141,9 @@ function InteractiveButtonsOutbound({ data }: { data: InteractiveButtonsPayload 
         {data.options.map((opt, i) => (
           <div
             key={opt.id || i}
-            className="flex items-center justify-center px-2 py-1 rounded-lg border border-[#007e3a]/50 dark:border-[#25d366]/30 bg-white/70 dark:bg-white/5 hover:bg-[#007e3a]/5 dark:hover:bg-[#25d366]/10 transition-colors cursor-default"
+            className="flex items-center justify-center px-2 py-0.5 rounded-lg border border-[#007e3a]/50 dark:border-[#25d366]/30 bg-white/70 dark:bg-white/5 hover:bg-[#007e3a]/5 dark:hover:bg-[#25d366]/10 transition-colors cursor-default"
           >
-            <span className="text-[9px] sm:text-[9.5px] md:text-[10px] font-normal text-[#007e3a] dark:text-[#25d366] text-center">
+            <span className="text-[8.5px] sm:text-[9px] font-normal text-[#007e3a] dark:text-[#25d366] text-center">
               {opt.label}
             </span>
           </div>
@@ -151,7 +151,7 @@ function InteractiveButtonsOutbound({ data }: { data: InteractiveButtonsPayload 
       </div>
 
       {data.footer && (
-        <div className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-400 dark:text-slate-500 mt-1 text-center">
+        <div className="text-[7px] sm:text-[7.5px] text-slate-400 dark:text-slate-500 mt-1 text-center font-light">
           {data.footer}
         </div>
       )}
@@ -286,14 +286,14 @@ function InteractiveReplyInbound({ label, interactiveData }: InteractiveReplyInb
         </svg>
       </div>
       <div className="flex flex-col min-w-0">
-        <span className="text-[8px] sm:text-[8.5px] md:text-[9.5px] font-normal uppercase tracking-wider text-[#007e3a] dark:text-[#25d366]">
+        <span className="text-[7.5px] sm:text-[8px] font-normal uppercase tracking-wider text-[#007e3a] dark:text-[#25d366]">
           Option Selected
         </span>
-        <span className="text-[10.5px] sm:text-[11px] md:text-[12px] font-normal text-slate-800 dark:text-slate-100 truncate">
+        <span className="text-[9.5px] sm:text-[10px] font-normal text-slate-800 dark:text-slate-100 truncate">
           {singleLabel}
         </span>
         {singleDesc && (
-          <span className="text-[9px] sm:text-[9.5px] md:text-[10.5px] text-slate-500 dark:text-slate-400 truncate">
+          <span className="text-[8px] sm:text-[8.5px] text-slate-500 dark:text-slate-400 truncate font-light">
             {singleDesc}
           </span>
         )}

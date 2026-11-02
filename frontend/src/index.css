@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Arial, sans-serif;
   --font-weight-normal: 400;
 
   /* Curated true-black obsidian dark palette */
@@ -34,7 +34,7 @@ html.dark,
 }
 
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Arial, sans-serif;
   font-size: 13px;
   font-weight: 300;
   -webkit-font-smoothing: antialiased;
@@ -43,7 +43,7 @@ html.dark,
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Inter', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, Arial, sans-serif;
   font-size: 13px;
   font-weight: 300;
   letter-spacing: normal;
@@ -95,6 +95,26 @@ body {
 
   .always-show-scrollbar::-webkit-scrollbar-track {
     background: transparent;
+  }
+
+  /* Chat page font normalization */
+  .chat-page-root {
+    font-weight: 300;
+  }
+
+  .chat-page-root [id^="message-"] {
+    font-weight: 300 !important;
+  }
+
+  .chat-page-root [id^="message-"] p,
+  .chat-page-root [id^="message-"] span,
+  .chat-page-root [id^="message-"] div {
+    font-weight: 300;
+  }
+
+  .chat-page-root [id^="message-"] strong,
+  .chat-page-root [id^="message-"] b {
+    font-weight: 400 !important;
   }
 
   /* Chat messages font weight normalization */

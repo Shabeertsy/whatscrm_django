@@ -222,10 +222,10 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
             )}
           </div>
           <div>
-            <h3 className="font-light text-[11px] sm:text-[11.5px] md:text-xs text-slate-800 dark:text-slate-100">
+            <h3 className="font-normal text-[10px] sm:text-[10.5px] md:text-[11px] text-slate-700 dark:text-slate-200">
               {conversation.contact.name || conversation.contact.phone}
             </h3>
-            <p className="text-[7.5px] sm:text-[8px] md:text-[8.5px] text-slate-500 dark:text-slate-400 font-light">
+            <p className="text-[7px] sm:text-[7.5px] md:text-[8px] text-slate-400 dark:text-slate-500 font-light">
               {conversation.contact.name ? conversation.contact.phone : 'Unsaved Contact'}
             </p>
           </div>
@@ -234,7 +234,7 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
           <button
             onClick={handleToggleStatus}
             title={conversation.status === 'resolved' ? 'Click to mark as Open' : 'Click to mark as Resolved'}
-            className={`flex items-center gap-1 px-2 py-0.5 text-[7.5px] sm:text-[8px] md:text-[8.5px] rounded-full font-light uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.status === 'resolved'
+            className={`flex items-center gap-1 px-2 py-0.5 text-[7px] sm:text-[7.5px] md:text-[8px] rounded-full font-light uppercase tracking-wider transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.status === 'resolved'
               ? 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
               : 'bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-500/20 dark:hover:bg-emerald-500/30 text-emerald-700 dark:text-emerald-400 border border-emerald-300/50 dark:border-emerald-500/30'
               }`}
@@ -256,7 +256,7 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
                 }`}
             >
               <Bot className="h-3 w-3" />
-              <span className="text-[7.5px] sm:text-[8px] md:text-[8.5px] font-light">
+              <span className="text-[7px] sm:text-[7.5px] md:text-[8px] font-light">
                 {conversation.ai_active ? "AI Active" : "AI Disabled"}
               </span>
             </button>
@@ -266,12 +266,12 @@ export const ChatWindow = memo(function ChatWindow({ conversation, messages, isL
           <button
             onClick={handleToggleInteractive}
             title={conversation.interactive_active !== false ? "Interactive replies active. Click to pause/stop interactive buttons for this contact (useful for junk leads)" : "Interactive replies paused. Click to enable interactive buttons"}
-            className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] font-light transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.interactive_active !== false
+            className={`flex items-center space-x-1 px-2 py-0.5 rounded-full text-[7px] sm:text-[7.5px] md:text-[8px] font-light transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95 ${conversation.interactive_active !== false
               ? "bg-amber-100 hover:bg-amber-200 dark:bg-amber-500/20 dark:hover:bg-amber-500/30 text-amber-700 dark:text-amber-400 border border-amber-300/50 dark:border-amber-500/30"
               : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 opacity-80"
               }`}
           >
-            <Zap className={`h-3 w-3 ${conversation.interactive_active !== false ? "fill-amber-500 text-amber-600 dark:text-amber-400" : "text-slate-400"}`} />
+            <Zap className={`h-2.5 w-2.5 ${conversation.interactive_active !== false ? "fill-amber-500 text-amber-600 dark:text-amber-400" : "text-slate-400"}`} />
             <span>
               {conversation.interactive_active !== false ? "Interactive Active" : "Interactive Paused"}
             </span>

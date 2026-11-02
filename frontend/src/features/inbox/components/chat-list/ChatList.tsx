@@ -203,10 +203,10 @@ export const ChatList = memo(function ChatList({
       {/* Header */}
       <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="font-normal text-slate-800 dark:text-slate-200 text-xs xl:text-[13px] flex items-center gap-2">
+          <h3 className="font-normal text-slate-700 dark:text-slate-300 text-[10px] xl:text-[10.5px] flex items-center gap-1.5">
             Conversations
             {filteredChats.length > 0 && (
-              <span className="flex items-center justify-center text-[9px] font-normal bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 px-1.5 rounded-full h-[18px] min-w-[18px] border border-slate-200/60 dark:border-slate-700/60">
+              <span className="flex items-center justify-center text-[7.5px] font-light bg-slate-100/80 dark:bg-slate-800/80 text-slate-400 dark:text-slate-500 px-1 rounded-full h-3.5 min-w-[14px] border border-slate-200/60 dark:border-slate-700/60">
                 {filteredChats.length}
               </span>
             )}
@@ -348,7 +348,7 @@ export const ChatList = memo(function ChatList({
                     onSelectChat(c.id);
                   }
                 }}
-                className={`w-full text-left p-3 flex items-center space-x-3 transition-colors relative border-l-2 ${String(selectedChatId) === String(c.id) && !isSelectMode
+                className={`w-full text-left p-2.5 flex items-center space-x-2.5 transition-colors relative border-l-2 ${String(selectedChatId) === String(c.id) && !isSelectMode
                   ? "bg-[#007e3a]/5 dark:bg-[#007e3a]/15 border-[#007e3a]"
                   : isSelected
                     ? "bg-[#007e3a]/10 dark:bg-[#007e3a]/20 border-transparent"
@@ -379,21 +379,21 @@ export const ChatList = memo(function ChatList({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between">
                     <h4
-                      className={`text-[11px] xl:text-[11.5px] truncate ${String(selectedChatId) === String(c.id) || hasUnread
-                        ? "font-semibold text-slate-900 dark:text-slate-100"
-                        : "font-medium text-slate-700 dark:text-slate-300"
+                      className={`text-[8.5px] xl:text-[9px] truncate ${String(selectedChatId) === String(c.id) || hasUnread
+                        ? "font-normal text-slate-800 dark:text-slate-100"
+                        : "font-light text-slate-600 dark:text-slate-400"
                         }`}
                     >
                       {c.contact.name || c.contact.phone}
                     </h4>
-                    <div className="flex items-center gap-1.5 ml-2 flex-shrink-0">
-                      <span className="text-[8.5px] xl:text-[9px] text-slate-400 font-normal whitespace-nowrap">
+                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                      <span className="text-[7px] xl:text-[7.5px] text-slate-400 font-light whitespace-nowrap">
                         {timeStr}
                       </span>
                       {c.contact.stage_color && (
                         <span title={c.contact.stage_name || "In Pipeline Stage"} className="flex items-center">
                           <Bookmark
-                            className="w-3.5 h-3.5 opacity-100 drop-shadow-sm"
+                            className="w-3 h-3 opacity-100 drop-shadow-sm"
                             style={{ color: c.contact.stage_color, fill: c.contact.stage_color }}
                           />
                         </span>
@@ -401,20 +401,20 @@ export const ChatList = memo(function ChatList({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between mt-1">
+                  <div className="flex items-center justify-between mt-0.5">
                     <p
-                      className={`text-[10px] xl:text-[10.5px] truncate ${hasUnread
-                        ? "text-slate-800 dark:text-slate-200 font-medium"
-                        : "text-slate-500 dark:text-slate-400 font-normal"
+                      className={`text-[7.5px] xl:text-[8px] truncate ${hasUnread
+                        ? "text-slate-700 dark:text-slate-300 font-normal"
+                        : "text-slate-400 dark:text-slate-500 font-light"
                         }`}
                     >
                       {c.last_message ? (
                         (() => {
                           const preview = formatMessagePreview(c.last_message);
                           return (
-                            <span className="flex items-center gap-1.5 truncate font-normal">
+                            <span className="flex items-center gap-1 truncate font-light">
                               {c.last_message.direction === "outbound" && (
-                                <span className="text-slate-400 font-normal shrink-0">
+                                <span className="text-slate-400 font-light shrink-0">
                                   You:{" "}
                                 </span>
                               )}
@@ -422,11 +422,11 @@ export const ChatList = memo(function ChatList({
                                 <img
                                   src={preview.mediaUrl}
                                   alt="preview"
-                                  className="h-3.5 w-3.5 rounded-sm object-cover flex-shrink-0"
+                                  className="h-2.5 w-2.5 rounded-sm object-cover flex-shrink-0"
                                 />
                               )}
                               {preview.badge && (
-                                <span className="text-[#007e3a] font-medium shrink-0">
+                                <span className="text-[#007e3a] font-light shrink-0">
                                   [{preview.badge}]
                                 </span>
                               )}
@@ -437,13 +437,13 @@ export const ChatList = memo(function ChatList({
                           );
                         })()
                       ) : (
-                        <span className="italic text-slate-400 font-normal">
+                        <span className="italic text-slate-400 font-light">
                           No messages yet
                         </span>
                       )}
                     </p>
                     {hasUnread && (
-                      <span className="flex items-center justify-center h-4 min-w-4 px-1 rounded-full bg-[#007e3a] text-white text-[8.5px] font-medium ml-1 flex-shrink-0">
+                      <span className="flex items-center justify-center h-3.5 min-w-[14px] px-1 rounded-full bg-[#007e3a] text-white text-[7px] font-normal ml-1 flex-shrink-0">
                         {c.unread_count}
                       </span>
                     )}

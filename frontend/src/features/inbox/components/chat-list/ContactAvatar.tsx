@@ -46,7 +46,7 @@ export const ContactAvatar = memo(function ContactAvatar({
           src={profilePicUrl}
           alt={displayName}
           onError={() => setImgError(true)}
-          className="h-10 w-10 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm"
+          className="h-9 w-9 rounded-full object-cover border border-slate-200 dark:border-slate-700 shadow-sm"
         />
       </div>
     );
@@ -57,7 +57,7 @@ export const ContactAvatar = memo(function ContactAvatar({
     const avatarBg = getAvatarColor(displayName);
     return (
       <div
-        className={`h-10 w-10 rounded-full flex items-center justify-center font-normal text-[11px] shadow-sm flex-shrink-0 ${avatarBg} relative`}
+        className={`h-9 w-9 rounded-full flex items-center justify-center font-light text-[9.5px] shadow-sm flex-shrink-0 ${avatarBg} relative`}
       >
         <span>{initial}</span>
       </div>
@@ -66,8 +66,8 @@ export const ContactAvatar = memo(function ContactAvatar({
 
   //  Unsaved Contact -> Standard Profile User Icon
   return (
-    <div className="h-10 w-10 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-sm flex-shrink-0 border border-slate-300/50 dark:border-slate-600/50">
-      <User2 className="h-5 w-5" />
+    <div className="h-9 w-9 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400 flex items-center justify-center shadow-sm flex-shrink-0 border border-slate-300/50 dark:border-slate-600/50">
+      <User2 className="h-4 w-4" />
     </div>
   );
 });

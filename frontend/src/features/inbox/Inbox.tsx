@@ -338,7 +338,7 @@ export function Inbox() {
   };
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition duration-200">
+    <div className="chat-page-root h-[calc(100vh-10rem)] flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition duration-200">
       {/* Location notice for non-superusers with no location */}
       {hasNoLocation && (
         <div className="flex flex-col items-center justify-center flex-1 text-center px-8">

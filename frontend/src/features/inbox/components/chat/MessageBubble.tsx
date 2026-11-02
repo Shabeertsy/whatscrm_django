@@ -53,7 +53,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
 
       <div
         id={`message-${message.id}`}
-        className={`max-w-[88%] sm:max-w-[82%] md:max-w-[75%] lg:max-w-[70%] rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[8.5px] sm:text-[9px] md:text-[9.5px] lg:text-[10px] xl:text-[10.5px] font-light [&_strong]:font-light [&_b]:font-light shadow-sm relative transition-all duration-500 ${isOutbound
+        className={`max-w-[88%] sm:max-w-[82%] md:max-w-[75%] lg:max-w-[70%] rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-1.5 text-[7.5px] sm:text-[8px] md:text-[8.5px] lg:text-[9px] xl:text-[9.5px] font-light [&_strong]:font-normal [&_b]:font-normal shadow-sm relative transition-all duration-500 ${isOutbound
           ? "bg-[#dcf8c6] dark:bg-[#005c4b] text-slate-800 dark:text-slate-200 rounded-tr-none"
           : "bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-tl-none border border-slate-100 dark:border-transparent"
           }`}
@@ -109,7 +109,7 @@ export const MessageBubble = memo(function MessageBubble({ message, isOutbound, 
           {(message as any).related_room_uuid && (
             <button
               onClick={() => navigate(`/hotels/${(message as any).related_room_uuid}`, { state: { fromChat: true } })}
-              className={`flex items-center gap-1 font-normal hover:underline mt-1 text-[8px] sm:text-[8.5px] md:text-[9px] ${isOutbound ? "text-[#005c4b] dark:text-[#dcf8c6]" : "text-[#007e3a] dark:text-[#00b359]"}`}
+              className={`flex items-center gap-1 font-light hover:underline mt-1 text-[7.5px] sm:text-[8px] md:text-[8.5px] ${isOutbound ? "text-[#005c4b] dark:text-[#dcf8c6]" : "text-[#007e3a] dark:text-[#00b359]"}`}
               title="View Room Details"
             >
               <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" /> View Room

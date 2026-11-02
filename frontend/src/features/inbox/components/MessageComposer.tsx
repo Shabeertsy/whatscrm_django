@@ -366,7 +366,7 @@ export function MessageComposer(props: MessageComposerProps) {
               }}
               disabled={disabled || isSending}
               placeholder={disabled ? "Messaging disabled..." : "Type an automated response or reply as agent..."}
-              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-3 sm:px-3.5 py-1.5 sm:py-2 text-[9.5px] sm:text-[10px] md:text-[10.5px] lg:text-[11px] font-normal placeholder:text-[9.5px] sm:placeholder:text-[10px] md:placeholder:text-[10.5px] lg:placeholder:text-[11px] text-slate-800 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[34px] sm:min-h-[38px] max-h-[140px] custom-scrollbar ${disabled || isSending ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
+              className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl px-3 sm:px-3.5 py-1.5 sm:py-2 text-[8.5px] sm:text-[9px] md:text-[9.5px] lg:text-[10px] font-light placeholder:text-[8.5px] sm:placeholder:text-[9px] md:placeholder:text-[9.5px] lg:placeholder:text-[10px] placeholder:font-light text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] resize-none min-h-[34px] sm:min-h-[38px] max-h-[140px] custom-scrollbar ${disabled || isSending ? 'opacity-50 cursor-not-allowed bg-slate-100 dark:bg-slate-900' : ''}`}
               rows={value.split('\n').length > 1 ? Math.min(value.split('\n').length, 5) : 1}
             />
           </div>
