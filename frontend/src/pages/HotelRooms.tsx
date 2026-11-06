@@ -2,12 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft, Bed, MapPin, Users, ChevronLeft, ChevronRight,
-  Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal, Share2, Utensils
+  Star, Tag, Info, CheckCircle2, Building2, Phone, Calendar, SlidersHorizontal, Share2, Utensils, Compass
 } from 'lucide-react';
 import { hotelsApi } from '../api/hotels';
 import { useHotelStore } from '../store/hotelStore';
 import { useShareRoom } from '../features/hotels/hooks/useShareRoom';
 import { ShareRoomModal } from '../features/hotels/components/ShareRoomModal';
+
+
 
 export function HotelRooms() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +23,7 @@ export function HotelRooms() {
   const [loading, setLoading] = useState(!cachedRoom);
   const [error, setError] = useState('');
   const [imgIdx, setImgIdx] = useState(0);
+  const [imgTab, setImgTab] = useState<'property' | 'room'>('property');
 
   // Filters (re-fetch room with new params)
   const activeFilters = useHotelStore(state => state.filters);
@@ -134,12 +137,23 @@ export function HotelRooms() {
   }
 
   const images: any[] = room.room_images || [];
+  const propertyImages: any[] = room.property_details?.property_images || room.property_images || [];
   const summary = room.price_summary || {};
   const breakdown: any[] = room.price_breakdown || [];
   const amenities: any[] = room.amenities || [];
   const roomViews: any[] = room.room_views || [];
   const bedroomTypes: any[] = Array.isArray(room.bedroom_types) ? room.bedroom_types : (room.bedroom_type ? [room.bedroom_type] : []);
   const tags: any[] = room.property_tags || room.tags || [];
+
+  const areaName = room.property_details?.area?.name || '';
+
+  const districtName = (() => {
+    const d = room.property_details?.area?.district || room.property_details?.district;
+    if (!d) return '';
+    if (typeof d === 'string' && d.trim() && d.toLowerCase() !== 'no district') return d.trim();
+    if (typeof d === 'object' && d.name && d.name.toLowerCase() !== 'no district') return d.name.trim();
+    return '';
+  })();
 
   return (
     <div className="space-y-6">
@@ -236,6 +250,11 @@ export function HotelRooms() {
                 <Building2 className="h-3 w-3" /> {room.property_type.name}
               </span>
             )}
+            {areaName && (
+              <span className="inline-flex items-center gap-1 text-xs font-semibold bg-[#007e3a]/10 text-[#007e3a] dark:text-[#00c857] px-3 py-1 rounded-full">
+                <MapPin className="h-3 w-3" /> {areaName}
+              </span>
+            )}
             {(room.availability ? room.availability.available : room.status === 'available') ? (
               <span className="inline-flex items-center gap-1 text-xs font-bold px-3 py-1 rounded-full border bg-emerald-100 text-emerald-700 border-emerald-200">
                 <CheckCircle2 className="h-3 w-3" /> Available
@@ -266,50 +285,82 @@ export function HotelRooms() {
         {/* Left: Images + Details */}
         <div className="xl:col-span-2 space-y-6">
 
-          {/* Image Gallery */}
-          {images.length > 0 ? (
-            <div className="relative rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner" style={{ minHeight: 380, maxHeight: 480, height: 430 }}>
-              {/* Blurred ambient backdrop to fill any letterboxing smoothly */}
-              <div
-                className="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-110 pointer-events-none"
-                style={{ backgroundImage: `url(${images[imgIdx]?.url || images[imgIdx]?.image})` }}
-              />
+          {/* Image Gallery with Tabs */}
+          {(() => {
+            const activeImages = imgTab === 'property' ? propertyImages : images;
+            const getUrl = (img: any) => img?.url || img?.image || img?.file || img?.photo || '';
+            return (
+              <div className="space-y-0">
+                {/* Tabs */}
+                <div className="flex gap-2 mb-2">
+                  {[
+                    { key: 'property', label: 'Property Images', count: propertyImages.length },
+                    { key: 'room', label: 'Room Images', count: images.length },
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => { setImgTab(tab.key as 'property' | 'room'); setImgIdx(0); }}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                        imgTab === tab.key
+                          ? 'bg-[#007e3a] text-white shadow-sm'
+                          : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      {tab.label}
+                      {tab.count > 0 && (
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+                          imgTab === tab.key ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
+                        }`}>{tab.count}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
 
-              {/* Main fully visible image without any cropping */}
-              <img
-                src={images[imgIdx]?.url || images[imgIdx]?.image}
-                alt={room.name}
-                className="relative z-10 max-h-full max-w-full w-auto h-auto object-contain transition-all duration-300 mx-auto select-none"
-              />
-
-              {images.length > 1 && (
-                <>
-                  <button onClick={() => setImgIdx(i => (i - 1 + images.length) % images.length)}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full shadow-lg backdrop-blur-sm hover:scale-110 transition">
-                    <ChevronLeft className="h-5 w-5" />
-                  </button>
-                  <button onClick={() => setImgIdx(i => (i + 1) % images.length)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full shadow-lg backdrop-blur-sm hover:scale-110 transition">
-                    <ChevronRight className="h-5 w-5" />
-                  </button>
-
-                  {/* Thumbnails */}
-                  <div className="absolute bottom-0 left-0 right-0 p-3 flex gap-2 overflow-x-auto bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20 items-center justify-start">
-                    {images.map((img: any, i: number) => (
-                      <button key={i} onClick={() => setImgIdx(i)}
-                        className={`h-12 w-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all shadow-md ${i === imgIdx ? 'border-white scale-105 ring-2 ring-emerald-500/50' : 'border-white/20 opacity-60 hover:opacity-100'}`}>
-                        <img src={img.url || img.image} alt="" className="h-full w-full object-cover" />
-                      </button>
-                    ))}
+                {/* Gallery */}
+                {activeImages.length > 0 ? (
+                  <div className="relative rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center shadow-inner" style={{ minHeight: 380, maxHeight: 480, height: 430 }}>
+                    {/* Blurred ambient backdrop */}
+                    <div
+                      className="absolute inset-0 bg-cover bg-center blur-2xl opacity-40 scale-110 pointer-events-none"
+                      style={{ backgroundImage: `url(${getUrl(activeImages[imgIdx])})` }}
+                    />
+                    {/* Main image */}
+                    <img
+                      src={getUrl(activeImages[imgIdx])}
+                      alt={room.name}
+                      className="relative z-10 max-h-full max-w-full w-auto h-auto object-contain transition-all duration-300 mx-auto select-none"
+                    />
+                    {activeImages.length > 1 && (
+                      <>
+                        <button onClick={() => setImgIdx(i => (i - 1 + activeImages.length) % activeImages.length)}
+                          className="absolute left-3 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full shadow-lg backdrop-blur-sm hover:scale-110 transition">
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <button onClick={() => setImgIdx(i => (i + 1) % activeImages.length)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 z-20 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full shadow-lg backdrop-blur-sm hover:scale-110 transition">
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+                        {/* Thumbnails */}
+                        <div className="absolute bottom-0 left-0 right-0 p-3 flex gap-2 overflow-x-auto bg-gradient-to-t from-black/80 via-black/40 to-transparent z-20 items-center justify-start">
+                          {activeImages.map((img: any, i: number) => (
+                            <button key={i} onClick={() => setImgIdx(i)}
+                              className={`h-12 w-16 flex-shrink-0 rounded-lg overflow-hidden border-2 transition-all shadow-md ${i === imgIdx ? 'border-white scale-105 ring-2 ring-emerald-500/50' : 'border-white/20 opacity-60 hover:opacity-100'}`}>
+                              <img src={getUrl(img)} alt="" className="h-full w-full object-cover" />
+                            </button>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="rounded-md bg-slate-100 dark:bg-slate-800 h-48 flex items-center justify-center">
-              <Bed className="h-12 w-12 text-slate-300" />
-            </div>
-          )}
+                ) : (
+                  <div className="rounded-xl bg-slate-100 dark:bg-slate-800 h-48 flex flex-col items-center justify-center gap-2">
+                    <Bed className="h-10 w-10 text-slate-300" />
+                    <p className="text-xs text-slate-400">No {imgTab === 'property' ? 'property' : 'room'} images available</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* Room Info Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -460,12 +511,29 @@ export function HotelRooms() {
                   <p className="text-xs text-slate-400">{room.property_type?.name}</p>
                 </div>
               </div>
+              {areaName && (
+                <div className="flex items-start gap-3">
+                  <Compass className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">
+                      <span className="text-slate-400 font-normal">Area: </span>{areaName}
+                    </p>
+                  </div>
+                </div>
+              )}
               {room.property_location && (
                 <div className="flex items-start gap-3">
                   <MapPin className="h-4 w-4 text-slate-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed">{room.property_location.name}</p>
-                    <p className="text-xs text-slate-400">{room.property_location.city}, {room.property_location.state}</p>
+                    {room.property_location.name && (
+                      <p className="text-slate-700 dark:text-slate-300 text-xs leading-relaxed">{room.property_location.name}</p>
+                    )}
+                    <p className="text-xs text-slate-400">
+                      {[
+                        (districtName || (room.property_location.city && room.property_location.city.toLowerCase() !== 'no district' ? room.property_location.city : '')),
+                        room.property_location.state
+                      ].filter(Boolean).join(', ')}
+                    </p>
                   </div>
                 </div>
               )}

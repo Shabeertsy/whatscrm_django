@@ -429,7 +429,12 @@ export function Hotels() {
                               </p>
                               <p className="text-[9.5px] text-slate-400 mt-0.5 truncate">
                                 {room.property_location?.name 
-                                  ? [room.property_location.city, room.property_location.state].filter(Boolean).join(', ')
+                                  ? [
+                                      room.property_location.city && room.property_location.city.toLowerCase() !== 'no district'
+                                        ? room.property_location.city
+                                        : (room.property_details?.area?.name || room.area?.name || room.property_details?.district?.name || ''),
+                                      room.property_location.state
+                                    ].filter(Boolean).join(', ')
                                   : room.property_location?.state}
                               </p>
                             </div>
