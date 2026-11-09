@@ -37,6 +37,9 @@ export function PipelineTable() {
     setSelectedPipelineId,
     selectedStageId,
     setSelectedStageId,
+    instances,
+    instanceFilter,
+    setInstanceFilter,
     timeframe,
     setTimeframe,
     search,
@@ -84,6 +87,9 @@ export function PipelineTable() {
         stages={stages}
         selectedStageId={selectedStageId}
         onStageChange={setSelectedStageId}
+        instances={instances}
+        selectedInstanceId={instanceFilter}
+        onInstanceChange={setInstanceFilter}
         timeframe={timeframe}
         onTimeframeChange={setTimeframe}
         onAddDeal={() => {

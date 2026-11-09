@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X, Smartphone, ChevronDown } from 'lucide-react';
 
 interface ConfirmedBookingsFiltersProps {
   search: string;
@@ -7,6 +7,9 @@ interface ConfirmedBookingsFiltersProps {
   selectedPipeline: string;
   onPipelineChange: (pipeline: string) => void;
   pipelineNames: string[];
+  instances?: Array<{ id: string; display_name: string }>;
+  selectedInstanceId?: string;
+  onInstanceChange?: (instanceId: string) => void;
 }
 
 export function ConfirmedBookingsFilters({
@@ -15,6 +18,9 @@ export function ConfirmedBookingsFilters({
   selectedPipeline,
   onPipelineChange,
   pipelineNames,
+  instances = [],
+  selectedInstanceId = 'all',
+  onInstanceChange,
 }: ConfirmedBookingsFiltersProps) {
   return (
     <div className="flex flex-wrap gap-4 items-center bg-white dark:bg-slate-900 p-4 rounded-lg border border-slate-200/60 dark:border-slate-800">
@@ -39,7 +45,8 @@ export function ConfirmedBookingsFilters({
         )}
       </div>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Pipeline Selector */}
         <select
           value={selectedPipeline}
           onChange={e => onPipelineChange(e.target.value)}
@@ -55,6 +62,31 @@ export function ConfirmedBookingsFilters({
             ))
           )}
         </select>
+
+        {/* WhatsApp Line Filter */}
+        {instances.length > 0 && onInstanceChange && (
+          <div className="relative">
+            <Smartphone className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={selectedInstanceId}
+              onChange={e => onInstanceChange(e.target.value)}
+              className={`h-[38px] text-[13px] font-medium rounded-md pl-8 pr-7 border cursor-pointer appearance-none outline-none transition-all ${
+                selectedInstanceId !== 'all'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#007e3a] text-[#007e3a] dark:text-emerald-400 font-semibold shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+              }`}
+              title="Filter bookings by WhatsApp Line"
+            >
+              <option value="all">All Lines</option>
+              {instances.map(i => (
+                <option key={i.id} value={i.id}>
+                  {i.display_name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        )}
       </div>
     </div>
   );

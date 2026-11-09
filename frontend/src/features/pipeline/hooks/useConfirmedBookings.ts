@@ -13,11 +13,14 @@ import {
   BookingFieldConfig,
   EditingBookingFormData,
 } from '../components/confirmed_bookings/types';
+import { whatsappApi } from '../../../api/whatsapp';
 
 
 export function useConfirmedBookings() {
   const [bookings, setBookings] = useState<ConfirmedBooking[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [instances, setInstances] = useState<Array<{ id: string; display_name: string }>>([]);
+  const [instanceFilter, setInstanceFilter] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [loadingBookings, setLoadingBookings] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -51,13 +54,21 @@ export function useConfirmedBookings() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  // 2. Initial pipelines fetch
+  // 2. Initial pipelines and instances fetch
   useEffect(() => {
     let isMounted = true;
-    getPipelines()
-      .then(pData => {
+    Promise.all([
+      getPipelines().catch(() => []),
+      whatsappApi.listInstances().catch(() => ({ data: [] })),
+    ])
+      .then(([pData, instancesRes]) => {
         if (!isMounted) return;
         setPipelines(pData);
+        const rawInstList = Array.isArray(instancesRes.data)
+          ? instancesRes.data
+          : (instancesRes.data as any)?.results || [];
+        setInstances(rawInstList.filter((i: any) => i.is_active));
+
         const active = pData.find(p => p.is_active);
         if (active) {
           setSelectedPipeline(active.name);
@@ -81,15 +92,18 @@ export function useConfirmedBookings() {
       currentPage: number,
       currentPageSize: number,
       pipelineName: string,
-      query: string
+      query: string,
+      instId?: string
     ) => {
       setLoadingBookings(true);
       try {
+        const targetInstance = instId !== undefined ? instId : instanceFilter;
         const res = await getPaginatedConfirmedBookings({
           page: currentPage,
           page_size: currentPageSize,
           pipeline: pipelineName,
           search: query,
+          instance: targetInstance,
         });
 
         setBookings(res.results || []);
@@ -103,12 +117,12 @@ export function useConfirmedBookings() {
         setLoadingBookings(false);
       }
     },
-    []
+    [instanceFilter]
   );
 
   useEffect(() => {
-    fetchBookings(page, pageSize, selectedPipeline, debouncedSearch);
-  }, [page, pageSize, selectedPipeline, debouncedSearch, fetchBookings]);
+    fetchBookings(page, pageSize, selectedPipeline, debouncedSearch, instanceFilter);
+  }, [page, pageSize, selectedPipeline, debouncedSearch, instanceFilter, fetchBookings]);
 
   // Unique pipeline names for selector
   const pipelineNames = useMemo(() => {
@@ -121,6 +135,11 @@ export function useConfirmedBookings() {
 
   const handlePipelineChange = (pipeline: string) => {
     setSelectedPipeline(pipeline);
+    setPage(1);
+  };
+
+  const handleInstanceChange = (instId: string) => {
+    setInstanceFilter(instId);
     setPage(1);
   };
 
@@ -342,6 +361,9 @@ export function useConfirmedBookings() {
     pipelineNames,
     selectedPipeline,
     setSelectedPipeline: handlePipelineChange,
+    instances,
+    instanceFilter,
+    setInstanceFilter: handleInstanceChange,
     search,
     setSearch,
     loading: loading || loadingBookings,

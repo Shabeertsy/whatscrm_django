@@ -96,6 +96,8 @@ class PipelineDealSerializer(serializers.ModelSerializer):
     chat_started_at = serializers.SerializerMethodField()
     assigned_user = serializers.SerializerMethodField()
     conversation_id = serializers.SerializerMethodField()
+    instance_id = serializers.SerializerMethodField()
+    instance_display_name = serializers.SerializerMethodField()
    
     manual_contact = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
     note = serializers.CharField(required=False, allow_blank=True, allow_null=True, default='')
@@ -129,12 +131,14 @@ class PipelineDealSerializer(serializers.ModelSerializer):
             'note', 'extra_data',
             'is_confirmed_booking', 'confirmed_at',
             'chat_started_at', 'assigned_user', 'conversation_id',
+            'instance_id', 'instance_display_name',
             'created_at'
         ]
         read_only_fields = [
             'id', 'created_at', 'contact_name', 'contact_phone',
             'is_confirmed_booking', 'confirmed_at',
             'chat_started_at', 'assigned_user', 'conversation_id',
+            'instance_id', 'instance_display_name',
         ]
 
     def get_contact_name(self, obj):
@@ -207,12 +211,27 @@ class PipelineDealSerializer(serializers.ModelSerializer):
             return obj.extra_data.get('_assigned_user')
         return None
 
+    def get_instance_id(self, obj):
+        conv = self._get_conversation(obj)
+        if conv and conv.instance_id:
+            return str(conv.instance_id)
+        return None
+
+    def get_instance_display_name(self, obj):
+        conv = self._get_conversation(obj)
+        if conv and conv.instance:
+            inst = conv.instance
+            return getattr(inst, 'display_name', None) or getattr(inst, 'name', None) or (f"+{inst.phone_number_id}" if getattr(inst, 'phone_number_id', None) else "WhatsApp")
+        return None
+
 
 
 class ConfirmedBookingSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='deal_name', read_only=True)
     confirmed_stage_title = serializers.CharField(source='stage_title', read_only=True)
     confirmed_pipeline_name = serializers.CharField(source='pipeline_name', read_only=True)
+    instance_id = serializers.SerializerMethodField()
+    instance_display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = ConfirmedBooking
@@ -222,7 +241,32 @@ class ConfirmedBookingSerializer(serializers.ModelSerializer):
             'pipeline', 'pipeline_name', 'confirmed_pipeline_name',
             'stage', 'stage_title', 'confirmed_stage_title',
             'value', 'note', 'extra_data',
+            'instance_id', 'instance_display_name',
             'confirmed_at', 'created_at', 'updated_at'
         ]
         read_only_fields = fields
+
+    def _get_instance(self, obj):
+        if not hasattr(obj, '_cached_instance'):
+            inst = None
+            if obj.deal and obj.deal.wa_contact:
+                conv = obj.deal.wa_contact.conversations.select_related('instance').order_by('-last_message_at').first()
+                if conv and conv.instance:
+                    inst = conv.instance
+            elif obj.contact and hasattr(obj.contact, 'wa_contact') and obj.contact.wa_contact:
+                conv = obj.contact.wa_contact.conversations.select_related('instance').order_by('-last_message_at').first()
+                if conv and conv.instance:
+                    inst = conv.instance
+            obj._cached_instance = inst
+        return obj._cached_instance
+
+    def get_instance_id(self, obj):
+        inst = self._get_instance(obj)
+        return str(inst.id) if inst else None
+
+    def get_instance_display_name(self, obj):
+        inst = self._get_instance(obj)
+        if inst:
+            return getattr(inst, 'display_name', None) or getattr(inst, 'name', None) or (f"+{inst.phone_number_id}" if getattr(inst, 'phone_number_id', None) else "WhatsApp")
+        return None
 

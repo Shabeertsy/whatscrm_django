@@ -53,6 +53,8 @@ export interface Deal {
   chat_started_at?: string | null;
   assigned_user?: DealAssignedUser | null;
   conversation_id?: string | null;
+  instance_id?: string | null;
+  instance_display_name?: string | null;
 
   // Confirmed booking snapshot fields 
   is_confirmed_booking?: boolean;
@@ -232,6 +234,7 @@ export const getPaginatedConfirmedBookings = async (params: {
   page_size?: number;
   pipeline?: string;
   search?: string;
+  instance?: string;
 }): Promise<PaginatedConfirmedBookingsResult> => {
   const queryParams: Record<string, any> = {
     paginate: 'true',
@@ -240,6 +243,7 @@ export const getPaginatedConfirmedBookings = async (params: {
   };
   if (params.pipeline && params.pipeline !== 'all') queryParams.pipeline = params.pipeline;
   if (params.search && params.search.trim()) queryParams.search = params.search.trim();
+  if (params.instance && params.instance !== 'all') queryParams.instance = params.instance;
 
   const res = await apiClient.get('/contacts/pipeline/deals/confirmed/', { params: queryParams });
   return res.data;

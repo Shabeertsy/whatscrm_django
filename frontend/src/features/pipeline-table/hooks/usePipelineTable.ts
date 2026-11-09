@@ -14,6 +14,7 @@ import {
 import { apiClient } from '../../../api/client';
 import type { AssignableAgent } from '../../../api/messaging';
 import { messagingApi } from '../../../api/messaging';
+import { whatsappApi } from '../../../api/whatsapp';
 import {
   TimeframeOption,
   PipelineTableStatsData,
@@ -24,9 +25,11 @@ import {
 
 export function usePipelineTable() {
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+  const [instances, setInstances] = useState<Array<{ id: string; display_name: string }>>([]);
   const [agents, setAgents] = useState<AssignableAgent[]>([]);
   const [selectedPipelineId, setSelectedPipelineId] = useState<string>('');
   const [selectedStageId, setSelectedStageId] = useState<string>('all');
+  const [instanceFilter, setInstanceFilter] = useState<string>('all');
   const [timeframe, setTimeframe] = useState<TimeframeOption>('all');
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -73,10 +76,11 @@ export function usePipelineTable() {
 
     async function init() {
       try {
-        const [pipelinesData, contactsRes, agentsRes] = await Promise.all([
+        const [pipelinesData, contactsRes, agentsRes, instancesRes] = await Promise.all([
           getPipelines(),
           apiClient.get('/messaging/contacts/').catch(() => ({ data: [] })),
           messagingApi.listAssignableAgents().catch(() => ({ data: [] })),
+          whatsappApi.listInstances().catch(() => ({ data: [] })),
         ]);
 
         if (!isMounted) return;
@@ -84,6 +88,10 @@ export function usePipelineTable() {
         setPipelines(pipelinesData);
         setContacts(contactsRes.data?.results || contactsRes.data || []);
         setAgents(agentsRes.data || []);
+        const rawInstList = Array.isArray(instancesRes.data)
+          ? instancesRes.data
+          : (instancesRes.data as any)?.results || [];
+        setInstances(rawInstList.filter((i: any) => i.is_active));
 
         const active = pipelinesData.find(p => p.is_active);
         const defaultPipeline = active ? active.id : pipelinesData[0]?.id || '';
@@ -109,7 +117,8 @@ export function usePipelineTable() {
       currentPageSize: number,
       stageId: string,
       searchTerm: string,
-      tf: TimeframeOption
+      tf: TimeframeOption,
+      instId?: string
     ) => {
       if (!pipelineId) {
         setDeals([]);
@@ -119,6 +128,7 @@ export function usePipelineTable() {
       }
       setLoadingDeals(true);
       try {
+        const targetInstance = instId !== undefined ? instId : instanceFilter;
         const res = await getPaginatedDeals({
           pipeline: pipelineId,
           page: currentPage,
@@ -126,6 +136,7 @@ export function usePipelineTable() {
           stage: stageId,
           search: searchTerm,
           timeframe: tf,
+          instance: targetInstance,
         });
 
         setDeals(res.results || []);
@@ -143,15 +154,15 @@ export function usePipelineTable() {
         setLoadingDeals(false);
       }
     },
-    []
+    [instanceFilter]
   );
 
   // Trigger fetch when any filter or pagination parameter changes
   useEffect(() => {
     if (selectedPipelineId) {
-      fetchDeals(selectedPipelineId, page, pageSize, selectedStageId, debouncedSearch, timeframe);
+      fetchDeals(selectedPipelineId, page, pageSize, selectedStageId, debouncedSearch, timeframe, instanceFilter);
     }
-  }, [selectedPipelineId, page, pageSize, selectedStageId, debouncedSearch, timeframe, fetchDeals]);
+  }, [selectedPipelineId, page, pageSize, selectedStageId, debouncedSearch, timeframe, instanceFilter, fetchDeals]);
 
   // Reset to page 1 when primary filters change
   const handlePipelineChange = (id: string) => {
@@ -161,6 +172,11 @@ export function usePipelineTable() {
 
   const handleStageFilterChange = (stageId: string) => {
     setSelectedStageId(stageId);
+    setPage(1);
+  };
+
+  const handleInstanceChange = (instId: string) => {
+    setInstanceFilter(instId);
     setPage(1);
   };
 
@@ -452,6 +468,9 @@ export function usePipelineTable() {
     setSelectedPipelineId: handlePipelineChange,
     selectedStageId,
     setSelectedStageId: handleStageFilterChange,
+    instances,
+    instanceFilter,
+    setInstanceFilter: handleInstanceChange,
     timeframe,
     setTimeframe: handleTimeframeChange,
     search,

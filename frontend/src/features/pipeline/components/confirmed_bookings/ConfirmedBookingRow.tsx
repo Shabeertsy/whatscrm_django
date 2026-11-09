@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Pencil, Trash2, Loader2, Phone } from 'lucide-react';
+import { Eye, Pencil, Trash2, Loader2, Phone, Smartphone } from 'lucide-react';
 import { ConfirmedBooking } from '../../api';
 import { ExtraFieldColumn } from './types';
 
@@ -54,6 +54,16 @@ export function ConfirmedBookingRow({
               <Phone className="h-3 w-3 xl:h-3.5 xl:w-3.5 text-slate-400 flex-shrink-0" />
               <span className="font-mono tracking-tight font-normal">{phone}</span>
             </a>
+          )}
+
+          {booking.instance_display_name && (
+            <span
+              className="inline-flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200/80 dark:border-slate-700/60 w-fit max-w-[130px] truncate mt-0.5"
+              title={`WhatsApp Line: ${booking.instance_display_name}`}
+            >
+              <Smartphone className="h-2.5 w-2.5 text-slate-400 shrink-0" />
+              <span className="truncate">{booking.instance_display_name}</span>
+            </span>
           )}
         </div>
       </td>

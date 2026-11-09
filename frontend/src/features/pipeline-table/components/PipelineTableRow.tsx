@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, Loader2, FileText, Plus } from 'lucide-react';
+import { Pencil, Trash2, Loader2, FileText, Plus, Smartphone } from 'lucide-react';
 import { Deal, PipelineStage } from '../../pipeline/api';
 import type { AssignableAgent } from '../../../api/messaging';
 import { ExtraFieldColumn } from '../types';
@@ -98,6 +98,15 @@ export function PipelineTableRow({
                 title="Linked WhatsApp Contact"
               >
                 WA
+              </span>
+            )}
+            {deal.instance_display_name && (
+              <span
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 leading-none shrink-0 max-w-[120px] truncate"
+                title={`WhatsApp Line: ${deal.instance_display_name}`}
+              >
+                <Smartphone className="h-2.5 w-2.5 text-slate-400 shrink-0" />
+                <span className="truncate">{deal.instance_display_name}</span>
               </span>
             )}
           </div>

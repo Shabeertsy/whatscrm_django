@@ -17,6 +17,9 @@ export function ConfirmedBookings() {
     pipelineNames,
     selectedPipeline,
     setSelectedPipeline,
+    instances,
+    instanceFilter,
+    setInstanceFilter,
     search,
     setSearch,
     loading,
@@ -84,6 +87,9 @@ export function ConfirmedBookings() {
         selectedPipeline={selectedPipeline}
         onPipelineChange={setSelectedPipeline}
         pipelineNames={pipelineNames}
+        instances={instances}
+        selectedInstanceId={instanceFilter}
+        onInstanceChange={setInstanceFilter}
       />
 
       {/* Bookings Data Table */}

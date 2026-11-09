@@ -606,7 +606,7 @@ class PipelineDealListCreateView(APIView):
             pipeline = self._get_pipeline(pipeline_id_param, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__instance', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
         else:
             pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
@@ -623,7 +623,7 @@ class PipelineDealListCreateView(APIView):
                         'confirmed_count': 0,
                     }, status=status.HTTP_200_OK)
                 return Response([], status=status.HTTP_200_OK)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__instance', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
 
         # Stage filter
         if stage_id_param and stage_id_param != 'all':
@@ -860,15 +860,25 @@ class ConfirmedBookingsView(APIView):
 
     def get(self, request):
         pipeline_param = request.query_params.get('pipeline')
+        instance_id_param = request.query_params.get('instance')
         search_param = request.query_params.get('search', '').strip()
         is_paginated = request.query_params.get('paginate') == 'true' or 'page' in request.query_params
 
         bookings = scope_by_owner(
             ConfirmedBooking.objects.select_related(
                 'pipeline', 'stage', 'deal', 'contact'
+            ).prefetch_related(
+                'deal__wa_contact__conversations__instance',
+                'contact__wa_contact__conversations__instance'
             ).all(),
             request.user
         )
+
+        if instance_id_param and instance_id_param != 'all':
+            bookings = bookings.filter(
+                Q(deal__wa_contact__conversations__instance_id=instance_id_param) |
+                Q(contact__wa_contact__conversations__instance_id=instance_id_param)
+            ).distinct()
 
         if pipeline_param and pipeline_param != 'all':
             is_uuid = False

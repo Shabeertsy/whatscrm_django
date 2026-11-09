@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X, Plus } from 'lucide-react';
+import { Search, X, Plus, Smartphone, ChevronDown } from 'lucide-react';
 import { Pipeline, PipelineStage } from '../../pipeline/api';
 import { TimeframeOption } from '../types';
 
@@ -12,6 +12,9 @@ interface PipelineTableFiltersProps {
   stages: PipelineStage[];
   selectedStageId: string;
   onStageChange: (stageId: string) => void;
+  instances?: Array<{ id: string; display_name: string }>;
+  selectedInstanceId?: string;
+  onInstanceChange?: (instanceId: string) => void;
   timeframe: TimeframeOption;
   onTimeframeChange: (tf: TimeframeOption) => void;
   onAddDeal: () => void;
@@ -26,6 +29,9 @@ export function PipelineTableFilters({
   stages,
   selectedStageId,
   onStageChange,
+  instances = [],
+  selectedInstanceId = 'all',
+  onInstanceChange,
   timeframe,
   onTimeframeChange,
   onAddDeal,
@@ -86,6 +92,31 @@ export function PipelineTableFilters({
             </option>
           ))}
         </select>
+
+        {/* WhatsApp Line Filter */}
+        {instances.length > 0 && onInstanceChange && (
+          <div className="relative">
+            <Smartphone className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={selectedInstanceId}
+              onChange={e => onInstanceChange(e.target.value)}
+              className={`h-[38px] text-[13px] font-medium rounded-md pl-8 pr-7 border cursor-pointer appearance-none outline-none transition-all ${
+                selectedInstanceId !== 'all'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#007e3a] text-[#007e3a] dark:text-emerald-400 font-semibold shadow-xs'
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:border-slate-300'
+              }`}
+              title="Filter deals by WhatsApp Line"
+            >
+              <option value="all">All Lines</option>
+              {instances.map(i => (
+                <option key={i.id} value={i.id}>
+                  {i.display_name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="h-3.5 w-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          </div>
+        )}
 
         {/* Timeframe */}
         <select
