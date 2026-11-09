@@ -35,6 +35,7 @@ export function usePipeline() {
   const [activePipeline, setActivePipeline] = useState<Pipeline | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
+  const [instanceFilter, setInstanceFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -44,9 +45,9 @@ export function usePipeline() {
 
   useEffect(() => {
     if (activePipeline) {
-      fetchDeals(activePipeline.id);
+      fetchDeals(activePipeline.id, undefined, instanceFilter);
     }
-  }, [activePipeline?.id]);
+  }, [activePipeline?.id, instanceFilter]);
 
   const fetchPipelines = async () => {
     try {
@@ -62,9 +63,9 @@ export function usePipeline() {
     }
   };
 
-  const fetchDeals = async (pipelineId: string) => {
+  const fetchDeals = async (pipelineId: string, timeframe?: string, inst?: string) => {
     try {
-      const data = await getDeals(pipelineId);
+      const data = await getDeals(pipelineId, timeframe, inst ?? instanceFilter);
       setDeals(data);
     } catch {
       toast.error("Failed to load deals");
@@ -350,5 +351,7 @@ export function usePipeline() {
     handleMoveDeal,
     handleSaveDeal,
     handleDeleteDeal,
+    instanceFilter,
+    setInstanceFilter,
   };
 }

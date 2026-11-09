@@ -1,16 +1,22 @@
 import React, { useState } from "react";
-import { X, Loader2 } from "lucide-react";
+import { X, Loader2, Smartphone, Check } from "lucide-react";
 import { whatsappApi } from "../../../api/whatsapp";
 
 interface TemplateFormProps {
   initialData?: any;
   instanceId: string;
+  instances?: any[];
   onClose: () => void;
   onSubmit: (payload: any) => Promise<void>;
 }
 
-export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: TemplateFormProps) {
+export function TemplateForm({ initialData, instanceId, instances = [], onClose, onSubmit }: TemplateFormProps) {
   const isEditing = !!initialData?.id;
+  const [selectedInstances, setSelectedInstances] = useState<string[]>(
+    initialData?.instance 
+      ? [initialData.instance] 
+      : instances.map(i => i.id)
+  );
   const [name, setName] = useState(initialData?.name || "");
   const [language, setLanguage] = useState(initialData?.language || "en_US");
   const [category, setCategory] = useState(initialData?.category || "MARKETING");
@@ -42,8 +48,9 @@ export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: Tem
       setError("Template name is required.");
       return;
     }
-    if (!isEditing && !instanceId) {
-      setError("Please select an instance first.");
+    const targetInstances = isEditing ? [instanceId] : selectedInstances;
+    if (targetInstances.length === 0) {
+      setError("Please select at least one WhatsApp Line.");
       return;
     }
 
@@ -66,7 +73,7 @@ export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: Tem
           return;
         }
         try {
-          const uploadRes = await whatsappApi.uploadTemplateMedia(instanceId, headerFile);
+          const uploadRes = await whatsappApi.uploadTemplateMedia(targetInstances[0], headerFile);
           components.push({
             type: "HEADER",
             format: headerType,
@@ -103,7 +110,8 @@ export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: Tem
     };
     if (!isEditing) {
       payload.name = name;
-      payload.instance = instanceId;
+      payload.instance = targetInstances[0];
+      payload.instances = targetInstances;
     }
 
     try {
@@ -159,6 +167,61 @@ export function TemplateForm({ initialData, instanceId, onClose, onSubmit }: Tem
             <div className="w-full md:w-5/12 space-y-5">
               <h3 className="font-bold text-sm text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-3">Configuration</h3>
               
+              {!isEditing && instances && instances.length > 0 && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      WhatsApp Lines <span className="text-red-500">*</span>
+                    </label>
+                    {instances.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (selectedInstances.length === instances.length) {
+                            setSelectedInstances([instances[0].id]);
+                          } else {
+                            setSelectedInstances(instances.map(i => i.id));
+                          }
+                        }}
+                        className="text-[11px] text-[#007e3a] hover:underline font-medium"
+                      >
+                        {selectedInstances.length === instances.length ? "Clear Multi-Select" : "Select All"}
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
+                    {instances.map((inst) => {
+                      const checked = selectedInstances.includes(inst.id);
+                      return (
+                        <button
+                          key={inst.id}
+                          type="button"
+                          onClick={() => {
+                            if (checked) {
+                              if (selectedInstances.length > 1) {
+                                setSelectedInstances(selectedInstances.filter(id => id !== inst.id));
+                              }
+                            } else {
+                              setSelectedInstances([...selectedInstances, inst.id]);
+                            }
+                          }}
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                            checked
+                              ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#007e3a]/60 text-[#007e3a] dark:text-emerald-400 font-semibold shadow-xs'
+                              : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-600'
+                          }`}
+                        >
+                          <Smartphone className={`h-3 w-3 ${checked ? 'text-[#007e3a] dark:text-emerald-400' : 'text-slate-400'}`} />
+                          <span>{inst.display_name}</span>
+                          {checked && <Check className="h-3 w-3 text-[#007e3a] dark:text-emerald-400" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">Template Name {isEditing && "(Read-only)"}</label>
                 <input

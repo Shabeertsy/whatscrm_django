@@ -1571,10 +1571,15 @@ class AutomationEngine(BaseChatbotEngine):
     ## Trigger matching
     def _find_trigger(self, inbound_text: str):
         """Return (flow, trigger_node) for the first matching active flow, or (None, None)."""
+        conv_instance_id = self.conv.instance_id
+
         flows = AutomationFlow.objects.filter(
-            Q(instance_id=self.conv.instance_id) | Q(instance__isnull=True),
             status=FlowStatus.ACTIVE,
-        ).prefetch_related("nodes", "edges")
+        ).filter(
+            Q(instances=conv_instance_id) |
+            Q(instance_id=conv_instance_id) |
+            (Q(instances__isnull=True) & Q(instance__isnull=True))
+        ).prefetch_related("nodes", "edges", "instances").distinct()
 
         flow_list = list(flows)
         logger.info(

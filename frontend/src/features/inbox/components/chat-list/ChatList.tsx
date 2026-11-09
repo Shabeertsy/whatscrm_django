@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo } from "react";
+import React, { memo, useState, useMemo, useEffect } from "react";
 import { Search, Plus, User2, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2, Trash, Bookmark } from "lucide-react";
 import type { Conversation, CustomMessage } from "../../../../api/messaging";
 import { messagingApi } from "../../../../api/messaging";
@@ -11,6 +11,7 @@ import { useChatFilters } from "../../hooks/useChatFilters";
 import { ChatFilters } from "./ChatFilters";
 import { ContactAvatar } from "./ContactAvatar";
 import { useMessagingStore } from "../../../../store/messagingStore";
+import { whatsappApi } from "../../../../api/whatsapp";
 
 
 interface ChatListProps {
@@ -20,6 +21,7 @@ interface ChatListProps {
   onStartNewChat: () => void;
   isLoading?: boolean;
   onAssignmentFilterChange?: (filter: 'all' | 'mine' | 'unassigned') => void;
+  onInstanceFilterChange?: (instanceId: string) => void;
 }
 
 
@@ -31,6 +33,7 @@ export const ChatList = memo(function ChatList({
   onStartNewChat,
   isLoading,
   onAssignmentFilterChange,
+  onInstanceFilterChange,
 }: ChatListProps) {
   const {
     searchQuery,
@@ -42,13 +45,31 @@ export const ChatList = memo(function ChatList({
     availableStages,
     assignmentFilter,
     setAssignmentFilter,
+    instanceFilter,
+    setInstanceFilter,
     filteredChats
   } = useChatFilters(chats, selectedChatId);
+
+  const [instances, setInstances] = useState<Array<{ id: string; display_name: string }>>([]);
+
+  useEffect(() => {
+    whatsappApi.listInstances()
+      .then(res => {
+        const list = Array.isArray(res.data) ? res.data : (res.data as any).results || [];
+        setInstances(list.filter((i: any) => i.is_active));
+      })
+      .catch(console.error);
+  }, []);
 
   // When assignmentFilter changes, notify parent (Inbox) to re-fetch
   const handleSetAssignmentFilter = (f: 'all' | 'mine' | 'unassigned') => {
     setAssignmentFilter(f);
     onAssignmentFilterChange?.(f);
+  };
+
+  const handleSetInstanceFilter = (id: string) => {
+    setInstanceFilter(id);
+    onInstanceFilterChange?.(id);
   };
 
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -245,6 +266,9 @@ export const ChatList = memo(function ChatList({
           availableStages={availableStages}
           assignmentFilter={assignmentFilter}
           setAssignmentFilter={handleSetAssignmentFilter}
+          instanceFilter={instanceFilter}
+          setInstanceFilter={handleSetInstanceFilter}
+          instances={instances}
         />
 
         {/* Select Mode Bar & Bulk Actions */}
@@ -387,6 +411,14 @@ export const ChatList = memo(function ChatList({
                       {c.contact.name || c.contact.phone}
                     </h4>
                     <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                      {c.instance_name && (
+                        <span
+                          className="text-[6.5px] px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 font-medium truncate max-w-[65px]"
+                          title={`WhatsApp Line: ${c.instance_name}`}
+                        >
+                          {c.instance_name}
+                        </span>
+                      )}
                       <span className="text-[7px] xl:text-[7.5px] text-slate-400 font-light whitespace-nowrap">
                         {timeStr}
                       </span>

@@ -587,11 +587,13 @@ class PipelineDealListCreateView(APIView):
         pipeline_id_param = request.query_params.get('pipeline')
         timeframe_param = request.query_params.get('timeframe')
         stage_id_param = request.query_params.get('stage')
+        instance_id_param = request.query_params.get('instance')
         search_param = request.query_params.get('search', '').strip()
         is_paginated = request.query_params.get('paginate') == 'true' or 'page' in request.query_params
+        cache_key = None
 
-        # If not paginated and no search/stage filter, we can use the existing pipeline deals cache
-        if not is_paginated and not search_param and not stage_id_param:
+        # If not paginated and no search/stage/instance filter, we can use the existing pipeline deals cache
+        if not is_paginated and not search_param and not stage_id_param and (not instance_id_param or instance_id_param == 'all'):
             owner_id = get_tenant_owner(request.user).id
             cache_version = get_pipeline_cache_version(owner_id)
             cache_key = f"pipeline_deals_{request.user.id}_{pipeline_id_param or 'default'}_{timeframe_param or 'all'}_{cache_version}"
@@ -626,6 +628,12 @@ class PipelineDealListCreateView(APIView):
         # Stage filter
         if stage_id_param and stage_id_param != 'all':
             deals = deals.filter(stage_id=stage_id_param)
+
+        # Instance filter
+        if instance_id_param and instance_id_param != 'all':
+            deals = deals.filter(
+                wa_contact__conversations__instance_id=instance_id_param
+            ).distinct()
 
         # Search filter
         if search_param:
@@ -669,7 +677,7 @@ class PipelineDealListCreateView(APIView):
             return response
 
         data = PipelineDealSerializer(deals, many=True).data
-        if not search_param and not stage_id_param:
+        if cache_key:
             cache.set(cache_key, data, timeout=3600)
         return Response(data)
 

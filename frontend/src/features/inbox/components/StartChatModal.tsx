@@ -120,11 +120,24 @@ export function StartChatModal({ onClose, onSubmit }: StartChatModalProps) {
 
             <div>
               <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1.5">
-                WhatsApp Instance
+                Send From (WhatsApp Line) *
               </label>
-              <div className="w-full bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-600 dark:text-slate-400 font-medium cursor-not-allowed">
-                {instances.find(i => i.id === form.instance_id)?.display_name || "No active instance found"}
-              </div>
+              <select
+                value={form.instance_id}
+                onChange={e => setForm({ ...form, instance_id: e.target.value })}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#007e3a]/20 focus:border-[#007e3a] transition-all text-slate-900 dark:text-slate-100 cursor-pointer"
+                required
+              >
+                {instances.length === 0 ? (
+                  <option value="">No active WhatsApp lines found</option>
+                ) : (
+                  instances.map(inst => (
+                    <option key={inst.id} value={inst.id}>
+                      {inst.display_name} {inst.phone_number_id ? `(${inst.phone_number_id})` : ''}
+                    </option>
+                  ))
+                )}
+              </select>
             </div>
 
             <div>

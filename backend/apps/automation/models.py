@@ -71,7 +71,14 @@ class AutomationFlow(BaseModel, SoftDeleteModel):
         "whatsapp.WhatsappInstance",
         null=True, blank=True,
         on_delete=models.SET_NULL,
+        related_name="legacy_automation_flows",
+    )
+
+    instances = models.ManyToManyField(
+        "whatsapp.WhatsappInstance",
+        blank=True,
         related_name="automation_flows",
+        help_text="WhatsApp lines this flow listens on (empty = all lines)"
     )
 
     owner = models.ForeignKey(

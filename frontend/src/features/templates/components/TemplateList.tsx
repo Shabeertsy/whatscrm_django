@@ -1,15 +1,16 @@
 import React from 'react';
-import { Loader2, FileText, Copy, Edit2, Trash2, Globe, MessageSquare, CheckCircle2, XCircle, Clock, Image, Video } from 'lucide-react';
+import { Loader2, FileText, Copy, Edit2, Trash2, Globe, MessageSquare, CheckCircle2, XCircle, Clock, Image, Video, Smartphone } from 'lucide-react';
 
 interface TemplateListProps {
   templates: any[];
+  instances?: any[];
   loading: boolean;
   onEdit: (tmpl: any) => void;
   onDuplicate: (tmpl: any) => void;
   onDelete: (id: string) => void;
 }
 
-export function TemplateList({ templates, loading, onEdit, onDuplicate, onDelete }: TemplateListProps) {
+export function TemplateList({ templates, instances, loading, onEdit, onDuplicate, onDelete }: TemplateListProps) {
   if (loading) {
     return (
       <div className="flex justify-center items-center py-20">
@@ -70,6 +71,12 @@ export function TemplateList({ templates, loading, onEdit, onDuplicate, onDelete
 
                   {/* Badges row */}
                   <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                    {(tmpl.instance_display_name || instances?.find(i => i.id === tmpl.instance)?.display_name) && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md border bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
+                        <Smartphone className="h-2.5 w-2.5 text-slate-500" />
+                        {tmpl.instance_display_name || instances?.find(i => i.id === tmpl.instance)?.display_name}
+                      </span>
+                    )}
                     <span className={`text-[10px] font-semibold uppercase px-2 py-0.5 rounded-md border ${categoryBadgeColor}`}>
                       {tmpl.category}
                     </span>

@@ -43,7 +43,9 @@ class WhatsappInstanceListSerializer(serializers.ModelSerializer):
 
 
 class WhatsappTemplateSerializer(serializers.ModelSerializer):
+    instance_display_name = serializers.CharField(source='instance.display_name', read_only=True)
+
     class Meta:
         model = WhatsappTemplate
         fields = "__all__"
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "created_at", "updated_at", "instance_display_name"]

@@ -19,6 +19,7 @@ export interface CampaignDataPayload {
   frequency?: "once" | "daily" | "weekly" | "monthly" | "custom";
   custom_days_gap?: number | null;
   media?: string | null;
+  instance?: string | null;
 }
 
 interface CampaignWizardProps {
@@ -63,6 +64,10 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
   const [isDragOver, setIsDragOver] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; skipped: number } | null>(null);
+
+  // Instance selector state
+  const [instanceId, setInstanceId] = useState<string>("");
+  const [instances, setInstances] = useState<Array<{ id: string; display_name: string }>>([]);
 
   const csvInputRef = useRef<HTMLInputElement>(null);
 
@@ -177,6 +182,16 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
     }
   }, []);
 
+  const loadInstances = useCallback(async () => {
+    try {
+      const res = await whatsappApi.listInstances();
+      const list = Array.isArray(res.data) ? res.data : (res.data as any).results || [];
+      setInstances(list.filter((i: any) => i.is_active));
+    } catch (e) {
+      console.error("Failed to load WhatsApp instances", e);
+    }
+  }, []);
+
   const parseCSV = useCallback((text: string): CSVRow[] => {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
@@ -241,6 +256,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
         setSelectedContacts(initialData.contacts || []);
         setFrequency(initialData.frequency || "once");
         setCustomDaysGap(initialData.custom_days_gap ?? "");
+        setInstanceId(initialData.instance || "");
       } else {
         setName("");
         setTemplate("");
@@ -251,6 +267,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
         setSelectedContacts([]);
         setFrequency("once");
         setCustomDaysGap("");
+        setInstanceId("");
       }
       setContactSearch("");
       setSelectedStageFilter("all");
@@ -258,6 +275,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
       loadTemplates();
       loadContacts();
       loadMedia();
+      loadInstances();
     }
   }, [isOpen, initialData]);
 
@@ -330,6 +348,7 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
         frequency,
         custom_days_gap: frequency === "custom" ? Number(customDaysGap) : null,
         media: media || null,
+        instance: instanceId || null,
       };
       await onLaunch(payload as any, initialData?.id);
       onClose();
@@ -391,6 +410,26 @@ export function CampaignWizard({ initialData, isOpen, onClose, onLaunch }: Campa
                       disabled={isSubmitting}
                     />
                   </div>
+                  {instances.length > 0 && (
+                    <div>
+                      <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                        Send From (WhatsApp Line)
+                      </label>
+                      <select
+                        value={instanceId}
+                        onChange={(e) => setInstanceId(e.target.value)}
+                        className="w-full bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-[#007e3a] transition disabled:opacity-60 cursor-pointer"
+                        disabled={isSubmitting}
+                      >
+                        <option value="">Default (First Active Line)</option>
+                        {instances.map((inst) => (
+                          <option key={inst.id} value={inst.id}>
+                            {inst.display_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
                       WhatsApp Message Template

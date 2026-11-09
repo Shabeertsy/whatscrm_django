@@ -9,6 +9,7 @@ export function useChatFilters(chats: Conversation[], selectedChatId?: string | 
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [stageFilter, setStageFilter] = useState<string>("all");
   const [assignmentFilter, setAssignmentFilter] = useState<AssignmentFilter>('all');
+  const [instanceFilter, setInstanceFilter] = useState<string>('all');
   const [allStages, setAllStages] = useState<PipelineStage[]>([]);
 
   useEffect(() => {
@@ -32,6 +33,14 @@ export function useChatFilters(chats: Conversation[], selectedChatId?: string | 
       }
       if (stageFilter !== "all" && c.contact?.stage_name !== stageFilter) {
         return false;
+      }
+      if (instanceFilter !== 'all') {
+        const rawInst = typeof c.instance === 'object' && c.instance !== null ? (c.instance as any).id : c.instance;
+        const normFilter = String(instanceFilter).replace(/-/g, '').toLowerCase();
+        const normInst = String(rawInst || '').replace(/-/g, '').toLowerCase();
+        if (normInst !== normFilter) {
+          return false;
+        }
       }
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
@@ -58,6 +67,8 @@ export function useChatFilters(chats: Conversation[], selectedChatId?: string | 
     setStageFilter,
     assignmentFilter,
     setAssignmentFilter,
+    instanceFilter,
+    setInstanceFilter,
     availableStages,
     filteredChats
   };

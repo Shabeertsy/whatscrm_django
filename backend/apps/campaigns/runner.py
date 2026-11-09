@@ -156,10 +156,35 @@ class CampaignRunner:
         return Contact.objects.filter(owner=self.campaign.owner).filter(reachable)
 
     def _resolve_whatsapp_instance(self):
-        """Return the first active WhatsApp instance for the campaign owner."""
+        """Return the WhatsApp instance to use for this campaign run.
+
+        Priority order:
+          1. The instance explicitly set on the campaign (user's chosen line).
+          2. Fallback: first active instance for the campaign owner.
+        """
         from apps.whatsapp.models import WhatsappInstance
 
+        # 1. Prefer the user-selected instance stored on the campaign
+        if self.campaign.instance_id:
+            instance = WhatsappInstance.objects.filter(
+                id=self.campaign.instance_id,
+                is_active=True,
+                user=self.campaign.owner,
+            ).first()
+            if instance:
+                logger.info(
+                    "[CampaignRunner] Using campaign-assigned instance %s (phone_number_id=%s) for campaign %s",
+                    instance.id, instance.phone_number_id, self.campaign.id,
+                )
+                return instance
+            logger.warning(
+                "[CampaignRunner] Campaign %s has instance_id=%s but it is inactive or not found — falling back.",
+                self.campaign.id, self.campaign.instance_id,
+            )
+
+        # 2. Fallback: first active instance for owner
         instance = WhatsappInstance.objects.filter(
+            user=self.campaign.owner,
             is_active=True
         ).order_by('-created_at').first()
 
@@ -167,7 +192,7 @@ class CampaignRunner:
             raise CampaignRunError("No active WhatsApp instance found.")
 
         logger.info(
-            "[CampaignRunner] Using instance %s (phone_number_id=%s) for campaign %s",
+            "[CampaignRunner] Using fallback instance %s (phone_number_id=%s) for campaign %s",
             instance.id, instance.phone_number_id, self.campaign.id,
         )
         return instance

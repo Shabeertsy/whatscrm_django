@@ -17,8 +17,8 @@ export function SidebarElements() {
 
   return (
     <ResizableSidebar 
-      defaultWidth={256} 
-      minWidth={200} 
+      defaultWidth={272} 
+      minWidth={220} 
       maxWidth={600} 
       position="left" 
       className="bg-white dark:bg-[#0B0F19] border-r border-slate-200 dark:border-slate-800 flex flex-col"
@@ -63,10 +63,10 @@ export function SidebarElements() {
         </div>
       ) : (
         <div className="overflow-y-auto custom-scrollbar flex-1 flex flex-col">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between">
+          <div className="px-4 py-3.5 border-b border-slate-200 dark:border-slate-800 flex flex-row items-center justify-between shrink-0">
             <div>
               <h3 className="text-slate-900 dark:text-white font-semibold text-sm">Components</h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Drag and drop to the canvas</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Drag and drop to the canvas</p>
             </div>
             <button 
               onClick={() => setIsCollapsed(true)}
@@ -77,34 +77,34 @@ export function SidebarElements() {
             </button>
           </div>
 
-        <div className="p-3 space-y-6">
-          {SIDEBAR_CATEGORIES.map((cat) => {
-            const items = SIDEBAR_ITEMS[cat];
-            if (!items?.length) return null;
-            return (
-              <div key={cat}>
-                <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{cat}</span>
-                </div>
-                <div className="space-y-2">
-                  {items.map((item) => (
-                    <div
-                      key={item.type + item.label}
-                      onDragStart={(e) => onDragStart(e, item.type, item.label, item.description)}
-                      draggable
-                      className="flex items-center space-x-3 bg-slate-50 dark:bg-[#131924] hover:bg-slate-100 dark:hover:bg-[#1C2333] border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-lg p-2.5 cursor-grab transition-colors"
-                    >
-                      <div className={`p-1 rounded bg-white dark:bg-[#0B0F19] ${item.color}`}>
-                        <item.icon className="h-4 w-4" />
+          <div className="p-4 space-y-5">
+            {SIDEBAR_CATEGORIES.map((cat) => {
+              const items = SIDEBAR_ITEMS[cat];
+              if (!items?.length) return null;
+              return (
+                <div key={cat}>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">{cat}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {items.map((item) => (
+                      <div
+                        key={item.type + item.label}
+                        onDragStart={(e) => onDragStart(e, item.type, item.label, item.description)}
+                        draggable
+                        className="flex items-center space-x-3 bg-slate-50 dark:bg-[#131924] hover:bg-slate-100 dark:hover:bg-[#1C2333] border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 rounded-lg px-3 py-2.5 cursor-grab transition-all shadow-xs"
+                      >
+                        <div className={`p-1 rounded bg-white dark:bg-[#0B0F19] ${item.color}`}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
                       </div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{item.label}</span>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </ResizableSidebar>

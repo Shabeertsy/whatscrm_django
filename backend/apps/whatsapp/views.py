@@ -102,41 +102,74 @@ class WhatsappTemplateListCreateAPIView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        # Forward creation to Meta API
-        instance_id = request.data.get("instance")
-        try:
-            instance = scope_by_owner(WhatsappInstance.objects.all(), request.user, owner_field='user').get(id=instance_id)
-        except WhatsappInstance.DoesNotExist:
-            return Response({"error": "Instance not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        instance_ids = request.data.get("instances")
+        if not instance_ids:
+            single = request.data.get("instance")
+            instance_ids = [single] if single else []
 
-        if not instance.whatsapp_business_account_id or not instance.access_token:
-            return Response({"error": "Instance missing WABA ID or Access Token"}, status=status.HTTP_400_BAD_REQUEST)
+        if not instance_ids:
+            return Response({"error": "Please select at least one WhatsApp instance"}, status=status.HTTP_400_BAD_REQUEST)
 
-        payload = {
+        instances = scope_by_owner(
+            WhatsappInstance.objects.filter(id__in=instance_ids, is_active=True),
+            request.user,
+            owner_field='user'
+        )
+        if not instances.exists():
+            return Response({"error": "No valid active WhatsApp instances found"}, status=status.HTTP_404_NOT_FOUND)
+
+        payload_base = {
             "name": request.data.get("name"),
             "language": request.data.get("language"),
             "category": request.data.get("category"),
             "components": request.data.get("components", []),
         }
 
-        url = get_meta_template_url(waba_id=instance.whatsapp_business_account_id)
-        headers = {"Authorization": f"Bearer {instance.access_token}", "Content-Type": "application/json"}
-        
-        res = requests.post(url, json=payload, headers=headers)
-        if res.status_code != 200 and res.status_code != 201:
-            return Response({"error": "Meta API Error", "details": res.json()}, status=res.status_code)
+        created_templates = []
+        errors = []
 
-        meta_data = res.json()
-        
-        # Save to DB
-        serializer = WhatsappTemplateSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer.save(
-            meta_id=meta_data.get("id"),
-            status=meta_data.get("status", "PENDING"),
-            last_synced_at=timezone.now()
-        )
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+        for instance in instances:
+            if not instance.whatsapp_business_account_id or not instance.access_token:
+                errors.append(f"{instance.display_name}: Missing WABA ID or Access Token")
+                continue
+
+            url = get_meta_template_url(waba_id=instance.whatsapp_business_account_id)
+            headers = {"Authorization": f"Bearer {instance.access_token}", "Content-Type": "application/json"}
+
+            try:
+                res = requests.post(url, json=payload_base, headers=headers)
+                if res.status_code not in (200, 201):
+                    err_json = res.json()
+                    meta_msg = err_json.get("error", {}).get("message") or err_json.get("error", {}).get("error_user_msg") or str(err_json)
+                    errors.append(f"{instance.display_name}: {meta_msg}")
+                    continue
+
+                meta_data = res.json()
+
+                tmpl_data = request.data.copy()
+                tmpl_data["instance"] = instance.id
+                serializer = WhatsappTemplateSerializer(data=tmpl_data)
+                serializer.is_valid(raise_exception=True)
+                obj = serializer.save(
+                    meta_id=meta_data.get("id"),
+                    status=meta_data.get("status", "PENDING"),
+                    last_synced_at=timezone.now()
+                )
+                created_templates.append(WhatsappTemplateSerializer(obj).data)
+            except Exception as e:
+                errors.append(f"{instance.display_name}: {str(e)}")
+
+        if not created_templates and errors:
+            return Response({"error": "Meta API Error", "details": errors}, status=status.HTTP_400_BAD_REQUEST)
+
+        if len(created_templates) == 1 and not request.data.get("instances"):
+            return Response(created_templates[0], status=status.HTTP_201_CREATED)
+
+        return Response({
+            "created": created_templates,
+            "errors": errors
+        }, status=status.HTTP_201_CREATED)
 
 
 class WhatsappTemplateDetailAPIView(APIView):

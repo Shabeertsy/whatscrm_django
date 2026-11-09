@@ -1,6 +1,6 @@
-import { Search, User2, Users, Inbox } from 'lucide-react';
+import React from 'react';
+import { Search, User2, Users, Inbox, ChevronDown, X, Smartphone } from 'lucide-react';
 import type { AssignmentFilter } from '../../hooks/useChatFilters';
-
 
 interface ChatFiltersProps {
   searchQuery: string;
@@ -12,6 +12,9 @@ interface ChatFiltersProps {
   availableStages: string[];
   assignmentFilter: AssignmentFilter;
   setAssignmentFilter: (f: AssignmentFilter) => void;
+  instanceFilter: string;
+  setInstanceFilter: (id: string) => void;
+  instances: Array<{ id: string; display_name: string }>;
 }
 
 export function ChatFilters({
@@ -24,79 +27,132 @@ export function ChatFilters({
   availableStages,
   assignmentFilter,
   setAssignmentFilter,
+  instanceFilter,
+  setInstanceFilter,
+  instances,
 }: ChatFiltersProps) {
+  const hasDropdowns = instances.length > 0 || availableStages.length > 0;
+
   return (
-    <>
-      {/* Search Input */}
-      <div className="relative mb-3">
-        <Search className="h-3 w-3 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+    <div className="space-y-1.5">
+
+      {/* ── Row 1: Search ── */}
+      <div className="relative">
+        <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
         <input
           type="text"
-          placeholder="Search chats..."
+          placeholder="Search chats…"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg py-1 pl-7 pr-2.5 text-[9px] xl:text-[9.5px] font-light text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 placeholder:font-light focus:outline-none focus:border-[#007e3a] focus:bg-white dark:focus:bg-slate-800 transition-colors"
+          className="w-full bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg py-1.5 pl-8 pr-7 text-[9px] xl:text-[9.5px] text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:border-[#007e3a] focus:bg-white dark:focus:bg-slate-800 transition-colors"
         />
-      </div>
-
-      {/* Assignment Filter Tabs */}
-      <div className="flex items-center gap-1 mb-2.5">
-        {[
-          { id: 'all' as AssignmentFilter, label: 'All Chats', Icon: Inbox },
-          { id: 'mine' as AssignmentFilter, label: 'Mine', Icon: User2 },
-          { id: 'unassigned' as AssignmentFilter, label: 'Unassigned', Icon: Users },
-        ].map(({ id, label, Icon }) => (
+        {searchQuery && (
           <button
-            key={id}
-            onClick={() => setAssignmentFilter(id)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[8px] xl:text-[8.5px] font-light transition-all flex-shrink-0
-              ${assignmentFilter === id
-                ? 'bg-[#007e3a]/10 dark:bg-[#007e3a]/20 text-[#007e3a] dark:text-emerald-400 border border-[#007e3a]/20 dark:border-emerald-500/30'
-                : 'bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-transparent'
-              }`}
+            onClick={() => setSearchQuery('')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
           >
-            <Icon className="h-2.5 w-2.5" />
-            {label}
+            <X className="h-3 w-3" />
           </button>
-        ))}
+        )}
       </div>
 
-      {/* Status Filter Pills and Stage Sort */}
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none">
-          {[
-            { id: "all", label: "All" },
-            { id: "open", label: "Open" },
-            { id: "resolved", label: "Resolved" },
-          ].map((tab) => (
+      {/* ── Row 2: Assignment segmented control ── */}
+      <div className="grid grid-cols-3 p-0.5 bg-slate-100 dark:bg-slate-800/80 rounded-lg border border-slate-200/60 dark:border-slate-700/60">
+        {([
+          { id: 'all'        as AssignmentFilter, label: 'All Chats',   Icon: Inbox  },
+          { id: 'mine'       as AssignmentFilter, label: 'Mine',        Icon: User2  },
+          { id: 'unassigned' as AssignmentFilter, label: 'Unassigned',  Icon: Users  },
+        ] as const).map(({ id, label, Icon }) => {
+          const active = assignmentFilter === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setAssignmentFilter(id)}
+              className={`flex items-center justify-center gap-1 py-[5px] px-1 rounded-md text-[8.5px] xl:text-[9px] transition-all ${
+                active
+                  ? 'bg-white dark:bg-slate-900 text-[#007e3a] dark:text-emerald-400 font-semibold shadow-sm'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
+            >
+              <Icon className={`h-2.5 w-2.5 shrink-0 ${active ? 'text-[#007e3a] dark:text-emerald-400' : 'text-slate-400'}`} />
+              <span className="truncate">{label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Row 3: Status pill chips — full width ── */}
+      <div className="flex items-center gap-1">
+        {([
+          { id: 'all',      label: 'All'      },
+          { id: 'open',     label: 'Open'     },
+          { id: 'resolved', label: 'Resolved' },
+        ] as const).map((tab) => {
+          const active = statusFilter === tab.id;
+          return (
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-2 py-0.5 rounded-full text-[8px] xl:text-[8.5px] font-light transition-all flex-shrink-0 ${statusFilter === tab.id
-                ? "bg-[#007e3a] text-white shadow-xs"
-                : "bg-slate-100 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700/60"
-                }`}
+              className={`inline-flex items-center gap-1 px-2.5 py-[4px] rounded-full text-[8.5px] xl:text-[9px] font-medium border transition-all whitespace-nowrap ${
+                active
+                  ? 'bg-[#007e3a] border-[#007e3a] text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300 hover:text-slate-700 dark:hover:text-slate-200'
+              }`}
             >
               {tab.label}
             </button>
-          ))}
-        </div>
-
-        {availableStages.length > 0 && (
-          <select
-            value={stageFilter}
-            onChange={(e) => {
-              setStageFilter(e.target.value);
-            }}
-            className="text-[8px] xl:text-[8.5px] font-light bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md px-1.5 py-0.5 border-none focus:ring-0 cursor-pointer outline-none ml-2 shrink-0 shadow-sm max-w-[100px] truncate"
-          >
-            <option value="all">Stage: All</option>
-            {availableStages.map(stage => (
-              <option key={stage} value={stage}>{stage}</option>
-            ))}
-          </select>
-        )}
+          );
+        })}
       </div>
-    </>
+
+      {/* ── Row 4: Line & Stage dropdowns — full width, side by side ── */}
+      {hasDropdowns && (
+        <div className={`grid gap-1.5 ${instances.length > 0 && availableStages.length > 0 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {instances.length > 0 && (
+            <div className="relative">
+              <Smartphone className="h-2.5 w-2.5 text-slate-400 absolute left-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <select
+                value={instanceFilter}
+                onChange={(e) => setInstanceFilter(e.target.value)}
+                className={`w-full h-[26px] text-[8.5px] xl:text-[9px] font-medium rounded-lg pl-6 pr-5 border cursor-pointer appearance-none outline-none transition-all ${
+                  instanceFilter !== 'all'
+                    ? 'bg-[#007e3a]/10 border-[#007e3a]/50 text-[#007e3a] dark:text-emerald-400 font-semibold'
+                    : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                }`}
+                title="Filter by WhatsApp Line"
+              >
+                <option value="all">All Lines</option>
+                {instances.map((inst) => (
+                  <option key={inst.id} value={inst.id}>{inst.display_name}</option>
+                ))}
+              </select>
+              <ChevronDown className="h-2.5 w-2.5 text-slate-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          )}
+
+          {availableStages.length > 0 && (
+            <div className="relative">
+              <select
+                value={stageFilter}
+                onChange={(e) => setStageFilter(e.target.value)}
+                className={`w-full h-[26px] text-[8.5px] xl:text-[9px] font-medium rounded-lg pl-2.5 pr-5 border cursor-pointer appearance-none outline-none transition-all ${
+                  stageFilter !== 'all'
+                    ? 'bg-[#007e3a]/10 border-[#007e3a]/50 text-[#007e3a] dark:text-emerald-400 font-semibold'
+                    : 'bg-slate-50 dark:bg-slate-800/80 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100'
+                }`}
+                title="Filter by Pipeline Stage"
+              >
+                <option value="all">All Stages</option>
+                {availableStages.map((stage) => (
+                  <option key={stage} value={stage}>{stage}</option>
+                ))}
+              </select>
+              <ChevronDown className="h-2.5 w-2.5 text-slate-400 absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            </div>
+          )}
+        </div>
+      )}
+
+    </div>
   );
 }

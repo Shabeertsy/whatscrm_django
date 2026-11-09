@@ -24,6 +24,7 @@ class CampaignDeliverySerializer(serializers.ModelSerializer):
 class CampaignSerializer(serializers.ModelSerializer):
     media_url = serializers.CharField(source='media.file_url', read_only=True)
     media_type = serializers.CharField(source='media.media_type', read_only=True)
+    instance_display_name = serializers.CharField(source='instance.display_name', read_only=True)
 
     class Meta:
         model = Campaign
@@ -33,8 +34,9 @@ class CampaignSerializer(serializers.ModelSerializer):
             'sent', 'delivered', 'read', 'replied', 'target_type', 'contacts',
             'tags', 'media', 'media_url', 'media_type', 'owner', 'created_at', 'updated_at',
             'last_run_at', 'next_run_at',
+            'instance', 'instance_display_name',
         ]
-        read_only_fields = ['id', 'sent', 'delivered', 'read', 'replied', 'owner', 'created_at', 'updated_at', 'last_run_at', 'next_run_at']
+        read_only_fields = ['id', 'sent', 'delivered', 'read', 'replied', 'owner', 'created_at', 'updated_at', 'last_run_at', 'next_run_at', 'instance_display_name']
 
     def create(self, validated_data):
         request = self.context.get('request')
@@ -43,6 +45,14 @@ class CampaignSerializer(serializers.ModelSerializer):
         
         tags_data = validated_data.pop('tags', [])
         contacts_data = validated_data.pop('contacts', [])
+
+        # Validate instance belongs to this tenant
+        inst = validated_data.get('instance')
+        if inst and request:
+            owner = get_tenant_owner(request.user)
+            if inst.user != owner:
+                raise serializers.ValidationError({'instance': 'Invalid WhatsApp instance for this account.'})
+
         campaign = Campaign.objects.create(**validated_data)
         
         if tags_data:

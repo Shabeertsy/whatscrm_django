@@ -63,6 +63,15 @@ class Campaign(BaseModel, SoftDeleteModel):
         related_name='campaigns'
     )
 
+    # WhatsApp line to send this campaign from (optional — falls back to first active)
+    instance = models.ForeignKey(
+        'whatsapp.WhatsappInstance',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='campaigns',
+        help_text="WhatsApp line to send this campaign from"
+    )
+
     class Meta:
         ordering = ['-created_at']
 

@@ -27,6 +27,7 @@ export function Inbox() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [isAiActive, setIsAiActive] = useState(false);
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'mine' | 'unassigned'>('all');
+  const [instanceFilter, setInstanceFilter] = useState<string>('all');
 
   // Guard: user doesn't have access to chats
   if (!allowed) {
@@ -86,7 +87,12 @@ export function Inbox() {
       messagingStore.setState({ isLoadingConversations: true });
     }
     
-    messagingApi.listConversations({ limit: 30, offset: 0, ...(assignmentFilter !== 'all' ? { assigned: assignmentFilter } : {}) })
+    messagingApi.listConversations({
+      limit: 30,
+      offset: 0,
+      ...(assignmentFilter !== 'all' ? { assigned: assignmentFilter } : {}),
+      ...(instanceFilter !== 'all' ? { instance: instanceFilter } : {}),
+    })
       .then(res => {
         const hasMore = !!res.data.next;
         const targetConv = searchParams.get('conversation') || searchParams.get('conversation_id') || searchParams.get('conversationId');
@@ -105,12 +111,16 @@ export function Inbox() {
         console.error("Failed to load conversations:", err);
         messagingStore.setState({ error: "Failed to load conversations", isLoadingConversations: false });
       });
-  }, [assignmentFilter]);
+  }, [assignmentFilter, instanceFilter]);
 
   // Re-fetch conversations when assignment filter changes
   const handleAssignmentFilterChange = useCallback((filter: 'all' | 'mine' | 'unassigned') => {
     setAssignmentFilter(filter);
-    // useEffect([assignmentFilter]) will automatically re-fetch from backend
+    // useEffect([assignmentFilter, instanceFilter]) will automatically re-fetch from backend
+  }, []);
+
+  const handleInstanceFilterChange = useCallback((instId: string) => {
+    setInstanceFilter(instId);
   }, []);
 
   // When active conversation changes, fetch messages and mark as read
@@ -362,6 +372,7 @@ export function Inbox() {
             onSelectChat={handleSelectChat}
             onStartNewChat={() => setShowStartChat(true)}
             onAssignmentFilterChange={handleAssignmentFilterChange}
+            onInstanceFilterChange={handleInstanceFilterChange}
           />
           <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
             {!activeConversation ? (

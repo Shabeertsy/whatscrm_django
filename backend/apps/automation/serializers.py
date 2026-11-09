@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from django.db import transaction
 from .models import AutomationFlow, FlowNode, FlowEdge, FlowStatus
+from apps.whatsapp.models import WhatsappInstance
 from apps.core.scoping import get_tenant_owner
 
 
@@ -42,17 +43,29 @@ class AutomationFlowSerializer(serializers.ModelSerializer):
     nodes = FlowNodeSerializer(many=True, read_only=True)
     edges = FlowEdgeSerializer(many=True, read_only=True)
     owner = serializers.PrimaryKeyRelatedField(read_only=True)
+    instances = serializers.PrimaryKeyRelatedField(
+        queryset=WhatsappInstance.objects.all(),
+        many=True,
+        required=False
+    )
+    instances_detail = serializers.SerializerMethodField()
 
     class Meta:
         model = AutomationFlow
         fields = [
-            "id", "name", "description", "status", "instance", "owner",
+            "id", "name", "description", "status", "instance", "instances", "instances_detail", "owner",
             "viewport", "total_executions", "active_executions",
             "created_at", "updated_at", "nodes", "edges"
         ]
         read_only_fields = [
             "id", "status", "total_executions", "active_executions",
             "created_at", "updated_at"
+        ]
+
+    def get_instances_detail(self, obj):
+        return [
+            {"id": str(i.id), "display_name": i.display_name}
+            for i in obj.instances.all()
         ]
 
     @transaction.atomic
@@ -107,8 +120,19 @@ class AutomationFlowSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
             validated_data['owner'] = get_tenant_owner(request.user)
-            
-        return super().create(validated_data)
+        instances_data = validated_data.pop('instances', None)
+        flow = super().create(validated_data)
+        if instances_data is not None:
+            flow.instances.set(instances_data)
+        return flow
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        instances_data = validated_data.pop('instances', None)
+        flow = super().update(instance, validated_data)
+        if instances_data is not None:
+            flow.instances.set(instances_data)
+        return flow
 
 
 class FlowExecutionSerializer(serializers.ModelSerializer):

@@ -6,7 +6,8 @@ import SidebarElements from "./components/ui/sidebar/SidebarElements";
 import PropertiesPanel from "./components/PropertiesPanel";
 import { Flow } from "./api";
 import { automationApi } from "../../api/automation";
-import { Plus, ArrowLeft, Workflow, Trash2, Save, Play, Pause, Edit2 } from "lucide-react";
+import { whatsappApi } from "../../api/whatsapp";
+import { Plus, ArrowLeft, Workflow, Trash2, Save, Play, Pause, Edit2, Smartphone } from "lucide-react";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
 import { showToast } from "../../utils/toast";
 
@@ -22,6 +23,8 @@ export function Automation() {
   const [editFlowId, setEditFlowId] = useState<string | null>(null);
   const [newFlowName, setNewFlowName] = useState("");
   const [newFlowDescription, setNewFlowDescription] = useState("");
+  const [availableInstances, setAvailableInstances] = useState<Array<{ id: string; display_name: string }>>([]);
+  const [selectedInstances, setSelectedInstances] = useState<string[]>([]);
 
   const activeFlow = flows.find((f) => f.id === activeFlowId);
 
@@ -30,11 +33,13 @@ export function Automation() {
 
   const selectedNode = nodes.find((n) => n.id === selectedNodeId) || null;
 
-
-
   // Load flows on mount
   React.useEffect(() => {
     fetchFlows();
+    whatsappApi.listInstances().then(res => {
+      const list = Array.isArray(res.data) ? res.data : (res.data as any).results || [];
+      setAvailableInstances(list.filter((i: any) => i.is_active));
+    }).catch(console.error);
   }, []);
 
   const fetchFlows = async () => {
@@ -90,6 +95,7 @@ export function Automation() {
     setEditFlowId(flow.id);
     setNewFlowName(flow.name);
     setNewFlowDescription(flow.description || "");
+    setSelectedInstances(flow.instances || (flow as any).instances_detail?.map((i: any) => i.id) || []);
     setIsCreateModalOpen(true);
   };
 
@@ -97,6 +103,7 @@ export function Automation() {
     setIsCreateModalOpen(false);
     setNewFlowName("");
     setNewFlowDescription("");
+    setSelectedInstances([]);
     setEditFlowId(null);
   };
 
@@ -110,13 +117,21 @@ export function Automation() {
         await automationApi.updateFlow(editFlowId, {
           name: newFlowName,
           description: newFlowDescription,
+          instances: selectedInstances,
         });
-        setFlows(prev => prev.map(f => f.id === editFlowId ? { ...f, name: newFlowName, description: newFlowDescription } : f));
+        setFlows(prev => prev.map(f => f.id === editFlowId ? {
+          ...f,
+          name: newFlowName,
+          description: newFlowDescription,
+          instances: selectedInstances,
+          instances_detail: availableInstances.filter(i => selectedInstances.includes(i.id)),
+        } : f));
         showToast("Flow Updated", "Flow updated successfully.", "success");
       } else {
         const newFlowData = {
           name: newFlowName,
           description: newFlowDescription,
+          instances: selectedInstances,
         };
         const created = await automationApi.createFlow(newFlowData);
         setFlows([...flows, created]);
@@ -292,6 +307,14 @@ export function Automation() {
                 </div>
               </div>
               <h3 className="font-bold text-sm text-slate-900 dark:text-slate-100 mb-1">{flow.name}</h3>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate mb-2">
+                <Smartphone className="h-3 w-3 shrink-0 text-slate-400" />
+                <span>
+                  {flow.instances_detail && flow.instances_detail.length > 0
+                    ? flow.instances_detail.map((i: any) => i.display_name).join(', ')
+                    : 'All WhatsApp Lines'}
+                </span>
+              </p>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-xs text-slate-500 dark:text-slate-400">{flow.nodes?.length || 0} nodes configured</p>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${flow.status === 'active'
@@ -342,6 +365,42 @@ export function Automation() {
                     rows={3}
                   />
                 </div>
+                {availableInstances.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-slate-700 dark:text-slate-300">
+                        Trigger on Lines
+                      </label>
+                      <span className="text-[10px] text-slate-400">
+                        {selectedInstances.length === 0 ? "Listening on all lines" : `${selectedInstances.length} selected`}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50 dark:bg-slate-800/60 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                      {availableInstances.map((inst) => {
+                        const isSelected = selectedInstances.includes(inst.id);
+                        return (
+                          <button
+                            key={inst.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedInstances(prev =>
+                                isSelected ? prev.filter(id => id !== inst.id) : [...prev, inst.id]
+                              );
+                            }}
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border transition-all ${
+                              isSelected
+                                ? 'bg-[#007e3a] border-[#007e3a] text-white shadow-xs'
+                                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+                            }`}
+                          >
+                            <Smartphone className="h-3 w-3" />
+                            <span>{inst.display_name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="flex gap-3 text-sm">
                 <button
@@ -365,7 +424,7 @@ export function Automation() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] -mx-6 -my-6 sm:-mx-8 sm:-my-8 bg-slate-50 dark:bg-[#0B0F19] transition-colors">
+    <div className="flex flex-col flex-1 min-h-0 -m-2 md:-m-3 -mb-24 md:-mb-3 h-[calc(100%+1rem)] md:h-[calc(100%+1.5rem)] bg-slate-50 dark:bg-[#0B0F19] transition-colors overflow-hidden">
       <div className="flex justify-between items-center px-6 py-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-transparent">
         <div className="flex items-center space-x-4">
           <button

@@ -5,6 +5,8 @@ export interface Flow {
   name: string;
   description?: string;
   status?: string;
+  instances?: string[];
+  instances_detail?: Array<{ id: string; display_name: string }>;
   nodes: Node[];
   edges: Edge[];
   viewport?: { x: number; y: number; zoom: number };

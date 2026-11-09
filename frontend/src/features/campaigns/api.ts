@@ -20,6 +20,8 @@ export interface Campaign {
   replied: number;
   tags?: string[];
   created_at?: string;
+  instance?: string | null;
+  instance_display_name?: string | null;
 }
 
 export const fetchCampaigns = async (): Promise<Campaign[]> => {

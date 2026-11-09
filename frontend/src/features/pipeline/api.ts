@@ -145,10 +145,13 @@ export interface PaginatedDealsResult {
   confirmed_count?: number;
 }
 
-export const getDeals = async (pipelineId: string, timeframe?: string): Promise<Deal[]> => {
+export const getDeals = async (pipelineId: string, timeframe?: string, instance?: string): Promise<Deal[]> => {
   const params: any = { pipeline: pipelineId };
   if (timeframe) {
     params.timeframe = timeframe;
+  }
+  if (instance && instance !== 'all') {
+    params.instance = instance;
   }
   const res = await apiClient.get('/contacts/pipeline/deals/', { params });
   return Array.isArray(res.data) ? res.data : res.data.results || [];
@@ -161,6 +164,7 @@ export const getPaginatedDeals = async (params: {
   stage?: string;
   search?: string;
   timeframe?: string;
+  instance?: string;
 }): Promise<PaginatedDealsResult> => {
   const queryParams: Record<string, any> = {
     pipeline: params.pipeline,
@@ -171,6 +175,7 @@ export const getPaginatedDeals = async (params: {
   if (params.stage && params.stage !== 'all') queryParams.stage = params.stage;
   if (params.search && params.search.trim()) queryParams.search = params.search.trim();
   if (params.timeframe && params.timeframe !== 'all') queryParams.timeframe = params.timeframe;
+  if (params.instance && params.instance !== 'all') queryParams.instance = params.instance;
 
   const res = await apiClient.get('/contacts/pipeline/deals/', { params: queryParams });
   return res.data;

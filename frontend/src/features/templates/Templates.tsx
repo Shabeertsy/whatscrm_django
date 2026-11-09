@@ -5,13 +5,15 @@ import { TemplateSync } from "./components/TemplateSync";
 import { TemplateList } from "./components/TemplateList";
 import { TemplateForm } from "./components/TemplateForm";
 import { ConfirmDialog } from "../../components/shared/ConfirmDialog";
-import { Plus } from "lucide-react";
+import { Plus, Smartphone, ChevronDown } from "lucide-react";
 
 export function Templates() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [instances, setInstances] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [lineFilter, setLineFilter] = useState<string>("all");
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any>(null);
@@ -57,6 +59,29 @@ export function Templates() {
     }
   };
 
+  const handleSyncAll = async () => {
+    const activeInstances = instances.filter(i => i.is_active);
+    if (activeInstances.length === 0) return;
+    setIsSyncingAll(true);
+    let totalSynced = 0;
+    let totalTemplates = 0;
+    try {
+      for (const inst of activeInstances) {
+        setSyncingId(inst.id);
+        const res = await whatsappApi.syncTemplates(inst.id);
+        totalSynced += (res.data?.synced || 0);
+        totalTemplates += (res.data?.total || 0);
+      }
+      alert(`Synced ${totalSynced} new templates across all lines (Total: ${totalTemplates})`);
+      await fetchData();
+    } catch (e: any) {
+      alert(`Sync failed: ${e.response?.data?.error || e.message}`);
+    } finally {
+      setSyncingId(null);
+      setIsSyncingAll(false);
+    }
+  };
+
   const handleCreateSubmit = async (payload: any) => {
     await whatsappApi.createTemplate(payload);
     await fetchData();
@@ -84,7 +109,8 @@ export function Templates() {
 
   const regularTemplates = templates.filter(t => t.template_type === 'REGULAR' || (!t.template_type && t.category !== 'MARKETING'));
   const campaignTemplates = templates.filter(t => t.template_type === 'CAMPAIGN' || (!t.template_type && t.category === 'MARKETING'));
-  const displayedTemplates = activeTab === 'regular' ? regularTemplates : campaignTemplates;
+  const byTab = activeTab === 'regular' ? regularTemplates : campaignTemplates;
+  const displayedTemplates = lineFilter === 'all' ? byTab : byTab.filter(t => String(t.instance) === String(lineFilter));
 
   return (
     <div className="space-y-6">
@@ -96,7 +122,9 @@ export function Templates() {
           instances={instances} 
           loading={loading} 
           syncingId={syncingId} 
+          isSyncingAll={isSyncingAll}
           onSync={handleSync} 
+          onSyncAll={handleSyncAll}
         />
         <button
           onClick={() => {
@@ -111,32 +139,61 @@ export function Templates() {
         </button>
       </PageHeader>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-200 dark:border-slate-700">
-        <button
-          onClick={() => setActiveTab('regular')}
-          className={`py-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
-            activeTab === 'regular'
-              ? 'border-[#007e3a] text-[#007e3a]'
-              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          Regular Templates
-        </button>
-        <button
-          onClick={() => setActiveTab('campaign')}
-          className={`py-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
-            activeTab === 'campaign'
-              ? 'border-[#007e3a] text-[#007e3a]'
-              : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-          }`}
-        >
-          Campaign Templates
-        </button>
+      {/* Tabs & Instance Filter */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 dark:border-slate-700 gap-2 pb-2 sm:pb-0">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('regular')}
+            className={`py-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
+              activeTab === 'regular'
+                ? 'border-[#007e3a] text-[#007e3a]'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            Regular Templates
+          </button>
+          <button
+            onClick={() => setActiveTab('campaign')}
+            className={`py-2 px-4 text-sm font-semibold border-b-2 transition-colors ${
+              activeTab === 'campaign'
+                ? 'border-[#007e3a] text-[#007e3a]'
+                : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
+            }`}
+          >
+            Campaign Templates
+          </button>
+        </div>
+
+        {instances.length > 1 && (
+          <div className="relative inline-flex items-center pb-1 sm:pb-0">
+            <Smartphone className={`h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${
+              lineFilter !== 'all' ? 'text-[#007e3a] dark:text-emerald-400' : 'text-slate-400'
+            }`} />
+            <select
+              value={lineFilter}
+              onChange={(e) => setLineFilter(e.target.value)}
+              className={`h-8 pl-8 pr-7 text-xs font-medium rounded-lg border appearance-none outline-none cursor-pointer transition-all shadow-xs ${
+                lineFilter !== 'all'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/40 border-[#007e3a]/60 text-[#007e3a] dark:text-emerald-400 font-semibold'
+                  : 'bg-white dark:bg-slate-800/90 border-slate-200/90 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600'
+              }`}
+              title="Filter templates by WhatsApp Line"
+            >
+              <option value="all">All Lines ({instances.length})</option>
+              {instances.map(inst => (
+                <option key={inst.id} value={inst.id}>{inst.display_name}</option>
+              ))}
+            </select>
+            <ChevronDown className={`h-3 w-3 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none transition-colors ${
+              lineFilter !== 'all' ? 'text-[#007e3a] dark:text-emerald-400' : 'text-slate-400'
+            }`} />
+          </div>
+        )}
       </div>
 
       <TemplateList 
         templates={displayedTemplates} 
+        instances={instances}
         loading={loading} 
         onEdit={(tmpl) => {
           setEditingTemplate(tmpl);
@@ -157,6 +214,7 @@ export function Templates() {
         <TemplateForm
           initialData={editingTemplate}
           instanceId={editingTemplate?.instance || selectedInstanceId}
+          instances={instances}
           onClose={() => {
             setIsFormOpen(false);
             setEditingTemplate(null);
