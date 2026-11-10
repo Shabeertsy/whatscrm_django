@@ -13,6 +13,32 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .serializers import MessageSerializer, ConversationListSerializer
 
+
+def _broadcast_groups_for_conv(conv) -> list[str]:
+    """
+    Return the WebSocket group names to push an event to for a conversation.
+
+    Rules:
+      - If conv.assigned_agents (M2M, dept/role assignment) has any members,
+        broadcast to ALL of them so every watching agent sees real-time updates.
+      - Else if conv.assigned_agent (FK, single assignment) is set, use that agent's group.
+      - Else broadcast to 'inbox_global' (unassigned / all agents see it).
+    """
+    # M2M dept/role agents (prefetch if possible to avoid extra queries)
+    try:
+        # Use _prefetched_objects_cache if already prefetched
+        m2m_agents = list(conv.assigned_agents.values_list('id', flat=True))
+    except Exception:
+        m2m_agents = []
+
+    if m2m_agents:
+        return [f"inbox_{agent_id}" for agent_id in m2m_agents]
+
+    if conv.assigned_agent_id:
+        return [f"inbox_{conv.assigned_agent_id}"]
+
+    return ["inbox_global"]
+
 import logging
 
 import requests
@@ -160,8 +186,8 @@ def save_whatsapp_media(file_obj, phone=None):
 
 
 def broadcast_new_message(conv, msg):
-    """Push a new_message event to the assigned agent's WS group, or global if unassigned."""
-    target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
+    """Push a new_message event to all relevant agent WS groups."""
+    groups = _broadcast_groups_for_conv(conv)
     channel_layer = get_channel_layer()
     
     contact_name = conv.contact.name
@@ -175,34 +201,32 @@ def broadcast_new_message(conv, msg):
     if not contact_phone:
         contact_phone = f"+{conv.contact.wa_id}" if conv.contact.wa_id else ""
 
-    async_to_sync(channel_layer.group_send)(
-        target_group,
-        {
-            "type":            "new_message",
-            "conversation_id": str(conv.id),
-            "contact_name":    contact_name,
-            "contact_phone":   contact_phone,
-            "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
-        }
-    )
+    payload = {
+        "type":            "new_message",
+        "conversation_id": str(conv.id),
+        "contact_name":    contact_name,
+        "contact_phone":   contact_phone,
+        "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
+    }
+    for group in groups:
+        async_to_sync(channel_layer.group_send)(group, payload)
     
 
 def broadcast_delete_message(conv, msg_id_str):
-    """Push a delete_message event to the assigned agent's WS group, or global if unassigned."""
-    target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
+    """Push a delete_message event to all relevant agent WS groups."""
+    groups = _broadcast_groups_for_conv(conv)
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        target_group,
-        {
-            "type":            "delete_message",
-            "conversation_id": str(conv.id),
-            "message_id":      str(msg_id_str),
-        }
-    )
+    payload = {
+        "type":            "delete_message",
+        "conversation_id": str(conv.id),
+        "message_id":      str(msg_id_str),
+    }
+    for group in groups:
+        async_to_sync(channel_layer.group_send)(group, payload)
 
 def broadcast_message_status_update(conv, wa_msg_id, status, error=None):
     """Push a message status update to the frontend."""
-    target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
+    groups = _broadcast_groups_for_conv(conv)
     channel_layer = get_channel_layer()
     payload = {
         "type":            "message_status_update",
@@ -213,34 +237,31 @@ def broadcast_message_status_update(conv, wa_msg_id, status, error=None):
     if error:
         payload["error"] = error
         
-    async_to_sync(channel_layer.group_send)(
-        target_group, payload
-    )
+    for group in groups:
+        async_to_sync(channel_layer.group_send)(group, payload)
 
 def broadcast_message_update(conv, msg):
     """Push a full message update event to the frontend."""
-    target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
+    groups = _broadcast_groups_for_conv(conv)
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        target_group,
-        {
-            "type":            "message_update",
-            "conversation_id": str(conv.id),
-            "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
-        }
-    )
+    payload = {
+        "type":            "message_update",
+        "conversation_id": str(conv.id),
+        "message":         json.loads(json.dumps(MessageSerializer(msg).data, cls=DjangoJSONEncoder)),
+    }
+    for group in groups:
+        async_to_sync(channel_layer.group_send)(group, payload)
 
 def broadcast_conversation_update(conv):
     """Push a conversation_update event to update unread_count and status on the frontend."""
-    target_group = f"inbox_{conv.assigned_agent.id}" if conv.assigned_agent else "inbox_global"
+    groups = _broadcast_groups_for_conv(conv)
     channel_layer = get_channel_layer()
-    async_to_sync(channel_layer.group_send)(
-        target_group,
-        {
-            "type":         "conversation_update",
-            "conversation": json.loads(json.dumps(ConversationListSerializer(conv).data, cls=DjangoJSONEncoder)),
-        }
-    )
+    payload = {
+        "type":         "conversation_update",
+        "conversation": json.loads(json.dumps(ConversationListSerializer(conv).data, cls=DjangoJSONEncoder)),
+    }
+    for group in groups:
+        async_to_sync(channel_layer.group_send)(group, payload)
 
 
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X } from 'lucide-react';
+import { X, Users, User2, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Deal, PipelineStage, PipelineField } from '../../pipeline/api';
 
@@ -143,6 +143,71 @@ export function ViewDealModal({
                   </a>
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Assignment & Location */}
+          <div className="space-y-1.5">
+            <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              Assignment & Location
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Assigned To */}
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Assigned To</p>
+                <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                  {deal.is_department || deal.assigned_user?.is_department ? (
+                    <>
+                      <Users className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                      <span className="text-sm font-semibold text-sky-700 dark:text-sky-300 truncate">
+                        {deal.assigned_user?.name || deal.department_name || 'Department'}
+                      </span>
+                    </>
+                  ) : deal.assigned_user?.name ? (
+                    <>
+                      <User2 className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {deal.assigned_user.name}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-slate-400 italic">Unassigned</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Department */}
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Department</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1 truncate">
+                  {deal.department_name || deal.assigned_user?.department_name || '—'}
+                </p>
+              </div>
+
+              {/* Role */}
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Role</p>
+                <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-1 capitalize truncate">
+                  {deal.role_name || deal.assigned_user?.role || '—'}
+                </p>
+              </div>
+
+              {/* Location */}
+              <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/60">
+                <p className="text-[11px] font-medium text-slate-500 dark:text-slate-400">Location</p>
+                <div className="flex items-center gap-1.5 mt-1 min-w-0">
+                  {(deal.location_name || deal.assigned_user?.location_name) ? (
+                    <>
+                      <MapPin className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                        {deal.location_name || deal.assigned_user?.location_name}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-sm text-slate-400 italic">—</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
 

@@ -1,13 +1,17 @@
 import React, { useRef, useState, useEffect } from "react";
 import StageColumn from "./StageColumn";
 import { Deal, PipelineStage } from "./api";
+import type { AssignableAgent } from "../../api/messaging";
+
 
 
 interface KanbanBoardProps {
   stages: PipelineStage[];
   deals: Deal[];
+  agents?: AssignableAgent[];
   onMoveDeal: (id: string, nextStage: string) => void;
   onEditDeal: (deal: Deal) => void;
+  onAssignUser?: (dealId: string, agentId: string | null) => void;
   onUpdateStage?: (id: string, data: Partial<PipelineStage>) => void;
   onSwapStages?: (stageAId: string, stageBId: string) => void;
   onDeleteStage?: (id: string) => void;
@@ -26,7 +30,7 @@ function isInteractive(el: EventTarget | null): boolean {
   return !!el.closest('button, input, a, textarea, select, [draggable="true"], [role="button"]');
 }
 
-export function KanbanBoard({ stages, deals, onMoveDeal, onEditDeal, onUpdateStage, onSwapStages, onDeleteStage }: KanbanBoardProps) {
+export function KanbanBoard({ stages, deals, agents, onMoveDeal, onEditDeal, onAssignUser, onUpdateStage, onSwapStages, onDeleteStage }: KanbanBoardProps) {
   const sortedStages = [...stages].sort((a, b) => (a.order || 0) - (b.order || 0));
 
   const boardRef = useRef<HTMLDivElement>(null);
@@ -113,9 +117,8 @@ export function KanbanBoard({ stages, deals, onMoveDeal, onEditDeal, onUpdateSta
       onDragEnd={stopAutoScroll}
       onDrop={stopAutoScroll}
       onMouseDown={handleMouseDown}
-      className={`flex flex-1 min-h-0 h-full space-x-2.5 overflow-x-auto pb-1 select-none custom-scrollbar ${
-        isPanning ? 'cursor-grabbing' : 'cursor-grab'
-      }`}
+      className={`flex flex-1 min-h-0 h-full space-x-2.5 overflow-x-auto pb-1 select-none custom-scrollbar ${isPanning ? 'cursor-grabbing' : 'cursor-grab'
+        }`}
     >
       {sortedStages.map((col, index) => (
         <StageColumn
@@ -123,8 +126,10 @@ export function KanbanBoard({ stages, deals, onMoveDeal, onEditDeal, onUpdateSta
           title={col.title}
           stage={col.id}
           deals={deals}
+          agents={agents}
           onMoveDeal={onMoveDeal}
           onEditDeal={onEditDeal}
+          onAssignUser={onAssignUser}
           stages={sortedStages}
           onUpdateStage={onUpdateStage}
           onDeleteStage={onDeleteStage}

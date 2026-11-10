@@ -1,5 +1,5 @@
 import React, { memo, useState, useMemo, useEffect } from "react";
-import { Search, Plus, User2, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2, Trash, Bookmark } from "lucide-react";
+import { Search, Plus, User2, Users, MapPin, ListChecks, Check, X, CheckCircle2, Inbox, MessageSquare, Send, Loader2, Trash, Bookmark } from "lucide-react";
 import type { Conversation, CustomMessage } from "../../../../api/messaging";
 import { messagingApi } from "../../../../api/messaging";
 import { messagingStore } from "../../../../store/messagingStore";
@@ -411,14 +411,6 @@ export const ChatList = memo(function ChatList({
                       {c.contact.name || c.contact.phone}
                     </h4>
                     <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                      {c.instance_name && (
-                        <span
-                          className="text-[6.5px] px-1 py-0.2 rounded bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200/50 dark:border-emerald-800/40 font-medium truncate max-w-[65px]"
-                          title={`WhatsApp Line: ${c.instance_name}`}
-                        >
-                          {c.instance_name}
-                        </span>
-                      )}
                       <span className="text-[7px] xl:text-[7.5px] text-slate-400 font-light whitespace-nowrap">
                         {timeStr}
                       </span>
@@ -480,6 +472,44 @@ export const ChatList = memo(function ChatList({
                       </span>
                     )}
                   </div>
+
+                  {/* Assignment, Department, Role & Location Badges */}
+                  {(c.agent_name || c.department_name || c.location_name || c.contact?.location_name) && (
+                    <div className="flex items-center gap-1 mt-1 overflow-hidden">
+                      {(c.agent_name || c.department_name) && (
+                        <span
+                          className={`inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[6.5px] xl:text-[7px] font-medium border truncate max-w-[120px] ${c.is_department
+                              ? 'bg-sky-50 dark:bg-sky-950/40 text-sky-700 dark:text-sky-300 border-sky-200/60 dark:border-sky-800/40'
+                              : 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200/60 dark:border-blue-800/40'
+                            }`}
+                          title={`Assigned: ${c.agent_name || c.department_name}${c.assigned_role ? ` (${c.assigned_role})` : ''}`}
+                        >
+                          {c.is_department ? (
+                            <Users className="w-2 h-2 shrink-0" />
+                          ) : (
+                            <User2 className="w-2 h-2 shrink-0" />
+                          )}
+                          <span className="truncate">{c.agent_name || c.department_name}</span>
+                        </span>
+                      )}
+
+                      {c.assigned_role && !c.is_department && (
+                        <span className="inline-flex items-center px-1 py-0.2 rounded text-[6px] xl:text-[6.5px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 shrink-0 capitalize">
+                          {c.assigned_role}
+                        </span>
+                      )}
+
+                      {(c.location_name || c.contact?.location_name) && (
+                        <span
+                          className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[6.5px] xl:text-[7px] font-medium bg-amber-50/80 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40 truncate max-w-[90px]"
+                          title={`Location: ${c.location_name || c.contact?.location_name}`}
+                        >
+                          <MapPin className="w-2 h-2 shrink-0" />
+                          <span className="truncate">{c.location_name || c.contact?.location_name}</span>
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </button>
             );

@@ -115,7 +115,7 @@ class ConversationListAPIView(APIView):
     def get(self, request):
         qs = Conversation.objects.select_related(
             'contact', 'contact__crm_contact', 'instance', 'assigned_agent'
-        )
+        ).prefetch_related('assigned_agents')
 
         # owner and location isolation 
         qs = scope_by_owner(qs, request.user, owner_field='instance__user')
@@ -135,13 +135,13 @@ class ConversationListAPIView(APIView):
             qs = qs.filter(contact__name__icontains=search) | \
                  qs.filter(contact__phone__icontains=search)
         if agent_id:
-            qs = qs.filter(assigned_agent_id=agent_id)
+            qs = qs.filter(Q(assigned_agent_id=agent_id) | Q(assigned_agents__id=agent_id)).distinct()
         elif assigned == 'mine':
-            qs = qs.filter(assigned_agent=request.user)
+            qs = qs.filter(Q(assigned_agent=request.user) | Q(assigned_agents=request.user)).distinct()
         elif assigned == 'unassigned':
-            qs = qs.filter(assigned_agent__isnull=True)
+            qs = qs.filter(assigned_agent__isnull=True, assigned_agents__isnull=True).distinct()
         elif assigned and assigned not in ('all', ''):
-            qs = qs.filter(assigned_agent_id=assigned)
+            qs = qs.filter(Q(assigned_agent_id=assigned) | Q(assigned_agents__id=assigned)).distinct()
 
         qs = qs.order_by('-last_message_at')
         
@@ -177,7 +177,56 @@ class ConversationDetailAPIView(APIView):
         qs = scope_by_location(qs, request.user, location_field='contact__location')
         conv = get_object_or_404(qs, pk=pk)
 
-        # Validate assigned_agent if being set (not null/unassign)
+        # 1. Handle Department assignment (or Department + Multiple Roles)
+        if 'department_id' in request.data:
+            dept_id = request.data.get('department_id')
+            if not dept_id:
+                conv.assigned_agent = None
+                conv.save(update_fields=['assigned_agent'])
+                conv.assigned_agents.clear()
+                try:
+                    broadcast_conversation_update(conv)
+                except Exception:
+                    pass
+                return Response(ConversationListSerializer(conv).data)
+
+            roles = request.data.get('department_roles')
+            if not roles and request.data.get('department_role'):
+                roles = [request.data.get('department_role')]
+            if isinstance(roles, str):
+                roles = [roles]
+            roles = [r for r in (roles or []) if r]
+
+            User = get_user_model()
+            dept_users_qs = User.objects.filter(department_id=dept_id, is_active=True)
+            dept_users_qs = scope_by_owner(dept_users_qs, request.user, owner_field='owner')
+            if roles:
+                dept_users_qs = dept_users_qs.filter(user_type__in=roles)
+
+            if not request.user.is_superuser:
+                location_id = getattr(request.user, 'location_id', None)
+                if location_id:
+                    dept_users_qs = dept_users_qs.filter(location_id=location_id)
+
+            matching_users = list(dept_users_qs)
+            if not matching_users:
+                return Response(
+                    {'department_id': 'No active agents found matching this department/role filter.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            conv.assigned_agent = None
+            conv.save(update_fields=['assigned_agent'])
+            conv.assigned_agents.set(matching_users)
+
+            try:
+                broadcast_conversation_update(conv)
+            except Exception:
+                pass
+
+            return Response(ConversationListSerializer(conv).data)
+
+        # 2. Handle Single Agent assignment / unassignment
         assigned_agent_id = request.data.get('assigned_agent')
         if assigned_agent_id:
             User = get_user_model()
@@ -208,6 +257,10 @@ class ConversationDetailAPIView(APIView):
         serializer.is_valid(raise_exception=True)
         updated_conv = serializer.save()
 
+        # If a single agent is explicitly assigned or unassigned, clear any multi-agent department assignment
+        if 'assigned_agent' in request.data:
+            updated_conv.assigned_agents.clear()
+
         # Broadcast real-time update so other connected clients reflect assignment change
         try:
             broadcast_conversation_update(updated_conv)
@@ -233,29 +286,23 @@ class ConversationDetailAPIView(APIView):
 
 
 class AssignableAgentsAPIView(APIView):
-    permission_classes = [IsAuthenticated, RequirePermission]
-    required_permission = Permission.ACCESS_CHATS
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         User = get_user_model()
+        owner = get_tenant_owner(request.user)
 
-        # 1: Scope to same tenant — only users under the same owner
-        qs = scope_by_owner(
-            User.objects.filter(is_superuser=False, is_active=True).select_related('location', 'department'),
-            request.user,
-            owner_field='owner'
-        )
+        # 1: Scope to same tenant — include owner and all active team members
+        qs = User.objects.filter(is_active=True).filter(
+            Q(id=owner.id) | Q(owner=owner)
+        ).select_related('location', 'department')
 
-        # 2: Non-superusers can only assign agents from their own location
+        # 2: Location scoping
         if not request.user.is_superuser:
             location_id = getattr(request.user, 'location_id', None)
             if location_id:
-                qs = qs.filter(location_id=location_id)
-            else:
-                # No location means no visible agents
-                return Response([])
+                qs = qs.filter(Q(location_id=location_id) | Q(location__isnull=True))
         else:
-            # Superusers: optionally filter by a specific location
             location_param = request.query_params.get('location')
             if location_param:
                 qs = qs.filter(location_id=location_param)
@@ -269,6 +316,8 @@ class AssignableAgentsAPIView(APIView):
                 'user_type': u.user_type,
                 'location_id': str(u.location_id) if u.location_id else None,
                 'location_name': u.location.name if u.location else None,
+                'department_id': str(u.department_id) if u.department_id else None,
+                'department_name': u.department.name if u.department else None,
             }
             for u in qs
         ]

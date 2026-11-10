@@ -9,6 +9,7 @@ export interface PipelineStage {
   extra_fields: StageField[];
 }
 
+
 // Dynamic extra field definition for pipeline deals
 export interface PipelineField {
   key: string;
@@ -34,6 +35,13 @@ export interface DealAssignedUser {
   id: string;
   name: string;
   email?: string;
+  role?: string;
+  user_type?: string;
+  department_id?: string | null;
+  department_name?: string | null;
+  location_id?: string | null;
+  location_name?: string | null;
+  is_department?: boolean;
 }
 
 export interface Deal {
@@ -52,6 +60,12 @@ export interface Deal {
   // Chat date & user assignment
   chat_started_at?: string | null;
   assigned_user?: DealAssignedUser | null;
+  department_id?: string | null;
+  department_name?: string | null;
+  role_name?: string | null;
+  location_id?: string | null;
+  location_name?: string | null;
+  is_department?: boolean;
   conversation_id?: string | null;
   instance_id?: string | null;
   instance_display_name?: string | null;

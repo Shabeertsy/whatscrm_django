@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Deal, PipelineStage } from "./api";
-import { Edit2, Check, Trash2, ChevronLeft, ChevronRight, X, AlertTriangle } from "lucide-react";
-
-
+import { Edit2, Check, Trash2, ChevronLeft, ChevronRight, X, AlertTriangle, Users, User2, MapPin } from "lucide-react";
+import type { AssignableAgent } from "../../api/messaging";
+import { PipelineAssignUserCell } from "../pipeline-table/components/PipelineAssignUserCell";
 
 interface StageColumnProps {
   title: string;
   stage: string;
   deals: Deal[];
+  agents?: AssignableAgent[];
   onMoveDeal: (id: string, nextStage: string) => void;
   onEditDeal: (deal: Deal) => void;
+  onAssignUser?: (dealId: string, agentId: string | null) => void;
   stages: PipelineStage[];
   onUpdateStage?: (id: string, data: Partial<PipelineStage>) => void;
   onDeleteStage?: (id: string) => void;
@@ -17,9 +19,8 @@ interface StageColumnProps {
   onMoveRight?: () => void;
 }
 
-
 export function StageColumn({
-  title, stage, deals, onMoveDeal, onEditDeal,
+  title, stage, deals, agents, onMoveDeal, onEditDeal, onAssignUser,
   stages, onUpdateStage, onDeleteStage, onMoveLeft, onMoveRight
 }: StageColumnProps) {
   const stageObj = stages.find(s => String(s.id) === String(stage));
@@ -102,6 +103,17 @@ export function StageColumn({
   };
 
 
+  const isDraggingCardRef = useRef(false);
+  const clickStartPosRef = useRef<{ x: number; y: number; time: number } | null>(null);
+  const lastEditTriggerTime = useRef(0);
+
+  const handleCardClick = (deal: Deal) => {
+    const now = Date.now();
+    if (now - lastEditTriggerTime.current < 250) return;
+    lastEditTriggerTime.current = now;
+    onEditDeal(deal);
+  };
+
   return (
     <div
       onDragOver={handleDragOver}
@@ -155,16 +167,14 @@ export function StageColumn({
               <button
                 type="button"
                 onClick={() => setEditIsConfirmed(v => !v)}
-                className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-all truncate ${
-                  editIsConfirmed
-                    ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
-                    : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
-                }`}
+                className={`w-full flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg text-[11px] font-semibold border transition-all truncate ${editIsConfirmed
+                  ? 'bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-700'
+                  : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:bg-slate-50'
+                  }`}
                 title="Toggle confirmed booking stage"
               >
-                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                  editIsConfirmed ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
-                }`} />
+                <span className={`w-2 h-2 rounded-full flex-shrink-0 ${editIsConfirmed ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'
+                  }`} />
                 <span className="truncate">{editIsConfirmed ? 'Confirmed Stage' : 'Not Confirmed Stage'}</span>
               </button>
             </div>
@@ -292,13 +302,34 @@ export function StageColumn({
           <div
             key={deal.id}
             draggable
-            onClick={() => onEditDeal(deal)}
+            onMouseDown={(e) => {
+              if (e.button !== 0) return;
+              clickStartPosRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
+              isDraggingCardRef.current = false;
+            }}
+            onMouseUp={(e) => {
+              if (e.button !== 0) return;
+              if (clickStartPosRef.current && !isDraggingCardRef.current) {
+                const dx = Math.abs(e.clientX - clickStartPosRef.current.x);
+                const dy = Math.abs(e.clientY - clickStartPosRef.current.y);
+                const dt = Date.now() - clickStartPosRef.current.time;
+                if (dx < 6 && dy < 6 && dt < 800) {
+                  handleCardClick(deal);
+                }
+              }
+            }}
+            onClick={() => handleCardClick(deal)}
             onDragStart={(e) => {
-              // Reset counter so the source column doesn't go negative when this card leaves
+              isDraggingCardRef.current = true;
               dragCounter.current = 0;
               setIsDraggingOver(false);
               e.dataTransfer.setData("text/plain", deal.id);
               e.dataTransfer.effectAllowed = "move";
+            }}
+            onDragEnd={() => {
+              setTimeout(() => {
+                isDraggingCardRef.current = false;
+              }, 100);
             }}
             className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-3 shadow-xs hover:shadow-md hover:border-[#007e3a] dark:hover:border-[#007e3a] active:scale-[0.98] active:shadow-sm cursor-pointer transition-all duration-200 flex flex-col min-h-[90px]"
           >
@@ -314,28 +345,58 @@ export function StageColumn({
                   </span>
                 )}
               </div>
-              {deal.assigned_user && (
-                <div className="flex items-center gap-1.5 mt-1 text-[11px] text-slate-600 dark:text-slate-400">
-                  <div className="w-3.5 h-3.5 rounded-full bg-[#007e3a]/15 text-[#007e3a] dark:bg-[#007e3a]/30 dark:text-[#00b355] flex items-center justify-center text-[8px] font-semibold shrink-0">
-                    {(deal.assigned_user.name || deal.assigned_user.email || 'U')[0].toUpperCase()}
+              {/* Assignment & Location */}
+              <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                <PipelineAssignUserCell
+                  dealId={deal.id}
+                  assignedUser={deal.assigned_user}
+                  departmentName={deal.department_name}
+                  roleName={deal.role_name}
+                  locationName={deal.location_name}
+                  isDepartment={deal.is_department}
+                  agents={agents || []}
+                  onAssignUser={onAssignUser}
+                />
+
+                {/* Location Badge (if present) */}
+                {(deal.location_name || deal.assigned_user?.location_name) && (
+                  <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-amber-50/80 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border border-amber-200/60 dark:border-amber-800/40 text-[9.5px] font-medium max-w-full">
+                    <MapPin className="w-2 h-2 shrink-0" />
+                    <span className="truncate max-w-[85px]">{deal.location_name || deal.assigned_user?.location_name}</span>
                   </div>
-                  <span className="truncate">{deal.assigned_user.name || deal.assigned_user.email}</span>
-                </div>
-              )}
+                )}
+              </div>
               {deal.note && (
                 <p className="text-[11px] text-slate-500 dark:text-slate-400/80 line-clamp-2 mt-1 italic bg-slate-50 dark:bg-slate-900/50 px-2 py-1 rounded-md leading-relaxed">
                   {deal.note}
                 </p>
               )}
-              {deal.extra_data && Object.keys(deal.extra_data).length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
-                  {Object.entries(deal.extra_data).map(([k, v]) => (
-                    <span key={k} className="text-[9px] bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono truncate max-w-full">
-                      {k}: {String(v)}
-                    </span>
-                  ))}
-                </div>
-              )}
+              {(() => {
+                const visibleEntries = deal.extra_data
+                  ? Object.entries(deal.extra_data).filter(
+                    ([k, v]) =>
+                      !k.startsWith('_') &&
+                      k !== 'assigned_user' &&
+                      k !== 'assigned_agent' &&
+                      v !== null &&
+                      v !== undefined &&
+                      typeof v !== 'object'
+                  )
+                  : [];
+                if (visibleEntries.length === 0) return null;
+                return (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {visibleEntries.map(([k, v]) => (
+                      <span
+                        key={k}
+                        className="text-[9px] bg-slate-100 dark:bg-slate-700/60 text-slate-600 dark:text-slate-300 px-1.5 py-0.5 rounded font-mono truncate max-w-full"
+                      >
+                        {k}: {String(v)}
+                      </span>
+                    ))}
+                  </div>
+                );
+              })()}
             </div>
             <div className="flex justify-between items-center pt-1.5 border-t border-slate-100 dark:border-slate-700/80 mt-auto">
               <span className="font-bold text-[#007e3a] text-xs tracking-wide">₹ {Number(deal.value).toLocaleString()}</span>

@@ -6,6 +6,7 @@ import {
   Pipeline, Deal, PipelineStage, StageField, PipelineField,
 } from "../api";
 import { apiClient } from "../../../api/client";
+import { messagingApi, AssignableAgent } from "../../../api/messaging";
 import toast from "react-hot-toast";
 
 
@@ -35,13 +36,24 @@ export function usePipeline() {
   const [activePipeline, setActivePipeline] = useState<Pipeline | null>(null);
   const [deals, setDeals] = useState<Deal[]>([]);
   const [contacts, setContacts] = useState<any[]>([]);
+  const [agents, setAgents] = useState<AssignableAgent[]>([]);
   const [instanceFilter, setInstanceFilter] = useState<string>("all");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     fetchPipelines();
     fetchContacts();
+    fetchAgents();
   }, []);
+
+  const fetchAgents = async () => {
+    try {
+      const res = await messagingApi.listAssignableAgents();
+      setAgents(res.data || []);
+    } catch (err) {
+      console.error("Failed to load assignable agents", err);
+    }
+  };
 
   useEffect(() => {
     if (activePipeline) {
@@ -332,11 +344,49 @@ export function usePipeline() {
     }
   };
 
+  const handleAssignDeal = async (dealId: string, agentId: string | null) => {
+    const targetAgent = agents.find(a => String(a.id) === String(agentId));
+    setDeals(prev =>
+      prev.map(d =>
+        d.id === dealId
+          ? {
+              ...d,
+              assigned_user: targetAgent
+                ? {
+                    id: targetAgent.id,
+                    name: targetAgent.name,
+                    email: targetAgent.email,
+                    role: targetAgent.user_type,
+                    department_name: targetAgent.department_name,
+                    location_name: targetAgent.location_name,
+                    is_department: false,
+                  }
+                : null,
+              department_name: targetAgent?.department_name || null,
+              role_name: targetAgent?.user_type || null,
+              location_name: targetAgent?.location_name || d.location_name,
+              is_department: false,
+            }
+          : d
+      )
+    );
+
+    try {
+      const updated = await updateDeal(dealId, { assigned_agent: agentId });
+      setDeals(prev => prev.map(d => (d.id === dealId ? { ...d, ...updated } : d)));
+      toast.success(targetAgent ? `Assigned to ${targetAgent.name}` : 'Deal unassigned');
+    } catch {
+      toast.error('Failed to update assigned user');
+      if (activePipeline) fetchDeals(activePipeline.id, undefined, instanceFilter);
+    }
+  };
+
   return {
     pipelines,
     activePipeline,
     deals,
     contacts,
+    agents,
     isLoading,
     handleSwitchPipeline,
     handleActivatePipeline,
@@ -351,6 +401,7 @@ export function usePipeline() {
     handleMoveDeal,
     handleSaveDeal,
     handleDeleteDeal,
+    handleAssignDeal,
     instanceFilter,
     setInstanceFilter,
   };

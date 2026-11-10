@@ -46,7 +46,18 @@ export function useChatFilters(chats: Conversation[], selectedChatId?: string | 
       const q = searchQuery.toLowerCase();
       const name = (c.contact?.name || "").toLowerCase();
       const phone = (c.contact?.phone || "").toLowerCase();
-      return name.includes(q) || phone.includes(q);
+      const agent = (c.agent_name || "").toLowerCase();
+      const dept = (c.department_name || "").toLowerCase();
+      const role = (c.assigned_role || "").toLowerCase();
+      const loc = (c.location_name || c.contact?.location_name || "").toLowerCase();
+      return (
+        name.includes(q) ||
+        phone.includes(q) ||
+        agent.includes(q) ||
+        dept.includes(q) ||
+        role.includes(q) ||
+        loc.includes(q)
+      );
     });
 
     result.sort((a, b) => {

@@ -16,6 +16,8 @@ export interface ContactMin {
   stage_name?: string | null;
   stage_order?: number | null;
   active_deal_id?: string | null;
+  location_id?: string | null;
+  location_name?: string | null;
 }
 
 export interface LastMessage {
@@ -32,7 +34,15 @@ export interface Conversation {
   instance: string | null;
   instance_name: string | null;
   assigned_agent: string | null;
+  assigned_agents?: string[];
   agent_name: string | null;
+  department_id?: string | null;
+  department_name?: string | null;
+  assigned_role?: string | null;
+  assigned_roles?: string[];
+  is_department?: boolean;
+  location_id?: string | null;
+  location_name?: string | null;
   status: 'open' | 'pending' | 'resolved' | 'snoozed';
   unread_count: number;
   last_message: LastMessage | null;
@@ -49,6 +59,8 @@ export interface AssignableAgent {
   user_type: string;
   location_id: string | null;
   location_name: string | null;
+  department_id?: string | null;
+  department_name?: string | null;
 }
 
 export interface InteractiveSelectedData {
@@ -238,8 +250,16 @@ export const messagingApi = {
     return apiClient.delete(`${BASE}/messages/${messageId}/`);
   },
 
-  /** Update conversation status, ai_active, or interactive_active */
-  updateConversation(conversationId: string, data: { status?: string; assigned_agent?: string | null; ai_active?: boolean; interactive_active?: boolean }) {
+  /** Update conversation status, assigned agent/dept, ai_active, or interactive_active */
+  updateConversation(conversationId: string, data: {
+    status?: string;
+    assigned_agent?: string | null;
+    department_id?: string;
+    department_role?: string | null;
+    department_roles?: string[];
+    ai_active?: boolean;
+    interactive_active?: boolean;
+  }) {
     return apiClient.patch(`${BASE}/conversations/${conversationId}/`, data);
   },
 
@@ -259,7 +279,7 @@ export const messagingApi = {
     const formData = new FormData();
     formData.append('file', file);
     if (conversationId) formData.append('conversation_id', conversationId);
-    
+
     return apiClient.post<{ url: string; path: string; type: string; filename: string; size: number }>(`${BASE}/upload/`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -286,7 +306,7 @@ export const messagingApi = {
     return apiClient.get<MediaLibraryItem[]>(`${BASE}/media-library/`, { params });
   },
   resolveMediaUrl(storagePath: string) {
-    return apiClient.get<{url: string}>(`${BASE}/media-library/resolve-url/`, { params: { path: storagePath } });
+    return apiClient.get<{ url: string }>(`${BASE}/media-library/resolve-url/`, { params: { path: storagePath } });
   },
   createMediaItem(data: { name: string; file_url: string; media_type?: string; storage_path?: string; mime_type?: string; file_size?: number }) {
     return apiClient.post<MediaLibraryItem>(`${BASE}/media-library/`, data);

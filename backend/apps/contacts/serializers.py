@@ -95,6 +95,12 @@ class PipelineDealSerializer(serializers.ModelSerializer):
    
     chat_started_at = serializers.SerializerMethodField()
     assigned_user = serializers.SerializerMethodField()
+    department_id = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+    role_name = serializers.SerializerMethodField()
+    location_id = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
+    is_department = serializers.SerializerMethodField()
     conversation_id = serializers.SerializerMethodField()
     instance_id = serializers.SerializerMethodField()
     instance_display_name = serializers.SerializerMethodField()
@@ -123,6 +129,16 @@ class PipelineDealSerializer(serializers.ModelSerializer):
                         data['wa_contact'] = None
         return super().to_internal_value(data)
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Strip internal/system private metadata keys (starting with _) from extra_data
+        if 'extra_data' in data and isinstance(data['extra_data'], dict):
+            data['extra_data'] = {
+                k: v for k, v in data['extra_data'].items()
+                if not k.startswith('_')
+            }
+        return data
+
     class Meta:
         model = PipelineDeal
         fields = [
@@ -130,15 +146,19 @@ class PipelineDealSerializer(serializers.ModelSerializer):
             'wa_contact', 'manual_contact', 'contact_name', 'contact_phone',
             'note', 'extra_data',
             'is_confirmed_booking', 'confirmed_at',
-            'chat_started_at', 'assigned_user', 'conversation_id',
-            'instance_id', 'instance_display_name',
+            'chat_started_at', 'assigned_user',
+            'department_id', 'department_name', 'role_name',
+            'location_id', 'location_name', 'is_department',
+            'conversation_id', 'instance_id', 'instance_display_name',
             'created_at'
         ]
         read_only_fields = [
             'id', 'created_at', 'contact_name', 'contact_phone',
             'is_confirmed_booking', 'confirmed_at',
-            'chat_started_at', 'assigned_user', 'conversation_id',
-            'instance_id', 'instance_display_name',
+            'chat_started_at', 'assigned_user',
+            'department_id', 'department_name', 'role_name',
+            'location_id', 'location_name', 'is_department',
+            'conversation_id', 'instance_id', 'instance_display_name',
         ]
 
     def get_contact_name(self, obj):
@@ -178,7 +198,15 @@ class PipelineDealSerializer(serializers.ModelSerializer):
     def _get_conversation(self, obj):
         if not hasattr(obj, '_cached_conversation'):
             if obj.wa_contact:
-                obj._cached_conversation = obj.wa_contact.conversations.order_by('-last_message_at').first()
+                from django.db.models import Q
+                convs = obj.wa_contact.conversations.all()
+                assigned = convs.filter(
+                    Q(assigned_agent__isnull=False) | Q(assigned_agents__isnull=False)
+                ).distinct().order_by('-last_message_at', '-id').first()
+                if assigned:
+                    obj._cached_conversation = assigned
+                else:
+                    obj._cached_conversation = convs.order_by('-last_message_at', '-id').first()
             else:
                 obj._cached_conversation = None
         return obj._cached_conversation
@@ -199,17 +227,85 @@ class PipelineDealSerializer(serializers.ModelSerializer):
 
     def get_assigned_user(self, obj):
         conv = self._get_conversation(obj)
-        if conv and conv.assigned_agent:
-            agent = conv.assigned_agent
-            name = f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email
-            return {
-                'id': str(agent.id),
-                'name': name,
-                'email': agent.email,
-            }
+        if conv:
+            if conv.assigned_agent:
+                agent = conv.assigned_agent
+                name = f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email
+                role = agent.user_type.capitalize() if getattr(agent, 'user_type', None) else 'Agent'
+                dept_name = agent.department.name if getattr(agent, 'department', None) else None
+                dept_id = str(agent.department_id) if getattr(agent, 'department_id', None) else None
+                loc_name = agent.location.name if getattr(agent, 'location', None) else None
+                loc_id = str(agent.location_id) if getattr(agent, 'location_id', None) else None
+                return {
+                    'id': str(agent.id),
+                    'name': name,
+                    'email': agent.email,
+                    'role': role,
+                    'user_type': agent.user_type if getattr(agent, 'user_type', None) else 'agent',
+                    'department_id': dept_id,
+                    'department_name': dept_name,
+                    'location_id': loc_id,
+                    'location_name': loc_name,
+                    'is_department': False,
+                }
+            try:
+                agents = list(conv.assigned_agents.all())
+                if agents:
+                    first = agents[0]
+                    dept = getattr(first, 'department', None)
+                    dept_name = dept.name if dept else 'Department'
+                    dept_id = str(dept.id) if dept else None
+                    roles = sorted(list({getattr(a, 'user_type', None) for a in agents if getattr(a, 'user_type', None)}))
+                    role_label = ", ".join(r.capitalize() for r in roles) if roles else None
+                    count = len(agents)
+                    agent_label = 'agent' if count == 1 else 'agents'
+                    display_name = f"{dept_name} ({count} {agent_label})"
+                    return {
+                        'id': dept_id or 'dept',
+                        'name': display_name,
+                        'email': '',
+                        'role': role_label,
+                        'user_type': 'department',
+                        'department_id': dept_id,
+                        'department_name': dept_name,
+                        'location_id': str(first.location_id) if getattr(first, 'location_id', None) else None,
+                        'location_name': first.location.name if getattr(first, 'location', None) else None,
+                        'is_department': True,
+                    }
+            except Exception:
+                pass
+
         if obj.extra_data and isinstance(obj.extra_data, dict) and obj.extra_data.get('_assigned_user'):
             return obj.extra_data.get('_assigned_user')
         return None
+
+    def get_department_id(self, obj):
+        u = self.get_assigned_user(obj)
+        return u.get('department_id') if isinstance(u, dict) else None
+
+    def get_department_name(self, obj):
+        u = self.get_assigned_user(obj)
+        return u.get('department_name') if isinstance(u, dict) else None
+
+    def get_role_name(self, obj):
+        u = self.get_assigned_user(obj)
+        return u.get('role') if isinstance(u, dict) else None
+
+    def get_is_department(self, obj):
+        u = self.get_assigned_user(obj)
+        return bool(u.get('is_department')) if isinstance(u, dict) else False
+
+    def get_location_id(self, obj):
+        if obj.wa_contact and getattr(obj.wa_contact, 'location_id', None):
+            return str(obj.wa_contact.location_id)
+        u = self.get_assigned_user(obj)
+        return u.get('location_id') if isinstance(u, dict) else None
+
+    def get_location_name(self, obj):
+        if obj.wa_contact and getattr(obj.wa_contact, 'location', None):
+            return obj.wa_contact.location.name
+        u = self.get_assigned_user(obj)
+        return u.get('location_name') if isinstance(u, dict) else None
 
     def get_instance_id(self, obj):
         conv = self._get_conversation(obj)
@@ -245,6 +341,15 @@ class ConfirmedBookingSerializer(serializers.ModelSerializer):
             'confirmed_at', 'created_at', 'updated_at'
         ]
         read_only_fields = fields
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if 'extra_data' in data and isinstance(data['extra_data'], dict):
+            data['extra_data'] = {
+                k: v for k, v in data['extra_data'].items()
+                if not k.startswith('_')
+            }
+        return data
 
     def _get_instance(self, obj):
         if not hasattr(obj, '_cached_instance'):

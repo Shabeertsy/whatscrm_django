@@ -181,6 +181,9 @@ class AutomationEngine(BaseChatbotEngine):
             elif node_type in (NodeType.SEND_LISTING, "send_listing"):
                 result = self._handle_send_listing_node(current_node, execution, reply)
 
+            elif node_type in (NodeType.ASSIGN_AGENT, "assign_agent"):
+                result = self._handle_assign_agent_node(current_node, execution, reply)
+
             else:
                 logger.warning(
                     "[AutomationEngine] Unhandled node type '%s' — stopping traversal.", node_type
@@ -482,6 +485,119 @@ class AutomationEngine(BaseChatbotEngine):
                     "[AutomationEngine] Conv %s WhatsApp contact location set to '%s' (no CRM contact).",
                     self.conv.id, location_id,
                 )
+
+        self._log_step(execution, node, StepStatus.COMPLETED)
+
+        next_node = self._advance_to_next(execution, node)
+        if next_node is None:
+            execution.complete()
+            return _STOP
+        return next_node
+
+
+    def _handle_assign_agent_node(self, node, execution, reply):
+        """
+        Assign the conversation to a specific agent, a department (least-busy),
+        or a role within a department (least-busy filtered by role).
+
+        Config schema:
+          assign_to       : "agent" | "department" | "department_role"
+          agent_id        : "<uuid>"  (when assign_to == "agent")
+          agent_name      : "<display>"
+          department_id   : "<uuid>"  (when assign_to in ["department","department_role"])
+          department_name : "<display>"
+          role            : "agent" | "admin" | "staff" | null
+          notify_message  : "Optional message to send after assignment"
+          set_status      : "open" | ""  (optionally re-open conversation)
+        """
+        from django.contrib.auth import get_user_model
+        from django.db.models import Count, Q
+
+        config    = node.config
+        assign_to = config.get("assign_to", "agent")
+        User      = get_user_model()
+
+        selected_user  = None
+        matching_users = []
+
+        try:
+            if assign_to == "agent":
+                agent_id = config.get("agent_id")
+                if agent_id:
+                    selected_user = User.objects.filter(pk=agent_id, is_active=True).first()
+                    if not selected_user:
+                        logger.warning(
+                            "[AutomationEngine] Conv %s assign_agent: agent %s not found or inactive.",
+                            self.conv.id, agent_id,
+                        )
+
+                if selected_user:
+                    self.conv.assigned_agent = selected_user
+                    self.conv.assigned_agents.clear()
+                    set_status = config.get("set_status", "")
+                    fields_to_save = ["assigned_agent"]
+                    if set_status and self.conv.status != set_status:
+                        self.conv.status = set_status
+                        fields_to_save.append("status")
+                    self.conv.save(update_fields=fields_to_save)
+                    broadcast_conversation_update(self.conv)
+                    logger.info(
+                        "[AutomationEngine] Conv %s assigned to agent '%s' (mode=%s).",
+                        self.conv.id, selected_user.get_full_name() or selected_user.email, assign_to,
+                    )
+
+            elif assign_to in ("department", "department_role"):
+                dept_id = config.get("department_id")
+                roles = None
+                if assign_to == "department_role":
+                    roles = config.get("roles")
+                    if not roles and config.get("role"):
+                        roles = [config.get("role")]
+                    if isinstance(roles, str):
+                        roles = [roles]
+                    roles = [r for r in (roles or []) if r]
+
+                if not dept_id:
+                    logger.warning(
+                        "[AutomationEngine] Conv %s assign_agent: no department_id configured.",
+                        self.conv.id,
+                    )
+                else:
+                    qs = User.objects.filter(department_id=dept_id, is_active=True)
+                    if roles:
+                        qs = qs.filter(user_type__in=roles)
+
+                    matching_users = list(qs)
+                    if not matching_users:
+                        logger.warning(
+                            "[AutomationEngine] Conv %s assign_agent: no active agents in dept %s (roles=%s).",
+                            self.conv.id, dept_id, roles,
+                        )
+                    else:
+                        # Option B: Assign to ALL matching agents in the department/role
+                        self.conv.assigned_agent = None
+                        self.conv.assigned_agents.set(matching_users)
+                        set_status = config.get("set_status", "")
+                        fields_to_save = ["assigned_agent"]
+                        if set_status and self.conv.status != set_status:
+                            self.conv.status = set_status
+                            fields_to_save.append("status")
+                        self.conv.save(update_fields=fields_to_save)
+                        broadcast_conversation_update(self.conv)
+                        logger.info(
+                            "[AutomationEngine] Conv %s assigned to all %d agents in dept %s (roles=%s).",
+                            self.conv.id, len(matching_users), dept_id, roles,
+                        )
+
+            # Optionally send a notification message to the contact
+            notify_msg = config.get("notify_message", "").strip()
+            if notify_msg and (selected_user or matching_users):
+                reply.add_text(notify_msg)
+
+        except Exception as exc:
+            logger.error(
+                "[AutomationEngine] Conv %s assign_agent node failed: %s", self.conv.id, exc
+            )
 
         self._log_step(execution, node, StepStatus.COMPLETED)
 

@@ -342,8 +342,20 @@ export function usePipelineTable() {
           ? {
               ...d,
               assigned_user: targetAgent
-                ? { id: targetAgent.id, name: targetAgent.name, email: targetAgent.email }
+                ? {
+                    id: targetAgent.id,
+                    name: targetAgent.name,
+                    email: targetAgent.email,
+                    role: targetAgent.user_type,
+                    department_name: targetAgent.department_name,
+                    location_name: targetAgent.location_name,
+                    is_department: false,
+                  }
                 : null,
+              department_name: targetAgent?.department_name || null,
+              role_name: targetAgent?.user_type || null,
+              location_name: targetAgent?.location_name || d.location_name,
+              is_department: false,
             }
           : d
       )

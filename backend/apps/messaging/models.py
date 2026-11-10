@@ -76,6 +76,12 @@ class Conversation(models.Model):
         blank=True,
         related_name='assigned_conversations',
     )
+    assigned_agents = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name='watching_conversations',
+        help_text="All agents who can see this conversation (used for dept/role assignment).",
+    )
     status          = models.CharField(max_length=20, choices=STATUS_CHOICES, default='open')
     ai_active       = models.BooleanField(default=True)
     interactive_active = models.BooleanField(default=True)

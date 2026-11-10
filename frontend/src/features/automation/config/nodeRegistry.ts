@@ -11,7 +11,7 @@
 
 import {
   MessageSquare, Image as ImageIcon, Menu, SplitSquareHorizontal, Clock, XCircle, FileInput, Save,
-  Sparkles, Globe, Zap, LucideIcon, MapPin, Smartphone, Building2
+  Sparkles, Globe, Zap, LucideIcon, MapPin, Smartphone, Building2, UserCheck
 } from "lucide-react";
 
 
@@ -28,6 +28,7 @@ import HttpRequestNode from "../components/nodes/HttpRequestNode";
 import SaveLocationNode from "../components/nodes/SaveLocationNode";
 import WhatsappFlowNode from "../components/nodes/WhatsappFlowNode";
 import SendListingNode from "../components/nodes/SendListingNode";
+import AssignAgentNode from "../components/nodes/AssignAgentNode";
 import DeletableEdge from "../components/DeletableEdge";
 
 
@@ -46,7 +47,8 @@ export type CanonicalType =
   | "ai_control"
   | "http_request"
   | "whatsapp_flow"
-  | "send_listing";
+  | "send_listing"
+  | "assign_agent";
 
 export interface NodeRegistryEntry {
   /** ReactFlow component */
@@ -339,6 +341,31 @@ export const NODE_REGISTRY: Record<CanonicalType, NodeRegistryEntry> = {
       exitLabel: "Exit",
       noResultsMessage: "Sorry, no results found matching your criteria.",
       noMoreMessage: "You've seen all available results.",
+    }),
+  },
+
+  assign_agent: {
+    component: AssignAgentNode,
+    label: "Assign Chat",
+    description: "Route chat to agent, dept, or role",
+    icon: UserCheck,
+    color: "text-sky-500",
+    category: "Data & Actions",
+    aliases: ["assign_agent", "assignAgent", "Assign Chat"],
+    defaultWidth: 220,
+    defaultHeight: 110,
+    defaultConfig: (title, desc) => ({
+      version: 1,
+      title,
+      description: desc,
+      assign_to:       "agent",
+      agent_id:        "",
+      agent_name:      "",
+      department_id:   "",
+      department_name: "",
+      role:            null,
+      notify_message:  "",
+      set_status:      "open",
     }),
   },
 };

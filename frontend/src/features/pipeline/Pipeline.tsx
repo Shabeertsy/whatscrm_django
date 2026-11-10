@@ -19,6 +19,7 @@ export function Pipeline() {
     activePipeline,
     deals,
     contacts,
+    agents,
     handleSwitchPipeline,
     handleActivatePipeline,
     handleToggleAutoCreate,
@@ -32,6 +33,7 @@ export function Pipeline() {
     handleMoveDeal,
     handleSaveDeal,
     handleDeleteDeal,
+    handleAssignDeal,
     instanceFilter,
     setInstanceFilter,
     isLoading,
@@ -142,8 +144,10 @@ export function Pipeline() {
           <KanbanBoard
             stages={activePipeline?.stages || []}
             deals={deals}
+            agents={agents}
             onMoveDeal={handleMoveDeal}
             onEditDeal={(deal) => setEditingDeal(deal)}
+            onAssignUser={handleAssignDeal}
             onUpdateStage={handleUpdateStage}
             onSwapStages={handleSwapStages}
             onDeleteStage={handleDeleteStage}
@@ -156,6 +160,8 @@ export function Pipeline() {
           contacts={contacts}
           initialData={editingDeal || undefined}
           extraFields={allActiveExtraFields}
+          stages={activePipeline?.stages || []}
+          agents={agents}
           onClose={() => {
             setShowAddDealModal(false);
             setEditingDeal(null);

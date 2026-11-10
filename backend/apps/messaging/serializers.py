@@ -56,10 +56,16 @@ class ContactMinimalSerializer(serializers.ModelSerializer):
     stage_name = serializers.SerializerMethodField()
     stage_order = serializers.SerializerMethodField()
     active_deal_id = serializers.SerializerMethodField()
+    location_id = serializers.SerializerMethodField()
+    location_name = serializers.SerializerMethodField()
 
     class Meta:
         model  = Contact
-        fields = ['id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags', 'stage_color', 'stage_name', 'stage_order', 'active_deal_id']
+        fields = [
+            'id', 'wa_id', 'phone', 'name', 'profile_pic_url', 'is_saved', 'tags',
+            'stage_color', 'stage_name', 'stage_order', 'active_deal_id',
+            'location_id', 'location_name'
+        ]
 
     def get_name(self, obj):
         if obj.crm_contact:
@@ -69,6 +75,12 @@ class ContactMinimalSerializer(serializers.ModelSerializer):
     def get_active_deal_id(self, obj):
         deal = self._get_active_deal(obj)
         return deal.id if deal else None
+
+    def get_location_id(self, obj):
+        return str(obj.location_id) if getattr(obj, 'location_id', None) else None
+
+    def get_location_name(self, obj):
+        return obj.location.name if getattr(obj, 'location', None) else None
 
     def _get_active_deal(self, obj):
         if not hasattr(obj, '_cached_deal'):
@@ -317,15 +329,26 @@ class ConversationListSerializer(serializers.ModelSerializer):
     last_inbound_at = serializers.SerializerMethodField()
     instance_name   = serializers.SerializerMethodField()
     agent_name      = serializers.SerializerMethodField()
+    assigned_agents = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    department_id   = serializers.SerializerMethodField()
+    department_name = serializers.SerializerMethodField()
+    assigned_role   = serializers.SerializerMethodField()
+    assigned_roles  = serializers.SerializerMethodField()
+    is_department   = serializers.SerializerMethodField()
+    location_id     = serializers.SerializerMethodField()
+    location_name   = serializers.SerializerMethodField()
 
     class Meta:
         model  = Conversation
         fields = [
             'id', 'contact', 'instance', 'instance_name',
-            'assigned_agent', 'agent_name', 'status', 'ai_active', 'interactive_active',
+            'assigned_agent', 'assigned_agents', 'agent_name',
+            'department_id', 'department_name', 'assigned_role', 'assigned_roles',
+            'is_department', 'location_id', 'location_name',
+            'status', 'ai_active', 'interactive_active',
             'unread_count', 'last_message', 'last_message_at', 'last_inbound_at',
         ]
-        read_only_fields = ['id', 'unread_count', 'last_message_at']
+        read_only_fields = ['id', 'unread_count', 'last_message_at', 'assigned_agents']
 
     def get_last_message(self, obj):
         msg = obj.messages.order_by('-timestamp').first()
@@ -344,6 +367,107 @@ class ConversationListSerializer(serializers.ModelSerializer):
     def get_agent_name(self, obj):
         if obj.assigned_agent:
             return obj.assigned_agent.get_full_name() or obj.assigned_agent.email
+        try:
+            agents = list(obj.assigned_agents.all())
+            if agents:
+                dept = getattr(agents[0], 'department', None)
+                dept_name = getattr(dept, 'name', None) if dept else None
+                count = len(agents)
+                label = "agent" if count == 1 else "agents"
+
+                # Check distinct roles among assigned agents
+                assigned_roles = sorted(list({getattr(a, 'user_type', None) for a in agents if getattr(a, 'user_type', None)}))
+
+                # Check if all active members of the department are assigned
+                is_all_dept = False
+                if dept:
+                    total_active_in_dept = dept.users.filter(is_active=True).count()
+                    if count >= total_active_in_dept:
+                        is_all_dept = True
+
+                if not is_all_dept and assigned_roles:
+                    roles_str = ", ".join(r.capitalize() for r in assigned_roles)
+                    if dept_name:
+                        return f"{dept_name} · {roles_str} ({count} {label})"
+                    return f"Team · {roles_str} ({count} {label})"
+
+                if dept_name:
+                    return f"{dept_name} ({count} {label})"
+                return f"Team ({count} {label})"
+        except Exception:
+            pass
+        return None
+
+    def get_department_id(self, obj):
+        if obj.assigned_agent and getattr(obj.assigned_agent, 'department_id', None):
+            return str(obj.assigned_agent.department_id)
+        try:
+            first = obj.assigned_agents.first()
+            if first and getattr(first, 'department_id', None):
+                return str(first.department_id)
+        except Exception:
+            pass
+        return None
+
+    def get_department_name(self, obj):
+        if obj.assigned_agent and getattr(obj.assigned_agent, 'department', None):
+            return obj.assigned_agent.department.name
+        try:
+            first = obj.assigned_agents.first()
+            if first and getattr(first, 'department', None):
+                return first.department.name
+        except Exception:
+            pass
+        return None
+
+    def get_assigned_role(self, obj):
+        if obj.assigned_agent:
+            return obj.assigned_agent.user_type.capitalize() if getattr(obj.assigned_agent, 'user_type', None) else 'Agent'
+        try:
+            agents = list(obj.assigned_agents.all())
+            if agents:
+                roles = sorted(list({getattr(a, 'user_type', None) for a in agents if getattr(a, 'user_type', None)}))
+                if roles:
+                    return ", ".join(r.capitalize() for r in roles)
+        except Exception:
+            pass
+        return None
+
+    def get_assigned_roles(self, obj):
+        if obj.assigned_agent:
+            return [obj.assigned_agent.user_type] if getattr(obj.assigned_agent, 'user_type', None) else []
+        try:
+            return sorted(list({getattr(a, 'user_type', None) for a in obj.assigned_agents.all() if getattr(a, 'user_type', None)}))
+        except Exception:
+            return []
+
+    def get_is_department(self, obj):
+        return not bool(obj.assigned_agent) and bool(obj.assigned_agents.exists())
+
+    def get_location_id(self, obj):
+        if obj.contact and getattr(obj.contact, 'location_id', None):
+            return str(obj.contact.location_id)
+        if obj.assigned_agent and getattr(obj.assigned_agent, 'location_id', None):
+            return str(obj.assigned_agent.location_id)
+        try:
+            first = obj.assigned_agents.first()
+            if first and getattr(first, 'location_id', None):
+                return str(first.location_id)
+        except Exception:
+            pass
+        return None
+
+    def get_location_name(self, obj):
+        if obj.contact and getattr(obj.contact, 'location', None):
+            return obj.contact.location.name
+        if obj.assigned_agent and getattr(obj.assigned_agent, 'location', None):
+            return obj.assigned_agent.location.name
+        try:
+            first = obj.assigned_agents.first()
+            if first and getattr(first, 'location', None):
+                return first.location.name
+        except Exception:
+            pass
         return None
 
 

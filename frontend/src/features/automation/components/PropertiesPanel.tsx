@@ -1,6 +1,6 @@
 import React from "react";
 import { Node } from "@xyflow/react";
-import { Trash2, Zap, GitBranch, Clock, MessageSquare, Sliders, Settings, MapPin } from "lucide-react";
+import { Trash2, Zap, GitBranch, Clock, MessageSquare, Sliders, Settings, MapPin, UserCheck } from "lucide-react";
 import { ResizableSidebar } from "./ui/sidebar/ResizableSidebar";
 
 
@@ -17,6 +17,7 @@ import { MenuOptionsPanel } from "./panels/MenuOptionsPanel";
 import { SaveLocationPanel } from "./panels/SaveLocationPanel";
 import { WhatsappFlowPanel } from "./panels/WhatsappFlowPanel";
 import { SendListingPanel } from "./panels/SendListing";
+import { AssignAgentPanel } from "./panels/AssignAgentPanel";
 
 
 
@@ -55,6 +56,7 @@ function resolvePanel(type: string, title: string): React.FC<PanelProps> | null 
   if (type === "whatsapp_flow" || type === "whatsappFlow" || t.includes("whatsapp flow")) return WhatsappFlowPanel;
   if (type === "action") return SendMessagePanel;
   if (type === "send_listing" || type === "sendListing" || t.includes("send listing") || t.includes("property listing")) return SendListingPanel;
+  if (type === "assign_agent" || type === "assignAgent" || t.includes("assign chat")) return AssignAgentPanel;
 
   return null;
 }
@@ -101,6 +103,8 @@ function getNodeStyle(type: string) {
       return { bg: "bg-rose-600", shadow: "shadow-rose-500/20", label: "Save Location", icon: MapPin };
     case "send_listing":
       return { bg: "bg-amber-500", shadow: "shadow-amber-500/20", label: "Property Listing", icon: MessageSquare };
+    case "assign_agent":
+      return { bg: "bg-sky-600", shadow: "shadow-sky-500/20", label: "Assign Chat", icon: UserCheck };
     default:
       return { bg: "bg-slate-800 dark:bg-slate-700", shadow: "shadow-slate-500/20", label: "Action Node", icon: Sliders };
   }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pencil, Trash2, Loader2, FileText, Plus, Smartphone } from 'lucide-react';
+import { Pencil, Trash2, Loader2, FileText, Plus, Smartphone, MapPin } from 'lucide-react';
 import { Deal, PipelineStage } from '../../pipeline/api';
 import type { AssignableAgent } from '../../../api/messaging';
 import { ExtraFieldColumn } from '../types';
@@ -117,6 +117,12 @@ export function PipelineTableRow({
           ) : contactName ? (
             <span className="text-[11px] text-slate-400 italic">No phone</span>
           ) : null}
+          {deal.location_name && (
+            <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-0.5 mt-0.5">
+              <MapPin className="w-2.5 h-2.5 shrink-0" />
+              {deal.location_name}
+            </span>
+          )}
         </div>
       </td>
 
@@ -125,6 +131,10 @@ export function PipelineTableRow({
         <PipelineAssignUserCell
           dealId={deal.id}
           assignedUser={deal.assigned_user}
+          departmentName={deal.department_name}
+          roleName={deal.role_name}
+          locationName={deal.location_name}
+          isDepartment={deal.is_department}
           agents={agents}
           onAssignUser={onAssignUser}
         />

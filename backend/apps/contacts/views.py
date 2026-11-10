@@ -596,7 +596,7 @@ class PipelineDealListCreateView(APIView):
         if not is_paginated and not search_param and not stage_id_param and (not instance_id_param or instance_id_param == 'all'):
             owner_id = get_tenant_owner(request.user).id
             cache_version = get_pipeline_cache_version(owner_id)
-            cache_key = f"pipeline_deals_{request.user.id}_{pipeline_id_param or 'default'}_{timeframe_param or 'all'}_{cache_version}"
+            cache_key = f"pipeline_deals_v3_{request.user.id}_{pipeline_id_param or 'default'}_{timeframe_param or 'all'}_{cache_version}"
 
             cached_data = cache.get(cache_key)
             if cached_data is not None:
@@ -606,7 +606,22 @@ class PipelineDealListCreateView(APIView):
             pipeline = self._get_pipeline(pipeline_id_param, request.user)
             if not pipeline:
                 return Response({'detail': 'Pipeline not found.'}, status=status.HTTP_404_NOT_FOUND)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__instance', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(
+                PipelineDeal.objects.select_related(
+                    'wa_contact', 'wa_contact__crm_contact', 'wa_contact__location'
+                ).prefetch_related(
+                    'confirmed_booking_records',
+                    'wa_contact__conversations',
+                    'wa_contact__conversations__instance',
+                    'wa_contact__conversations__assigned_agent',
+                    'wa_contact__conversations__assigned_agent__department',
+                    'wa_contact__conversations__assigned_agent__location',
+                    'wa_contact__conversations__assigned_agents',
+                    'wa_contact__conversations__assigned_agents__department',
+                    'wa_contact__conversations__assigned_agents__location',
+                ).filter(pipeline=pipeline),
+                request.user
+            )
         else:
             pipeline = scope_by_owner(Pipeline.objects.filter(is_active=True), request.user).first()
             if not pipeline:
@@ -623,7 +638,22 @@ class PipelineDealListCreateView(APIView):
                         'confirmed_count': 0,
                     }, status=status.HTTP_200_OK)
                 return Response([], status=status.HTTP_200_OK)
-            deals = scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__instance', 'wa_contact__conversations__assigned_agent').filter(pipeline=pipeline), request.user)
+            deals = scope_by_owner(
+                PipelineDeal.objects.select_related(
+                    'wa_contact', 'wa_contact__crm_contact', 'wa_contact__location'
+                ).prefetch_related(
+                    'confirmed_booking_records',
+                    'wa_contact__conversations',
+                    'wa_contact__conversations__instance',
+                    'wa_contact__conversations__assigned_agent',
+                    'wa_contact__conversations__assigned_agent__department',
+                    'wa_contact__conversations__assigned_agent__location',
+                    'wa_contact__conversations__assigned_agents',
+                    'wa_contact__conversations__assigned_agents__department',
+                    'wa_contact__conversations__assigned_agents__location',
+                ).filter(pipeline=pipeline),
+                request.user
+            )
 
         # Stage filter
         if stage_id_param and stage_id_param != 'all':
@@ -644,8 +674,14 @@ class PipelineDealListCreateView(APIView):
                 Q(wa_contact__phone__icontains=search_param) |
                 Q(wa_contact__crm_contact__name__icontains=search_param) |
                 Q(wa_contact__crm_contact__phone__icontains=search_param) |
+                Q(wa_contact__conversations__assigned_agent__first_name__icontains=search_param) |
+                Q(wa_contact__conversations__assigned_agent__last_name__icontains=search_param) |
+                Q(wa_contact__conversations__assigned_agent__email__icontains=search_param) |
+                Q(wa_contact__conversations__assigned_agent__department__name__icontains=search_param) |
+                Q(wa_contact__conversations__assigned_agents__department__name__icontains=search_param) |
+                Q(wa_contact__location__name__icontains=search_param) |
                 Q(note__icontains=search_param)
-            )
+            ).distinct()
 
         # Timeframe filter
         if timeframe_param and timeframe_param != 'all':
@@ -714,17 +750,24 @@ class PipelineDealListCreateView(APIView):
                 from django.contrib.auth import get_user_model
                 User = get_user_model()
                 agent = User.objects.filter(id=assigned_agent_id).first()
-                if deal.wa_contact:
-                    conv = deal.wa_contact.conversations.order_by('-last_message_at').first()
-                    if conv and agent:
+                if deal.wa_contact and agent:
+                    for conv in deal.wa_contact.conversations.all():
                         conv.assigned_agent = agent
                         conv.save(update_fields=['assigned_agent'])
-                elif agent:
+                        conv.assigned_agents.set([agent])
+                if agent:
                     extra = dict(deal.extra_data or {})
                     extra['_assigned_user'] = {
                         'id': str(agent.id),
                         'name': f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email,
                         'email': agent.email,
+                        'role': agent.user_type.capitalize() if getattr(agent, 'user_type', None) else 'Agent',
+                        'user_type': agent.user_type if getattr(agent, 'user_type', None) else 'agent',
+                        'department_name': agent.department.name if getattr(agent, 'department', None) else None,
+                        'department_id': str(agent.department_id) if getattr(agent, 'department_id', None) else None,
+                        'location_name': agent.location.name if getattr(agent, 'location', None) else None,
+                        'location_id': str(agent.location_id) if getattr(agent, 'location_id', None) else None,
+                        'is_department': False,
                     }
                     deal.extra_data = extra
                     deal.save(update_fields=['extra_data'])
@@ -793,29 +836,32 @@ class PipelineDealDetailView(APIView):
                 agent = User.objects.filter(id=assigned_agent_id).first() if assigned_agent_id else None
 
                 if updated_deal.wa_contact:
-                    conv = updated_deal.wa_contact.conversations.order_by('-last_message_at').first()
-                    if conv:
+                    for conv in updated_deal.wa_contact.conversations.all():
                         conv.assigned_agent = agent
                         conv.save(update_fields=['assigned_agent'])
-                        
-                    # If previously in extra_data, clean it up
-                    extra = dict(updated_deal.extra_data or {})
-                    if '_assigned_user' in extra:
-                        extra.pop('_assigned_user', None)
-                        updated_deal.extra_data = extra
-                        updated_deal.save(update_fields=['extra_data'])
+                        if agent:
+                            conv.assigned_agents.set([agent])
+                        else:
+                            conv.assigned_agents.clear()
+
+                extra = dict(updated_deal.extra_data or {})
+                if agent:
+                    extra['_assigned_user'] = {
+                        'id': str(agent.id),
+                        'name': f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email,
+                        'email': agent.email,
+                        'role': agent.user_type.capitalize() if getattr(agent, 'user_type', None) else 'Agent',
+                        'user_type': agent.user_type if getattr(agent, 'user_type', None) else 'agent',
+                        'department_name': agent.department.name if getattr(agent, 'department', None) else None,
+                        'department_id': str(agent.department_id) if getattr(agent, 'department_id', None) else None,
+                        'location_name': agent.location.name if getattr(agent, 'location', None) else None,
+                        'location_id': str(agent.location_id) if getattr(agent, 'location_id', None) else None,
+                        'is_department': False,
+                    }
                 else:
-                    extra = dict(updated_deal.extra_data or {})
-                    if agent:
-                        extra['_assigned_user'] = {
-                            'id': str(agent.id),
-                            'name': f"{agent.first_name} {agent.last_name}".strip() or agent.username or agent.email,
-                            'email': agent.email,
-                        }
-                    else:
-                        extra.pop('_assigned_user', None)
-                    updated_deal.extra_data = extra
-                    updated_deal.save(update_fields=['extra_data'])
+                    extra.pop('_assigned_user', None)
+                updated_deal.extra_data = extra
+                updated_deal.save(update_fields=['extra_data'])
 
             # Keep pipeline consistent with stage if stage changed across pipelines
             if updated_deal.stage and updated_deal.stage.pipeline_id and updated_deal.pipeline_id != updated_deal.stage.pipeline_id:
