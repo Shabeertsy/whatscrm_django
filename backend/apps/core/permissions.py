@@ -22,6 +22,7 @@ class Permission(str, Enum):
     ACCESS_DASHBOARD = "canAccessDashboard"
     ACCESS_CHATS = "canAccessChats"
     ACCESS_PIPELINE = "canAccessPipeline"
+    ACCESS_CONFIRMED_BOOKINGS = "canAccessConfirmedBookings"
     ACCESS_CONTACTS = "canAccessContacts"
     ACCESS_HOTELS = "canAccessHotels"
     ACCESS_TEMPLATES = "canAccessTemplates"

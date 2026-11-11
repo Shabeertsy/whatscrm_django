@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Check, ChevronDown, Search, UserPlus, UserX, Loader2, ShieldCheck, User, Users, MapPin } from 'lucide-react';
 import type { AssignableAgent } from '../../../api/messaging';
 import { messagingApi } from '../../../api/messaging';
+import { useCurrentUser } from '../../../utils/dataScope';
 
 
 interface PipelineAssignUserCellProps {
@@ -200,6 +201,53 @@ export function PipelineAssignUserCell({
   const assignedName = assignedUser?.name || assignedUser?.email || departmentName || '';
   const currentRole = roleName || assignedUser?.role;
   const currentLoc = locationName || assignedUser?.location_name;
+
+  const currentUser = useCurrentUser();
+  const isSuperuser = Boolean(currentUser?.is_superuser || currentUser?.role === 'Owner');
+
+  if (!isSuperuser) {
+    if (isAssigned) {
+      return (
+        <div
+          className={`inline-flex items-center gap-1.5 pl-1.5 pr-2 py-0.5 rounded-full border text-xs select-none cursor-default min-w-[100px] max-w-[185px] ${
+            isDept
+              ? 'bg-sky-50 dark:bg-sky-950/40 border-sky-200/80 dark:border-sky-800/60 text-sky-700 dark:text-sky-300'
+              : 'bg-slate-50 dark:bg-slate-800/60 border-slate-200/90 dark:border-slate-700/80 text-slate-800 dark:text-slate-200'
+          }`}
+          title={`Assigned to ${assignedName}${currentRole ? ` (${currentRole})` : ''}${currentLoc ? ` · ${currentLoc}` : ''}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {isDept ? (
+            <div className="w-5 h-5 rounded-full bg-sky-500 flex items-center justify-center text-white shrink-0 shadow-xs">
+              <Users className="w-2.5 h-2.5" />
+            </div>
+          ) : (
+            <div
+              className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 shadow-xs ring-1 ring-white/30 dark:ring-black/20 ${getAvatarColor(
+                currentAgentId || assignedName
+              )}`}
+            >
+              {getInitials(assignedUser?.name, assignedUser?.email)}
+            </div>
+          )}
+          <div className="flex items-center gap-1 min-w-0 truncate">
+            <span className="text-xs font-semibold truncate">{assignedName}</span>
+            {currentRole && (
+              <span className="text-[9px] text-slate-400 capitalize shrink-0">
+                · {currentRole}
+              </span>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <span className="text-[11px] text-slate-400 italic select-none">
+        Unassigned
+      </span>
+    );
+  }
 
   return (
     <div

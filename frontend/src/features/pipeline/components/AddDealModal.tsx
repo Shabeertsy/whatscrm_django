@@ -3,6 +3,7 @@ import { X, Copy, Phone } from "lucide-react";
 import { ConfirmDialog } from "../../../components/shared/ConfirmDialog";
 import { PipelineField, StageField, PipelineStage } from "../api";
 import type { AssignableAgent } from "../../../api/messaging";
+import { useCurrentUser } from "../../../utils/dataScope";
 import toast from "react-hot-toast";
 
 
@@ -40,6 +41,9 @@ interface Props {
 }
 
 export function AddDealModal({ contacts, initialData, extraFields, stageFields, stages, agents = [], onClose, onSubmit, onDelete }: Props) {
+  const currentUser = useCurrentUser();
+  const isSuperuser = Boolean(currentUser?.is_superuser || currentUser?.role === 'Owner');
+
   const fields = useMemo(() => {
     const list = [...(extraFields || []), ...(stageFields || [])];
     const map = new Map<string, PipelineField>();
@@ -163,30 +167,36 @@ export function AddDealModal({ contacts, initialData, extraFields, stageFields, 
                 </select>
               </div>
             )}
-            <div>
-              <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned User</label>
-              <select
-                value={form.assigned_agent}
-                onChange={e => setForm({ ...form, assigned_agent: e.target.value })}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
-              >
-                <option value="">-- Unassigned --</option>
-                {agents.map(a => (
-                  <option key={a.id} value={a.id}>
-                    {a.name || a.email} {a.user_type ? `(${a.user_type})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {isSuperuser && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Assigned User</label>
+                <select
+                  value={form.assigned_agent}
+                  onChange={e => setForm({ ...form, assigned_agent: e.target.value })}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
+                >
+                  <option value="">-- Unassigned --</option>
+                  {agents.map(a => (
+                    <option key={a.id} value={a.id}>
+                      {a.name || a.email} {a.user_type ? `(${a.user_type})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Contact (WhatsApp)</label>
               <select
                 value={form.wa_contact}
                 onChange={e => setForm({ ...form, wa_contact: e.target.value })}
-                disabled={!!initialData}
-                className={`w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a] disabled:opacity-60 disabled:cursor-not-allowed ${initialData ? 'appearance-none' : ''}`}
+                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#007e3a]"
               >
                 <option value="">-- Select Contact (Optional) --</option>
+                {initialData?.wa_contact && !contacts.some(c => String(c.id) === String(initialData.wa_contact)) && (
+                  <option value={initialData.wa_contact}>
+                    {selectedContact?.name || selectedContact?.phone || `Current Contact (${String(initialData.wa_contact).slice(0, 8)})`}
+                  </option>
+                )}
                 {contacts.map(c => (
                   <option key={c.id} value={c.id}>{c.name || c.phone}</option>
                 ))}

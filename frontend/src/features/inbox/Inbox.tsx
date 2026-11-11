@@ -34,10 +34,6 @@ export function Inbox() {
     return <AccessDenied module="Live Chats &amp; Inbox" />;
   }
 
-  // Guard: non-superuser with no location assigned
-  const hasNoLocation = !currentUser?.is_superuser && currentUser?.role !== 'Owner' && !currentUser?.location;
-
-
   // Fetch AI agent global status
   useEffect(() => {
     fetchAiAgentConfig().then(config => setIsAiActive(config.is_active)).catch(console.error);
@@ -349,67 +345,49 @@ export function Inbox() {
 
   return (
     <div className="chat-page-root h-[calc(100vh-10rem)] flex bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm transition duration-200">
-      {/* Location notice for non-superusers with no location */}
-      {hasNoLocation && (
-        <div className="flex flex-col items-center justify-center flex-1 text-center px-8">
-          <div className="w-14 h-14 rounded-2xl bg-amber-50 dark:bg-amber-950/40 flex items-center justify-center mb-4">
-            <MapPin className="h-7 w-7 text-amber-500" />
+      <ChatList
+        chats={store.conversations}
+        selectedChatId={store.activeConversationId}
+        isLoading={store.isLoadingConversations}
+        onSelectChat={handleSelectChat}
+        onStartNewChat={() => setShowStartChat(true)}
+        onAssignmentFilterChange={handleAssignmentFilterChange}
+        onInstanceFilterChange={handleInstanceFilterChange}
+      />
+      <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
+        {!activeConversation ? (
+          <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
+            Select a conversation to start messaging
           </div>
-          <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mb-1">No Location Assigned</h3>
-          <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
-            Your account doesn't have a location assigned. Chat data is scoped by location.
-            Please ask your administrator to assign a location to your account.
-          </p>
-        </div>
-      )}
-
-      {!hasNoLocation && (
-        <>
-          <ChatList
-            chats={store.conversations}
-            selectedChatId={store.activeConversationId}
-            isLoading={store.isLoadingConversations}
-            onSelectChat={handleSelectChat}
-            onStartNewChat={() => setShowStartChat(true)}
-            onAssignmentFilterChange={handleAssignmentFilterChange}
-            onInstanceFilterChange={handleInstanceFilterChange}
-          />
-          <div className="flex-1 flex flex-col h-full min-w-0 bg-white dark:bg-slate-900">
-            {!activeConversation ? (
-              <div className="flex-1 flex items-center justify-center text-slate-400 text-sm">
-                Select a conversation to start messaging
-              </div>
-            ) : (
-              <>
-                <ChatWindow
-                  conversation={activeConversation}
-                  messages={activeMessages}
-                  isLoading={store.isLoadingMessages}
-                  isAiActive={isAiActive}
-                  onReply={handleReply}
-                />
-                <MessageComposer
-                  initialValue={initialComposerText}
-                  onClearInitial={() => setInitialComposerText("")}
-                  onSubmit={handleSendMessage}
-                  onMediaSelect={handleMediaSelect}
-                  disabled={!windowOpen}
-                  isSending={isSending}
-                  replyingTo={replyingTo}
-                  onCancelReply={() => setReplyingTo(null)}
-                  onSendTemplate={handleSendTemplate}
-                />
-              </>
-            )}
-          </div>
-
-          {showStartChat && (
-            <StartChatModal
-              onClose={() => setShowStartChat(false)}
-              onSubmit={handleStartNewChat}
+        ) : (
+          <>
+            <ChatWindow
+              conversation={activeConversation}
+              messages={activeMessages}
+              isLoading={store.isLoadingMessages}
+              isAiActive={isAiActive}
+              onReply={handleReply}
             />
-          )}
-        </>
+            <MessageComposer
+              initialValue={initialComposerText}
+              onClearInitial={() => setInitialComposerText("")}
+              onSubmit={handleSendMessage}
+              onMediaSelect={handleMediaSelect}
+              disabled={!windowOpen}
+              isSending={isSending}
+              replyingTo={replyingTo}
+              onCancelReply={() => setReplyingTo(null)}
+              onSendTemplate={handleSendTemplate}
+            />
+          </>
+        )}
+      </div>
+
+      {showStartChat && (
+        <StartChatModal
+          onClose={() => setShowStartChat(false)}
+          onSubmit={handleStartNewChat}
+        />
       )}
     </div>
   );

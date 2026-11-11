@@ -33,6 +33,7 @@ const ALL_MODULES: ModuleMeta[] = [
   { key: 'canAccessDashboard', label: 'Dashboard', description: 'Overview analytics and system metrics', category: 'Core' },
   { key: 'canAccessChats', label: 'Live Chats & Inbox', description: 'Read and reply to WhatsApp conversations', category: 'Core' },
   { key: 'canAccessPipeline', label: 'Pipeline & Deals', description: 'Manage sales pipeline stages and deal cards', category: 'Core' },
+  { key: 'canAccessConfirmedBookings', label: 'Confirmed Bookings', description: 'View and manage confirmed hotel booking records', category: 'Core' },
   { key: 'canAccessContacts', label: 'Contacts Directory', description: 'View, create and manage CRM contacts', category: 'Core' },
   { key: 'canAccessHotels', label: 'Hotels & Resorts', description: 'Access property management and booking module', category: 'Core' },
   { key: 'canAccessTemplates', label: 'Message Templates', description: 'Create and submit WhatsApp broadcast templates', category: 'Marketing' },
@@ -70,6 +71,7 @@ const ROLES: RoleMeta[] = [
     badgeBg: 'bg-purple-100/80 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200/60 dark:border-purple-800/60',
     defaultPermissions: {
       canAccessDashboard: true, canAccessChats: true, canAccessPipeline: true,
+      canAccessConfirmedBookings: true,
       canAccessContacts: true, canAccessHotels: true, canAccessTemplates: true,
       canAccessCustomMessages: true, canAccessMedia: true, canAccessAiAgent: true,
       canAccessAutomations: true, canAccessSettings: true,
@@ -86,6 +88,7 @@ const ROLES: RoleMeta[] = [
     badgeBg: 'bg-emerald-100/80 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border-emerald-200/60 dark:border-emerald-800/60',
     defaultPermissions: {
       canAccessDashboard: true, canAccessChats: true, canAccessPipeline: true,
+      canAccessConfirmedBookings: true,
       canAccessContacts: true, canAccessHotels: true, canAccessTemplates: false,
       canAccessCustomMessages: false, canAccessMedia: false, canAccessAiAgent: false,
       canAccessAutomations: false, canAccessSettings: false,
@@ -102,6 +105,7 @@ const ROLES: RoleMeta[] = [
     badgeBg: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-slate-200 dark:border-slate-700',
     defaultPermissions: {
       canAccessDashboard: true, canAccessChats: false, canAccessPipeline: false,
+      canAccessConfirmedBookings: false,
       canAccessContacts: true, canAccessHotels: true, canAccessTemplates: false,
       canAccessCustomMessages: false, canAccessMedia: false, canAccessAiAgent: false,
       canAccessAutomations: false, canAccessSettings: false,

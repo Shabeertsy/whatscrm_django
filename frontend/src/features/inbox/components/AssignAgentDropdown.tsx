@@ -18,6 +18,7 @@ import { messagingApi } from '../../../api/messaging';
 import { accountsApi, Department } from '../../../api/accounts';
 import { messagingStore } from '../../../store/messagingStore';
 import { showToast } from '../../../utils/toast';
+import { useCurrentUser } from '../../../utils/dataScope';
 
 interface AssignAgentDropdownProps {
   conversation: Conversation;
@@ -43,6 +44,8 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
   const [isAssigning, setIsAssigning] = useState(false);
   const [fetched, setFetched] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const currentUser = useCurrentUser();
+  const isSuperuser = Boolean(currentUser?.is_superuser || currentUser?.role === 'Owner');
 
   const isAssigned = !!conversation.assigned_agent || !!conversation.agent_name;
   const agentName = conversation.agent_name;
@@ -274,6 +277,51 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
       setIsAssigning(false);
     }
   };
+
+  // If not superuser, assignment cannot be changed: render read-only badge
+  if (!isSuperuser) {
+    if (!isAssigned) {
+      return (
+        <div
+          title="Unassigned (Only administrators can assign conversations)"
+          className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] font-medium bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 select-none cursor-default"
+        >
+          <UserCheck className="h-3 w-3" />
+          <span>Unassigned</span>
+        </div>
+      );
+    }
+
+    return (
+      <div
+        title={
+          isDepartment
+            ? `Assigned to department: ${agentName}`
+            : `Assigned to ${agentName}`
+        }
+        className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[7.5px] sm:text-[8px] md:text-[8.5px] font-medium border select-none cursor-default
+          ${isDepartment
+            ? 'bg-sky-50 dark:bg-sky-500/15 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30'
+            : 'bg-blue-50 dark:bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-500/30'
+          }`}
+      >
+        {isDepartment ? (
+          <div className="h-4 w-4 rounded-full bg-sky-500 dark:bg-sky-400 flex items-center justify-center text-white flex-shrink-0">
+            <Users className="h-2.5 w-2.5" />
+          </div>
+        ) : isAssigned ? (
+          <div className="h-4 w-4 rounded-full bg-blue-500 dark:bg-blue-400 flex items-center justify-center text-white text-[8px] font-bold flex-shrink-0">
+            {getInitials(agentName || '?')}
+          </div>
+        ) : (
+          <UserCheck className="h-3 w-3" />
+        )}
+        <span className="max-w-[130px] sm:max-w-[160px] truncate">
+          {agentName}
+        </span>
+      </div>
+    );
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>

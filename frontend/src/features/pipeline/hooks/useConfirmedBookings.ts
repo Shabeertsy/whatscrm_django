@@ -16,7 +16,7 @@ import {
 import { whatsappApi } from '../../../api/whatsapp';
 
 
-export function useConfirmedBookings() {
+export function useConfirmedBookings(enabled = true) {
   const [bookings, setBookings] = useState<ConfirmedBooking[]>([]);
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
   const [instances, setInstances] = useState<Array<{ id: string; display_name: string }>>([]);
@@ -56,6 +56,7 @@ export function useConfirmedBookings() {
 
   // 2. Initial pipelines and instances fetch
   useEffect(() => {
+    if (!enabled) return;
     let isMounted = true;
     Promise.all([
       getPipelines().catch(() => []),
@@ -84,7 +85,7 @@ export function useConfirmedBookings() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [enabled]);
 
   // 3. Fetch paginated confirmed bookings from backend
   const fetchBookings = useCallback(
@@ -121,8 +122,9 @@ export function useConfirmedBookings() {
   );
 
   useEffect(() => {
+    if (!enabled) return;
     fetchBookings(page, pageSize, selectedPipeline, debouncedSearch, instanceFilter);
-  }, [page, pageSize, selectedPipeline, debouncedSearch, instanceFilter, fetchBookings]);
+  }, [enabled, page, pageSize, selectedPipeline, debouncedSearch, instanceFilter, fetchBookings]);
 
   // Unique pipeline names for selector
   const pipelineNames = useMemo(() => {

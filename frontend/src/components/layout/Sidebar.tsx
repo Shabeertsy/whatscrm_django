@@ -55,7 +55,7 @@ export function Sidebar() {
       title: "Hotels & Bookings",
       items: [
         { id: "/hotels", label: "Hotels and Resorts", icon: Building2, permitted: permissions.canAccessHotels },
-        { id: "/confirmed-bookings", label: "Confirmed Bookings", icon: CheckCircle, permitted: permissions.canAccessPipeline },
+        { id: "/confirmed-bookings", label: "Confirmed Bookings", icon: CheckCircle, permitted: permissions.canAccessConfirmedBookings },
       ],
     },
     {

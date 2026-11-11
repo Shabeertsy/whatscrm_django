@@ -31,14 +31,14 @@ def scope_by_location(qs, user, location_field: str = 'location'):
     """
     - Superusers → no filtering (see everything).
     - Users with a location → filtered to their location.
-    - Users without a location → empty queryset (they have no data scope).
+    - Users without a location → no location restriction (scoped by owner).
     """
     if is_superuser(user):
         return qs
 
     location_id = getattr(user, 'location_id', None)
     if not location_id:
-        return qs.none()
+        return qs
 
     return qs.filter(**{location_field: location_id})
 

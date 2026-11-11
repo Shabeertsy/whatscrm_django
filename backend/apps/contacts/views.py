@@ -23,6 +23,7 @@ from apps.core.scoping import (
     is_superuser, 
     get_tenant_owner
     )
+from apps.contacts.scope import scope_deals_qs, scope_contacts_qs, scope_confirmed_bookings_qs
 
 from .models import (
     Contact, 
@@ -107,8 +108,7 @@ class ContactListCreateView(APIView):
 
     def get(self, request):
         qs = Contact.objects.all()
-        qs = scope_by_owner(qs, request.user)
-        qs = scope_by_location(qs, request.user)
+        qs = scope_contacts_qs(qs, request.user)
         
         search = request.query_params.get('search', '').strip()
         if search:
@@ -148,7 +148,7 @@ class ContactDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return scope_by_owner(Contact.objects.all(), user).get(pk=pk)
+            return scope_contacts_qs(Contact.objects.all(), user).get(pk=pk)
         except Contact.DoesNotExist:
             return None
 
@@ -184,12 +184,16 @@ class WAContactsListView(APIView):
 
     def get(self, request):
         from apps.messaging.models import Contact as WAContact
+        from apps.messaging.scope import scope_contacts_qs as scope_wa_contacts_qs
         imported_wa_ids = set(
-            scope_by_owner(Contact.objects.all(), request.user)
+            scope_contacts_qs(Contact.objects.all(), request.user)
             .exclude(wa_id='')
             .values_list('wa_id', flat=True)
         )
-        wa_contacts = WAContact.objects.filter(crm_contact__isnull=True).exclude(wa_id__in=imported_wa_ids)
+        wa_contacts = scope_wa_contacts_qs(
+            WAContact.objects.filter(crm_contact__isnull=True).exclude(wa_id__in=imported_wa_ids),
+            request.user
+        )
         data = [
             {
                 'wa_id': c.wa_id,
@@ -571,7 +575,6 @@ class PipelineStageSwapView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-
 # Deal APIs (scoped to pipeline)
 class PipelineDealListCreateView(APIView):
     permission_classes = [IsAuthenticated, RequirePermission]
@@ -693,7 +696,7 @@ class PipelineDealListCreateView(APIView):
             elif timeframe_param == 'monthly':
                 deals = deals.filter(created_at__gte=now - timedelta(days=30))
 
-        deals = scope_by_location(deals, request.user, location_field='wa_contact__location')
+        deals = scope_deals_qs(deals, request.user)
         deals = deals.order_by('-created_at')
 
         if is_paginated:
@@ -743,6 +746,9 @@ class PipelineDealListCreateView(APIView):
             data['stage'] = str(stage.id)
 
         assigned_agent_id = data.get('assigned_agent')
+        if assigned_agent_id and not request.user.is_superuser:
+            data.pop('assigned_agent', None)
+            assigned_agent_id = None
         serializer = PipelineDealSerializer(data=data)
         if serializer.is_valid():
             deal = serializer.save(owner=get_tenant_owner(request.user), pipeline=pipeline)
@@ -787,7 +793,8 @@ class PipelineDealDetailView(APIView):
 
     def get_object(self, pk, user):
         try:
-            return scope_by_owner(PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent').all(), user).get(pk=pk)
+            qs = PipelineDeal.objects.select_related('wa_contact', 'wa_contact__crm_contact').prefetch_related('confirmed_booking_records', 'wa_contact__conversations', 'wa_contact__conversations__assigned_agent', 'wa_contact__conversations__assigned_agents').all()
+            return scope_deals_qs(qs, user).get(pk=pk)
         except PipelineDeal.DoesNotExist:
             return None
 
@@ -813,6 +820,11 @@ class PipelineDealDetailView(APIView):
         mutable_data = request.data.copy()
 
         has_assigned_agent = 'assigned_agent' in mutable_data
+        if has_assigned_agent and not request.user.is_superuser:
+            return Response(
+                {'detail': 'Only administrators / superusers are permitted to assign deals.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         assigned_agent_id = mutable_data.pop('assigned_agent', None)
         if isinstance(assigned_agent_id, list) and assigned_agent_id:
             assigned_agent_id = assigned_agent_id[0]
@@ -902,7 +914,7 @@ class PipelineDealDetailView(APIView):
 class ConfirmedBookingsView(APIView):
    
     permission_classes = [IsAuthenticated, RequirePermission]
-    required_permission = Permission.ACCESS_PIPELINE
+    required_permission = Permission.ACCESS_CONFIRMED_BOOKINGS
 
     def get(self, request):
         pipeline_param = request.query_params.get('pipeline')
@@ -910,7 +922,7 @@ class ConfirmedBookingsView(APIView):
         search_param = request.query_params.get('search', '').strip()
         is_paginated = request.query_params.get('paginate') == 'true' or 'page' in request.query_params
 
-        bookings = scope_by_owner(
+        bookings = scope_confirmed_bookings_qs(
             ConfirmedBooking.objects.select_related(
                 'pipeline', 'stage', 'deal', 'contact'
             ).prefetch_related(
@@ -978,11 +990,11 @@ class ConfirmedBookingsView(APIView):
 class ConfirmedBookingDetailView(APIView):
 
     permission_classes = [IsAuthenticated, RequirePermission]
-    required_permission = Permission.ACCESS_PIPELINE
+    required_permission = Permission.ACCESS_CONFIRMED_BOOKINGS
 
     def get(self, request, pk):
         try:
-            booking = scope_by_owner(
+            booking = scope_confirmed_bookings_qs(
                 ConfirmedBooking.objects.select_related(
                     'pipeline', 'stage', 'deal', 'contact'
                 ).all(),
@@ -995,7 +1007,7 @@ class ConfirmedBookingDetailView(APIView):
 
     def patch(self, request, pk):
         try:
-            booking = scope_by_owner(
+            booking = scope_confirmed_bookings_qs(
                 ConfirmedBooking.objects.all(), request.user
             ).get(pk=pk)
         except ConfirmedBooking.DoesNotExist:
@@ -1053,7 +1065,7 @@ class ConfirmedBookingDetailView(APIView):
 
     def delete(self, request, pk):
         try:
-            booking = scope_by_owner(
+            booking = scope_confirmed_bookings_qs(
                 ConfirmedBooking.objects.all(), request.user
             ).get(pk=pk)
         except ConfirmedBooking.DoesNotExist:

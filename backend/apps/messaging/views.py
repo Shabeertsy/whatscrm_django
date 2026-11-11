@@ -21,6 +21,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from apps.core.permissions import RequirePermission, Permission
 from apps.core.scoping import scope_by_location, scope_by_owner
+from apps.messaging.scope import scope_conversations_qs, scope_contacts_qs
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.pagination import LimitOffsetPagination
@@ -72,10 +73,7 @@ class ContactViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         qs = Contact.objects.all()
-
-        # owner and location isolation 
-        qs = scope_by_owner(qs, self.request.user, owner_field='location__users__owner')
-        qs = scope_by_location(qs, self.request.user, location_field='location')
+        qs = scope_contacts_qs(qs, self.request.user)
 
 
         is_saved = self.request.query_params.get('is_saved')
@@ -118,8 +116,7 @@ class ConversationListAPIView(APIView):
         ).prefetch_related('assigned_agents')
 
         # owner and location isolation 
-        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
-        qs = scope_by_location(qs, request.user, location_field='contact__location')
+        qs = scope_conversations_qs(qs, request.user)
 
         status_filter = request.query_params.get('status')
         instance_id   = request.query_params.get('instance')
@@ -161,21 +158,33 @@ class ConversationDetailAPIView(APIView):
     def get(self, request, pk):
         qs = Conversation.objects.select_related(
             'contact', 'contact__crm_contact', 'instance', 'assigned_agent'
-        )
+        ).prefetch_related('assigned_agents')
 
         # owner and location isolation
-        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
-        qs = scope_by_location(qs, request.user, location_field='contact__location')
+        qs = scope_conversations_qs(qs, request.user)
         
         conv = get_object_or_404(qs, pk=pk)
         serializer = ConversationDetailSerializer(conv)
         return Response(serializer.data)
 
     def patch(self, request, pk):
-        qs = Conversation.objects.select_related('contact', 'contact__crm_contact', 'instance', 'assigned_agent')
-        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
-        qs = scope_by_location(qs, request.user, location_field='contact__location')
+        qs = Conversation.objects.select_related('contact', 'contact__crm_contact', 'instance', 'assigned_agent').prefetch_related('assigned_agents')
+        qs = scope_conversations_qs(qs, request.user)
         conv = get_object_or_404(qs, pk=pk)
+
+        # Only superusers are allowed to assign, reassign, or unassign conversations
+        is_assignment_change = (
+            'department_id' in request.data or
+            'department_role' in request.data or
+            'department_roles' in request.data or
+            'assigned_agent' in request.data or
+            'assigned_agents' in request.data
+        )
+        if is_assignment_change and not request.user.is_superuser:
+            return Response(
+                {'detail': 'Only administrators / superusers are permitted to assign conversations.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
         # 1. Handle Department assignment (or Department + Multiple Roles)
         if 'department_id' in request.data:
@@ -332,8 +341,7 @@ class ConversationMessagesAPIView(APIView):
         qs = Conversation.objects.all()
 
         # owner and location isolation
-        qs = scope_by_owner(qs, request.user, owner_field='instance__user')
-        qs = scope_by_location(qs, request.user, location_field='contact__location')
+        qs = scope_conversations_qs(qs, request.user)
         
         conv = get_object_or_404(qs, pk=pk)
         
@@ -399,7 +407,8 @@ class ConversationSendMessageAPIView(APIView):
     required_permission = Permission.ACCESS_CHATS
 
     def post(self, request, pk):
-        conv = get_object_or_404(Conversation, pk=pk)
+        qs = scope_conversations_qs(Conversation.objects.all(), request.user)
+        conv = get_object_or_404(qs, pk=pk)
         serializer = SendMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -614,7 +623,8 @@ class ConversationMarkReadAPIView(APIView):
 
     def post(self, request, pk):
         """Reset unread_count to 0 when agent opens the conversation."""
-        conv = get_object_or_404(Conversation, pk=pk)
+        qs = scope_conversations_qs(Conversation.objects.all(), request.user)
+        conv = get_object_or_404(qs, pk=pk)
         conv.unread_count = 0
         conv.save(update_fields=['unread_count'])
         return Response({'status': 'ok', 'unread_count': 0})

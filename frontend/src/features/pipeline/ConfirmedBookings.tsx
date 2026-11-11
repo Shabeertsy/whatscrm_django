@@ -1,4 +1,5 @@
 import React from 'react';
+import { usePermissionGate, AccessDenied } from '../../utils/dataScope';
 import { useConfirmedBookings } from './hooks/useConfirmedBookings';
 import {
   ConfirmedBookingsStats,
@@ -11,6 +12,8 @@ import {
 
 
 export function ConfirmedBookings() {
+  const { allowed } = usePermissionGate('canAccessConfirmedBookings');
+
   const {
     bookings,
     filteredBookings,
@@ -56,7 +59,11 @@ export function ConfirmedBookings() {
     handleOpenNoteModal,
     handleCloseNoteModal,
     handleSaveNoteModal,
-  } = useConfirmedBookings();
+  } = useConfirmedBookings(allowed);
+
+  if (!allowed) {
+    return <AccessDenied module="Confirmed Bookings" />;
+  }
 
   return (
     <div className="space-y-5">

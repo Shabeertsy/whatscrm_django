@@ -41,6 +41,7 @@ export type PermissionKey =
   | 'canAccessDashboard'
   | 'canAccessChats'
   | 'canAccessPipeline'
+  | 'canAccessConfirmedBookings'
   | 'canAccessContacts'
   | 'canAccessHotels'
   | 'canAccessTemplates'
