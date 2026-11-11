@@ -38,6 +38,7 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
   const [searchTerm, setSearchTerm] = useState('');
   const [agents, setAgents] = useState<AssignableAgent[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [expandedDepts, setExpandedDepts] = useState<Record<string, boolean>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [fetched, setFetched] = useState(false);
@@ -184,6 +185,10 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
     } finally {
       setIsAssigning(false);
     }
+  };
+
+  const toggleDeptExpand = (deptId: string) => {
+    setExpandedDepts((prev) => ({ ...prev, [deptId]: !prev[deptId] }));
   };
 
   const handleAssignDepartment = async (
@@ -531,6 +536,14 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
                     const isCurrentDept =
                       isDepartment && (agentName?.startsWith(dept.name) ?? false);
                     const hasAgents = agentCount > 0;
+                    const isExpanded =
+                      !!expandedDepts[dept.id] ||
+                      (Boolean(searchTerm.trim()) &&
+                        deptAgents.some(
+                          (a) =>
+                            a.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            a.email.toLowerCase().includes(searchTerm.toLowerCase())
+                        ));
 
                     return (
                       <div
@@ -625,77 +638,94 @@ export function AssignAgentDropdown({ conversation }: AssignAgentDropdownProps) 
                               </div>
                             )}
 
-                            {/* Direct Member Selection within this Department */}
+                            {/* Expandable Member Selection within this Department */}
                             <div>
-                              <p className="text-[9.5px] uppercase font-bold text-slate-400 tracking-wider mb-1">
-                                Or select a member:
-                              </p>
-                              <div className="space-y-1 bg-white dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800">
-                                {deptAgents.map((a) => {
-                                  const isCurrent = a.id === conversation.assigned_agent;
-                                  return (
-                                    <button
-                                      key={a.id}
-                                      type="button"
-                                      disabled={isCurrent}
-                                      onClick={() => handleAssignAgent(a.id, a.name)}
-                                      className={`w-full flex items-center justify-between py-1 px-1.5 rounded-lg text-left transition-colors cursor-pointer group ${
-                                        isCurrent
-                                          ? 'bg-blue-50/80 dark:bg-blue-900/30 cursor-default'
-                                          : 'hover:bg-slate-100/80 dark:hover:bg-slate-700/60'
-                                      }`}
-                                    >
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <div
-                                          className={`h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
-                                            isCurrent
-                                              ? 'bg-blue-500'
-                                              : 'bg-slate-400 dark:bg-slate-600'
-                                          }`}
-                                        >
-                                          {getInitials(a.name)}
-                                        </div>
-                                        <div className="min-w-0">
-                                          <p
-                                            className={`text-[11px] font-semibold truncate ${
+                              <button
+                                type="button"
+                                onClick={() => toggleDeptExpand(dept.id)}
+                                className="w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-sky-600 dark:hover:text-sky-400 bg-slate-50 dark:bg-slate-800/60 hover:bg-sky-50/70 dark:hover:bg-sky-950/30 border border-slate-200/70 dark:border-slate-700/60 transition-all cursor-pointer group"
+                              >
+                                <span className="flex items-center gap-1.5 text-[11px]">
+                                  <User2 className="h-3 w-3 text-slate-400 group-hover:text-sky-500 transition-colors" />
+                                  <span>
+                                    {isExpanded ? 'Hide members' : `View members (${agentCount})`}
+                                  </span>
+                                </span>
+                                <ChevronDown
+                                  className={`h-3.5 w-3.5 text-slate-400 group-hover:text-sky-500 transition-transform duration-200 ${
+                                    isExpanded ? 'rotate-180 text-sky-500' : ''
+                                  }`}
+                                />
+                              </button>
+
+                              {isExpanded && (
+                                <div className="mt-1.5 space-y-1 bg-white dark:bg-slate-800/50 p-1.5 rounded-xl border border-slate-200/80 dark:border-slate-800 animate-in fade-in duration-150">
+                                  {deptAgents.map((a) => {
+                                    const isCurrent = a.id === conversation.assigned_agent;
+                                    return (
+                                      <button
+                                        key={a.id}
+                                        type="button"
+                                        disabled={isCurrent}
+                                        onClick={() => handleAssignAgent(a.id, a.name)}
+                                        className={`w-full flex items-center justify-between py-1 px-1.5 rounded-lg text-left transition-colors cursor-pointer group ${
+                                          isCurrent
+                                            ? 'bg-blue-50/80 dark:bg-blue-900/30 cursor-default'
+                                            : 'hover:bg-slate-100/80 dark:hover:bg-slate-700/60'
+                                        }`}
+                                      >
+                                        <div className="flex items-center gap-2 min-w-0">
+                                          <div
+                                            className={`h-5 w-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white shrink-0 ${
                                               isCurrent
-                                                ? 'text-blue-700 dark:text-blue-300'
-                                                : 'text-slate-800 dark:text-slate-200 group-hover:text-slate-900'
+                                                ? 'bg-blue-500'
+                                                : 'bg-slate-400 dark:bg-slate-600'
                                             }`}
                                           >
-                                            {a.name}
-                                          </p>
-                                          <div className="flex items-center gap-1 text-[9px] text-slate-400">
-                                            <span className="capitalize">{a.user_type}</span>
-                                            {a.location_name && (
-                                              <>
-                                                <span>•</span>
-                                                <span className="text-amber-600 dark:text-amber-400 flex items-center gap-0.5 truncate max-w-[80px]">
-                                                  <MapPin className="h-2 w-2 shrink-0" />
-                                                  {a.location_name}
-                                                </span>
-                                              </>
-                                            )}
+                                            {getInitials(a.name)}
+                                          </div>
+                                          <div className="min-w-0">
+                                            <p
+                                              className={`text-[11px] font-semibold truncate ${
+                                                isCurrent
+                                                  ? 'text-blue-700 dark:text-blue-300'
+                                                  : 'text-slate-800 dark:text-slate-200 group-hover:text-slate-900'
+                                              }`}
+                                            >
+                                              {a.name}
+                                            </p>
+                                            <div className="flex items-center gap-1 text-[9px] text-slate-400">
+                                              <span className="capitalize">{a.user_type}</span>
+                                              {a.location_name && (
+                                                <>
+                                                  <span>•</span>
+                                                  <span className="text-amber-600 dark:text-amber-400 flex items-center gap-0.5 truncate max-w-[80px]">
+                                                    <MapPin className="h-2 w-2 shrink-0" />
+                                                    {a.location_name}
+                                                  </span>
+                                                </>
+                                              )}
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
 
-                                      <div className="shrink-0 ml-2">
-                                        {isCurrent ? (
-                                          <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
-                                            <Check className="h-3 w-3" />
-                                            <span>Current</span>
-                                          </span>
-                                        ) : (
-                                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold transition-all bg-slate-100 group-hover:bg-sky-600 group-hover:text-white text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-sky-600 border border-slate-200 dark:border-slate-700 shadow-2xs">
-                                            Assign
-                                          </span>
-                                        )}
-                                      </div>
-                                    </button>
-                                  );
-                                })}
-                              </div>
+                                        <div className="shrink-0 ml-2">
+                                          {isCurrent ? (
+                                            <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-0.5">
+                                              <Check className="h-3 w-3" />
+                                              <span>Current</span>
+                                            </span>
+                                          ) : (
+                                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold transition-all bg-slate-100 group-hover:bg-sky-600 group-hover:text-white text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:group-hover:bg-sky-600 border border-slate-200 dark:border-slate-700 shadow-2xs">
+                                              Assign
+                                            </span>
+                                          )}
+                                        </div>
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
