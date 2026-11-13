@@ -12,13 +12,14 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from dotenv import load_dotenv
-
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Load environment variables from .env file
-load_dotenv(BASE_DIR / '.env')
+try:
+    from dotenv import load_dotenv
+    # Build paths inside the project like this: BASE_DIR / 'subdir'.
+    BASE_DIR = Path(__file__).resolve().parent.parent
+    # Load environment variables from .env file
+    load_dotenv(BASE_DIR / '.env')
+except ImportError:
+    BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -63,6 +64,7 @@ INSTALLED_APPS = [
     "apps.contacts",
     "apps.ai",
     "apps.flows",
+    "apps.evolution",
 ]
 
 MIDDLEWARE = [
@@ -313,5 +315,14 @@ CELERY_BEAT_SCHEDULE = {
 # Generate: openssl genrsa -out flow_private_key.pem 2048
 # Store full PEM in .env as FLOW_PRIVATE_KEY (use \n for newlines)
 FLOW_PRIVATE_KEY = os.getenv("FLOW_PRIVATE_KEY", "")
+
+# Evolution API — Scanned Physical Devices (Baileys)
+EVOLUTION_API_URL = os.getenv("EVOLUTION_API_URL", "http://localhost:8080").rstrip("/")
+EVOLUTION_API_KEY = os.getenv("EVOLUTION_API_KEY", "")
+EVOLUTION_WEBHOOK_BASE_URL = os.getenv(
+    "EVOLUTION_WEBHOOK_BASE_URL",
+    os.getenv("BACKEND_PUBLIC_URL", "http://localhost:8000")
+).rstrip("/")
+
 
 

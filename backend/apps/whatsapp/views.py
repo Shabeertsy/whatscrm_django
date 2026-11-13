@@ -31,6 +31,15 @@ class WhatsappInstanceViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=get_tenant_owner(self.request.user))
 
+    def perform_destroy(self, instance):
+        if instance.instance_type == "scanned_device" and instance.evolution_instance_name:
+            try:
+                from apps.evolution.services import delete_scanned_instance
+                delete_scanned_instance(instance)
+            except Exception as e:
+                logging.getLogger(__name__).warning(f"Could not delete Evolution instance: {e}")
+        instance.delete()
+
     @action(detail=True, methods=["post"], url_path="toggle-active")
     def toggle_active(self, request, pk=None):
         instance = self.get_object()

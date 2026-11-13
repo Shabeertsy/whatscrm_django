@@ -13,38 +13,39 @@ from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from .serializers import MessageSerializer, ConversationListSerializer
 
-
-def _broadcast_groups_for_conv(conv) -> list[str]:
-    """
-    Return the WebSocket group names to push an event to for a conversation.
-
-    Rules:
-      - If conv.assigned_agents (M2M, dept/role assignment) has any members,
-        broadcast to ALL of them so every watching agent sees real-time updates.
-      - Else if conv.assigned_agent (FK, single assignment) is set, use that agent's group.
-      - Else broadcast to 'inbox_global' (unassigned / all agents see it).
-    """
-    # M2M dept/role agents (prefetch if possible to avoid extra queries)
-    try:
-        # Use _prefetched_objects_cache if already prefetched
-        m2m_agents = list(conv.assigned_agents.values_list('id', flat=True))
-    except Exception:
-        m2m_agents = []
-
-    if m2m_agents:
-        return [f"inbox_{agent_id}" for agent_id in m2m_agents]
-
-    if conv.assigned_agent_id:
-        return [f"inbox_{conv.assigned_agent_id}"]
-
-    return ["inbox_global"]
-
 import logging
-
 import requests
 import mimetypes
 
 logger = logging.getLogger(__name__)
+
+
+
+def _broadcast_groups_for_conv(conv) -> list[str]:
+    """
+    Return the WebSocket group names to push an event to for a conversation.
+    Ensures both global inbox watchers (admins, dashboard) and assigned agents
+    receive real-time updates instantly without waiting for a page reload.
+    """
+    groups = {"inbox_global"}
+
+    # Include instance owner / creator
+    if getattr(conv, 'instance', None) and getattr(conv.instance, 'user_id', None):
+        groups.add(f"inbox_{conv.instance.user_id}")
+
+    # Include assigned agent
+    if getattr(conv, 'assigned_agent_id', None):
+        groups.add(f"inbox_{conv.assigned_agent_id}")
+
+    # Include M2M agents
+    try:
+        for agent_id in conv.assigned_agents.values_list('id', flat=True):
+            groups.add(f"inbox_{agent_id}")
+    except Exception:
+        pass
+
+    return list(groups)
+
 
 
 def save_whatsapp_media(file_obj, phone=None):
@@ -740,20 +741,32 @@ def send_and_save_message(
     inst = conversation.instance
     if inst and inst.is_active:
         try:
-            wa_resp = send_whatsapp_message(
-                phone_number_id=inst.phone_number_id,
-                access_token=inst.access_token,
-                to_phone=conversation.contact.wa_id,
-                message_text=body,
-                msg_type=msg_type,
-                media_url=media_url,
-                reply_to_wa_id=reply_to_wa_id,
-                filename=filename,
-                storage_path=storage_path,
-                template_name=template_name,
-                template_language=template_language,
-                template_media_type=template_media_type,
-            )
+            if getattr(inst, 'instance_type', 'meta_cloud') == 'scanned_device':
+                from apps.evolution.services import send_evolution_message
+                wa_resp = send_evolution_message(
+                    instance=inst,
+                    to_phone=conversation.contact.wa_id,
+                    message_text=body,
+                    msg_type=msg_type,
+                    media_url=media_url,
+                    reply_to_wa_id=reply_to_wa_id,
+                    filename=filename,
+                )
+            else:
+                wa_resp = send_whatsapp_message(
+                    phone_number_id=inst.phone_number_id,
+                    access_token=inst.access_token,
+                    to_phone=conversation.contact.wa_id,
+                    message_text=body,
+                    msg_type=msg_type,
+                    media_url=media_url,
+                    reply_to_wa_id=reply_to_wa_id,
+                    filename=filename,
+                    storage_path=storage_path,
+                    template_name=template_name,
+                    template_language=template_language,
+                    template_media_type=template_media_type,
+                )
             if wa_resp.get("messages"):
                 wa_message_id = wa_resp["messages"][0]["id"]
                 msg_status = "sent"

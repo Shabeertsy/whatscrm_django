@@ -9,19 +9,25 @@ class WhatsappInstanceSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "display_name",
+            "instance_type",
             "phone_number_id",
             "whatsapp_business_account_id",
             "app_id",
             "access_token",
             "webhook_verify_token",
             "is_active",
+            "evolution_instance_name",
+            "evolution_status",
+            "evolution_phone",
+            "evolution_qr_code",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "created_at", "updated_at"]
         extra_kwargs = {
-            # Never expose the raw token in list responses
-            "access_token": {"write_only": False},
+            "phone_number_id": {"required": False, "allow_blank": True},
+            "whatsapp_business_account_id": {"required": False, "allow_blank": True},
+            "access_token": {"required": False, "allow_blank": True, "write_only": False},
         }
 
 
@@ -32,11 +38,16 @@ class WhatsappInstanceListSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "display_name",
+            "instance_type",
             "phone_number_id",
             "whatsapp_business_account_id",
             "app_id",
             "webhook_verify_token",
             "is_active",
+            "evolution_instance_name",
+            "evolution_status",
+            "evolution_phone",
+            "evolution_qr_code",
             "created_at",
         ]
         read_only_fields = ["id", "created_at"]

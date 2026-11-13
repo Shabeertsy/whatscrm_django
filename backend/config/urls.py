@@ -33,6 +33,7 @@ urlpatterns = [
     path("api/contacts/", include("apps.contacts.urls")),
     path("api/ai/", include("apps.ai.urls")),
     path("api/flows/", include("apps.flows.urls")),
+    path("api/evolution/", include("apps.evolution.urls")),
 ]
 
 if settings.DEBUG:

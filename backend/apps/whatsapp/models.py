@@ -6,6 +6,16 @@ from apps.core.models import BaseModel
 
 
 class WhatsappInstance(BaseModel):
+    INSTANCE_TYPE_CHOICES = (
+        ('meta_cloud', 'Official Meta Cloud API'),
+        ('scanned_device', 'Scanned Physical Device (Evolution API)'),
+    )
+    instance_type = models.CharField(
+        max_length=30,
+        choices=INSTANCE_TYPE_CHOICES,
+        default='meta_cloud',
+        db_index=True,
+    )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -17,10 +27,14 @@ class WhatsappInstance(BaseModel):
     )
     phone_number_id = models.CharField(
         max_length=255,
+        blank=True,
+        default="",
         help_text="Phone Number ID from Meta Developer Console",
     )
     whatsapp_business_account_id = models.CharField(
         max_length=255,
+        blank=True,
+        default="",
         verbose_name="WABA ID",
         help_text="WhatsApp Business Account ID",
     )
@@ -32,6 +46,8 @@ class WhatsappInstance(BaseModel):
         help_text="Meta App ID required for Resumable Upload API",
     )
     access_token = models.TextField(
+        blank=True,
+        default="",
         help_text="Permanent or temporary access token from Meta",
     )
     webhook_verify_token = models.CharField(
@@ -41,6 +57,31 @@ class WhatsappInstance(BaseModel):
         help_text="Token you set in Meta webhook configuration",
     )
     is_active = models.BooleanField(default=True)
+
+    # ── Evolution API Fields (Scanned Physical Devices) ───────────────────
+    evolution_instance_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        db_index=True,
+        help_text="Instance identifier in Evolution API",
+    )
+    evolution_status = models.CharField(
+        max_length=50,
+        default="disconnected",
+        help_text="Connection status reported by Evolution API (e.g. open, close, connecting)",
+    )
+    evolution_phone = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        help_text="Connected physical phone number",
+    )
+    evolution_qr_code = models.TextField(
+        blank=True,
+        default="",
+        help_text="Latest base64 QR code or pairing code for linking",
+    )
     
     class Meta(BaseModel.Meta):
         verbose_name = "WhatsApp Instance"

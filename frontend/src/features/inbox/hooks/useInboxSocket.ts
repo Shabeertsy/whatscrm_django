@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { tokenService } from '../../../api/token';
 import { messagingStore } from '../../../store/messagingStore';
-import type { Message } from '../../../api/messaging';
+import { messagingApi, type Message } from '../../../api/messaging';
 import { showToast } from '../../../utils/toast';
 
 const WS_BASE = import.meta.env.VITE_WS_BASE_URL || 'ws://127.0.0.1:8000';
@@ -28,27 +28,40 @@ export function useInboxSocket() {
 
         if (data.type === 'new_message') {
           const { message, conversation_id, contact_name, contact_phone } = data;
+          const convIdStr = String(conversation_id);
+          const activeId = messagingStore.getState().activeConversationId;
 
           // Add message to the store
           messagingStore.pushMessage(conversation_id, message);
 
-          // Update the conversation's last message preview + bump unread if not active
-          const activeId = messagingStore.getState().activeConversationId;
-          messagingStore.updateConversationMeta(conversation_id, {
-            last_message: {
-              body: message.body,
-              direction: message.direction,
-              msg_type: message.msg_type,
-            },
-            last_message_at: message.timestamp,
-            unread_count:
-              String(activeId) === String(conversation_id)
-                ? 0
-                : (messagingStore
-                    .getState()
-                    .conversations.find((c) => String(c.id) === String(conversation_id))
-                    ?.unread_count ?? 0) + 1,
-          });
+          const convExists = messagingStore.getState().conversations.some(c => String(c.id) === convIdStr);
+          if (!convExists) {
+            messagingApi.getConversation(convIdStr).then(res => {
+              if (res?.data) {
+                const newConv = { ...res.data, id: String(res.data.id) };
+                messagingStore.setState(s => ({
+                  conversations: [newConv, ...s.conversations.filter(c => String(c.id) !== convIdStr)]
+                }));
+              }
+            }).catch(console.error);
+          } else {
+            // Update the conversation's last message preview + bump unread if not active
+            messagingStore.updateConversationMeta(conversation_id, {
+              last_message: {
+                body: message.body,
+                direction: message.direction,
+                msg_type: message.msg_type,
+              },
+              last_message_at: message.timestamp,
+              unread_count:
+                String(activeId) === convIdStr
+                  ? 0
+                  : (messagingStore
+                      .getState()
+                      .conversations.find((c) => String(c.id) === convIdStr)
+                      ?.unread_count ?? 0) + 1,
+            });
+          }
 
           // Show browser notification if it's an inbound message and not in the currently active chat
           if (message.direction === 'inbound' && String(activeId) !== String(conversation_id)) {

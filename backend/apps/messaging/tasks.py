@@ -182,17 +182,29 @@ def compress_chat_video(self, message_id):
             try:
                 reply_to_wa_id = msg.replied_to.wa_message_id if msg.replied_to else ""
                 
-                wa_response = send_whatsapp_message(
-                    phone_number_id=conv.instance.phone_number_id,
-                    access_token=conv.instance.access_token,
-                    to_phone=conv.contact.wa_id,
-                    message_text=msg.body,
-                    msg_type=msg.msg_type,
-                    media_url=file_url,
-                    reply_to_wa_id=reply_to_wa_id,
-                    filename=os.path.basename(new_storage_path),
-                    storage_path=new_storage_path,
-                )
+                if getattr(conv.instance, 'instance_type', 'meta_cloud') == 'scanned_device':
+                    from apps.evolution.services import send_evolution_message
+                    wa_response = send_evolution_message(
+                        instance=conv.instance,
+                        to_phone=conv.contact.wa_id,
+                        message_text=msg.body,
+                        msg_type=msg.msg_type,
+                        media_url=file_url,
+                        reply_to_wa_id=reply_to_wa_id,
+                        filename=os.path.basename(new_storage_path),
+                    )
+                else:
+                    wa_response = send_whatsapp_message(
+                        phone_number_id=conv.instance.phone_number_id,
+                        access_token=conv.instance.access_token,
+                        to_phone=conv.contact.wa_id,
+                        message_text=msg.body,
+                        msg_type=msg.msg_type,
+                        media_url=file_url,
+                        reply_to_wa_id=reply_to_wa_id,
+                        filename=os.path.basename(new_storage_path),
+                        storage_path=new_storage_path,
+                    )
                 if 'messages' in wa_response and len(wa_response['messages']) > 0:
                     msg.wa_message_id = wa_response['messages'][0]['id']
                     msg.status = "sent"
