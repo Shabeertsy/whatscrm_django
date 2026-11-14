@@ -4,43 +4,25 @@ services:
     container_name: evolution_api
     restart: always
     ports:
-      - "${EVOLUTION_PORT:-8080}:8080"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+      - "127.0.0.1:8080:8080" # Bound only to localhost (Reverse Proxy will forward to it)
     env_file:
       - .env.evolution
     environment:
       - SERVER_PORT=8080
-      - SERVER_URL=${SERVER_URL:-http://localhost:8080}
-      - AUTHENTICATION_API_KEY=${AUTHENTICATION_API_KEY:-evolution_secret_key_change_me_123}
-      
-      # Database Config (PostgreSQL for session resilience)
+      - SERVER_URL=${SERVER_URL}
+      - AUTHENTICATION_API_KEY=${AUTHENTICATION_API_KEY}
       - DATABASE_ENABLED=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://${POSTGRES_USERNAME:-evolution}:${POSTGRES_PASSWORD:-evolution_secret_password}@evolution-postgres:5432/${POSTGRES_DATABASE:-evolution_db}?schema=public
+      - DATABASE_CONNECTION_URI=${DATABASE_CONNECTION_URI}
       - DATABASE_CLIENT_NAME=evolution_db
-      
-      # Redis Cache Configuration
       - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=redis://evolution-redis:6379/1
-      - CACHE_REDIS_PREFIX_KEY=evolution
-      - CACHE_REDIS_TTL=604800
-      - CACHE_REDIS_SAVE_INSTANCES=false
-      
-      # WhatsApp Session Storage
+      - CACHE_REDIS_URI=${CACHE_REDIS_URI}
       - DEL_INSTANCE=false
       - STORE_MESSAGES=true
       - STORE_MESSAGE_UP=true
       - STORE_CONTACTS=true
       - STORE_CHATS=true
-      
-      # Webhook defaults
       - WEBHOOK_GLOBAL_ENABLED=false
-      - WEBHOOK_GLOBAL_URL=
-      - WEBHOOK_GLOBAL_AUTO_DOWNLOAD=true
-      
-      # Logging & QR
-      - LOG_LEVEL=ERROR,WARN,DEBUG,INFO,LOG,VERBOSE,DARK,WEBHOOKS
       - QRCODE_LIMIT=30
     depends_on:
       evolution-postgres:
@@ -57,10 +39,10 @@ services:
     image: evoapicloud/evolution-manager:latest
     restart: always
     ports:
-      - "${EVOLUTION_MANAGER_PORT:-3000}:80"
+      - "127.0.0.1:3000:80"
     environment:
-      - VITE_EVOLUTION_API_URL=${SERVER_URL:-http://localhost:8080}
-      - VITE_EVOLUTION_API_KEY=${AUTHENTICATION_API_KEY:-evolution_secret_key_change_me_123}
+      - VITE_EVOLUTION_API_URL=${SERVER_URL}
+      - VITE_EVOLUTION_API_KEY=${AUTHENTICATION_API_KEY}
     depends_on:
       - api
     networks:
@@ -87,16 +69,14 @@ services:
       - postgres
       - -c
       - max_connections=1000
-      - -c
-      - listen_addresses=*
     environment:
-      - POSTGRES_DB=${POSTGRES_DATABASE:-evolution_db}
-      - POSTGRES_USER=${POSTGRES_USERNAME:-evolution}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-evolution_secret_password}
+      - POSTGRES_DB=${POSTGRES_DATABASE}
+      - POSTGRES_USER=${POSTGRES_USERNAME}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - evolution_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME:-evolution} -d ${POSTGRES_DATABASE:-evolution_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
       interval: 3s
       timeout: 3s
       retries: 10
@@ -108,8 +88,11 @@ services:
 
 volumes:
   evolution_instances:
-  evolution_pg_data:
+    name: evolution_instances
   evolution_redis_data:
+    name: evolution_redis_data
+  evolution_pg_data:
+    name: evolution_pg_data
 
 networks:
   evolution-net:
