@@ -46,3 +46,4 @@ staticfiles/
 static/
 media/
 django.log
+venv

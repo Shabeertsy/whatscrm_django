@@ -22,6 +22,7 @@ import type { WhatsappInstance, WhatsappInstancePayload } from '../../../../type
 import toast from 'react-hot-toast';
 import { InstanceModal } from '../modals/InstanceModal';
 import { ScannedDeviceModal } from '../modals/ScannedDeviceModal';
+import { RenameInstanceModal } from '../modals/RenameInstanceModal';
 import { CopyButton } from '../ui/CopyButton';
 
 
@@ -47,6 +48,9 @@ export function WhatsappInstancesTab() {
   const [scannedModalOpen, setScannedModalOpen] = useState(false);
   const [scannedTarget, setScannedTarget] = useState<WhatsappInstance | null>(null);
 
+  // Rename Scanned Device
+  const [renameTarget, setRenameTarget] = useState<WhatsappInstance | null>(null);
+
   // Actions
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -54,6 +58,20 @@ export function WhatsappInstancesTab() {
   const [disconnectingId, setDisconnectingId] = useState<string | null>(null);
   const [syncingId, setSyncingId] = useState<string | null>(null);
   const [rescanningId, setRescanningId] = useState<string | null>(null);
+
+  const handleUpdateName = async (newName: string) => {
+    if (!renameTarget) return;
+    try {
+      await whatsappApi.updateInstance(renameTarget.id, { display_name: newName } as any);
+      setInstances((prev) =>
+        prev.map((i) => (i.id === renameTarget.id ? { ...i, display_name: newName } : i))
+      );
+      toast.success('Connection name updated');
+    } catch {
+      toast.error('Failed to update connection name');
+      throw new Error('Update failed');
+    }
+  };
 
   const handleRescan = async (inst: WhatsappInstance) => {
     setRescanningId(inst.id);
@@ -84,22 +102,68 @@ export function WhatsappInstancesTab() {
     }
   };
 
-  const fetchInstances = async () => {
-    setLoading(true);
+  const fetchInstances = async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const res = await whatsappApi.listInstances();
       const data = res.data;
       setInstances(Array.isArray(data) ? data : (data as any).results ?? []);
     } catch {
-      toast.error('Failed to load WhatsApp instances');
+      if (!silent) toast.error('Failed to load WhatsApp instances');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchInstances();
   }, []);
+
+  // Live poll any connecting scanned instances so status updates live without needing a page refresh
+  useEffect(() => {
+    const hasConnecting = instances.some(
+      (inst) => inst.instance_type === 'scanned_device' && inst.evolution_status === 'connecting'
+    );
+    if (!hasConnecting) return;
+
+    const interval = setInterval(async () => {
+      const connecting = instances.filter(
+        (inst) => inst.instance_type === 'scanned_device' && inst.evolution_status === 'connecting'
+      );
+
+      for (const inst of connecting) {
+        try {
+          const res = await evolutionApi.getInstanceStatus(inst.id);
+          const newStatus = res.data.status;
+          if (newStatus && newStatus !== inst.evolution_status) {
+            setInstances((prev) =>
+              prev.map((i) =>
+                i.id === inst.id
+                  ? {
+                    ...i,
+                    evolution_status: newStatus,
+                    is_active: newStatus === 'open',
+                    evolution_phone: res.data.phone || i.evolution_phone,
+                  }
+                  : i
+              )
+            );
+            if (newStatus === 'open') {
+              toast.success(`${inst.display_name} connected successfully!`);
+              // Trigger chat sync in background
+              evolutionApi.syncInstanceChats(inst.id).catch(() => { });
+            }
+          }
+        } catch {
+          // ignore background poll errors
+        }
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [instances]);
+
+
 
   const filteredInstances = useMemo(() => {
     if (!searchQuery.trim()) return instances;
@@ -275,8 +339,8 @@ export function WhatsappInstancesTab() {
                   {/* Brand Channel Avatar */}
                   <div className="relative flex-shrink-0">
                     <div className={`h-10 w-10 rounded-xl flex items-center justify-center transition-all ${isHealthy
-                        ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60'
-                        : 'bg-slate-100 text-slate-400 dark:bg-slate-800/80 dark:text-slate-500 border border-slate-200/60 dark:border-slate-700/60'
+                      ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 border border-emerald-200/60 dark:border-emerald-800/60'
+                      : 'bg-slate-100 text-slate-400 dark:bg-slate-800/80 dark:text-slate-500 border border-slate-200/60 dark:border-slate-700/60'
                       }`}>
                       <WhatsAppIcon className="h-5 w-5" />
                     </div>
@@ -423,6 +487,14 @@ export function WhatsappInstancesTab() {
                           <span>Scan QR</span>
                         </button>
                       )}
+                      {/* Rename Scanned Connection */}
+                      <button
+                        onClick={() => setRenameTarget(inst)}
+                        title="Rename Connection"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
                     </>
                   ) : (
                     <>
@@ -478,8 +550,27 @@ export function WhatsappInstancesTab() {
       {scannedModalOpen && (
         <ScannedDeviceModal
           initialInstance={scannedTarget}
-          onClose={() => { setScannedModalOpen(false); setScannedTarget(null); }}
-          onSuccess={fetchInstances}
+          onClose={() => {
+            setScannedModalOpen(false);
+            setScannedTarget(null);
+            fetchInstances(true);
+          }}
+          onSuccess={() => fetchInstances(true)}
+          onInstanceCreated={(newInstance) => {
+            setInstances((prev) => {
+              if (prev.some((i) => i.id === newInstance.id)) return prev;
+              return [newInstance, ...prev];
+            });
+          }}
+        />
+      )}
+
+      {/* Rename Scanned Device Modal */}
+      {renameTarget && (
+        <RenameInstanceModal
+          instance={renameTarget}
+          onClose={() => setRenameTarget(null)}
+          onSave={handleUpdateName}
         />
       )}
 

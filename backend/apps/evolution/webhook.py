@@ -123,7 +123,7 @@ class EvolutionWebhookView(APIView):
             contact=contact,
             instance=instance,
             status__in=["open", "pending"],
-            defaults={"status": "open"},
+            defaults={"status": "open", "ai_active": False},
         )
         if not created and conv.status == "resolved":
             conv.status = "open"

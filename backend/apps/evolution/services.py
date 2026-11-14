@@ -100,7 +100,21 @@ def sync_instance_status(instance: WhatsappInstance) -> str:
         if status_normalized == "open" and instance.evolution_qr_code:
             instance.evolution_qr_code = ""
 
-        instance.save(update_fields=["evolution_status", "is_active", "evolution_qr_code", "updated_at"])
+        # Fetch connected phone number if missing
+        if status_normalized == "open" and not instance.evolution_phone:
+            try:
+                inst_info = client._request('GET', '/instance/fetchInstances', params={'instanceName': instance.evolution_instance_name})
+                items = inst_info if isinstance(inst_info, list) else (inst_info.get("instances", []) if isinstance(inst_info, dict) else [])
+                for itm in items:
+                    owner_jid = itm.get("owner") or itm.get("ownerJid") or ""
+                    if owner_jid and "@" in str(owner_jid):
+                        phone_num = str(owner_jid).split("@")[0]
+                        instance.evolution_phone = f"+{phone_num}"
+                        break
+            except Exception as phone_err:
+                logger.debug(f"[Evolution Service] Could not fetch owner phone: {phone_err}")
+
+        instance.save(update_fields=["evolution_status", "is_active", "evolution_phone", "evolution_qr_code", "updated_at"])
 
         # Auto-sync existing chats if instance has 0 conversations
         if status_normalized == "open":
@@ -275,7 +289,7 @@ def sync_scanned_instance_chats(instance: WhatsappInstance) -> int:
         conv, _ = Conversation.objects.get_or_create(
             contact=contact,
             instance=instance,
-            defaults={"status": "open"}
+            defaults={"status": "open", "ai_active": False}
         )
 
         wa_msg_id = k.get("id") or r.get("id")

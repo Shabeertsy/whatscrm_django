@@ -19,10 +19,12 @@ export function ScannedDeviceModal({
   initialInstance,
   onClose,
   onSuccess,
+  onInstanceCreated,
 }: {
   initialInstance?: WhatsappInstance | null;
   onClose: () => void;
   onSuccess: () => void;
+  onInstanceCreated?: (instance: WhatsappInstance) => void;
 }) {
   const [displayName, setDisplayName] = useState(initialInstance?.display_name || '');
   const [activeInstance, setActiveInstance] = useState<WhatsappInstance | null>(initialInstance || null);
@@ -59,15 +61,21 @@ export function ScannedDeviceModal({
       setActiveInstance(res.data.instance);
       setQrCode(res.data.qr_code || '');
       setStatus(res.data.status || 'connecting');
+
+      // Immediately notify parent so the instance appears in the list without waiting or refreshing
+      if (onInstanceCreated && res.data.instance) {
+        onInstanceCreated(res.data.instance);
+      }
+
       if (res.data.status === 'open') {
         setIsSuccess(true);
       } else if (!res.data.qr_code) {
-        setError('Evolution API service is not reachable on port 8080. Please start the Docker container in terminal: docker compose -f docker-compose.evolution.yml up -d');
+        setError('Evolution API service is not reachable. Please check EVOLUTION_API_URL and EVOLUTION_API_KEY in backend/.env.');
       }
     } catch (err: any) {
       setError(
         err.response?.data?.error ||
-          'Failed to connect to Evolution API server. Please ensure the Evolution API Docker service is running.'
+          'Failed to connect to Evolution API server. Please ensure Evolution API is running and reachable.'
       );
     } finally {
       setLoading(false);
@@ -75,12 +83,14 @@ export function ScannedDeviceModal({
   };
 
   // 2. Refresh QR code
-  const handleRefreshQR = async () => {
-    if (!activeInstance) return;
+  const handleRefreshQR = async (overrideId?: string) => {
+    const targetId = overrideId || activeInstance?.id;
+    if (!targetId) return;
+
     setRefreshingQR(true);
     setError('');
     try {
-      const res = await evolutionApi.rescanInstance(activeInstance.id);
+      const res = await evolutionApi.rescanInstance(targetId);
       setQrCode(res.data.qr_code || '');
       setStatus(res.data.status);
       if (res.data.status === 'open') {
@@ -90,7 +100,7 @@ export function ScannedDeviceModal({
       }
     } catch {
       try {
-        const fallback = await evolutionApi.getInstanceQR(activeInstance.id);
+        const fallback = await evolutionApi.getInstanceQR(targetId);
         setQrCode(fallback.data.qr_code || '');
         setStatus(fallback.data.status);
       } catch (err) {
@@ -144,8 +154,10 @@ export function ScannedDeviceModal({
       setQrCode(initialInstance.evolution_qr_code || '');
       setStatus(initialInstance.evolution_status || 'disconnected');
       setIsSuccess(initialInstance.evolution_status === 'open');
-      if (!initialInstance.evolution_qr_code && initialInstance.evolution_status !== 'open') {
-        handleRefreshQR();
+
+      // Fetch fresh QR code if not already open
+      if (initialInstance.evolution_status !== 'open') {
+        handleRefreshQR(initialInstance.id);
       }
     }
   }, [initialInstance]);
@@ -291,7 +303,7 @@ export function ScannedDeviceModal({
               <div className="flex items-center justify-between gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={handleRefreshQR}
+                  onClick={() => handleRefreshQR()}
                   disabled={refreshingQR}
                   className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition"
                 >

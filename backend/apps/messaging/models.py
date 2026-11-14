@@ -93,6 +93,17 @@ class Conversation(models.Model):
         verbose_name = 'Conversation'
         verbose_name_plural = 'Conversations'
 
+    def save(self, *args, **kwargs):
+        if self._state.adding and self.instance_id:
+            try:
+                if self.instance and getattr(self.instance, 'instance_type', None) == 'scanned_device':
+                    # Scanned physical WhatsApp devices have AI disabled by default
+                    if not getattr(self, '_explicit_ai_active', False):
+                        self.ai_active = False
+            except Exception:
+                pass
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return f"Conv #{str(self.id)[:8]} — {self.contact}"
 
