@@ -4,26 +4,11 @@ services:
     container_name: evolution_api
     restart: always
     ports:
-      - "127.0.0.1:8080:8080" # Bound only to localhost (Reverse Proxy will forward to it)
+      - "${EVOLUTION_PORT:-8080}:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     env_file:
       - .env.evolution
-    environment:
-      - SERVER_PORT=8080
-      - SERVER_URL=${SERVER_URL}
-      - AUTHENTICATION_API_KEY=${AUTHENTICATION_API_KEY}
-      - DATABASE_ENABLED=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=${DATABASE_CONNECTION_URI}
-      - DATABASE_CLIENT_NAME=evolution_db
-      - CACHE_REDIS_ENABLED=true
-      - CACHE_REDIS_URI=${CACHE_REDIS_URI}
-      - DEL_INSTANCE=false
-      - STORE_MESSAGES=true
-      - STORE_MESSAGE_UP=true
-      - STORE_CONTACTS=true
-      - STORE_CHATS=true
-      - WEBHOOK_GLOBAL_ENABLED=false
-      - QRCODE_LIMIT=30
     depends_on:
       evolution-postgres:
         condition: service_healthy
@@ -38,11 +23,9 @@ services:
     container_name: evolution_frontend
     image: evoapicloud/evolution-manager:latest
     restart: always
+    entrypoint: ["/bin/sh", "-c", "sed -i 's/must-revalidate //g' /etc/nginx/conf.d/nginx.conf && /start.sh"]
     ports:
-      - "127.0.0.1:3000:80"
-    environment:
-      - VITE_EVOLUTION_API_URL=${SERVER_URL}
-      - VITE_EVOLUTION_API_KEY=${AUTHENTICATION_API_KEY}
+      - "${EVOLUTION_MANAGER_PORT:-3000}:80"
     depends_on:
       - api
     networks:
@@ -69,14 +52,18 @@ services:
       - postgres
       - -c
       - max_connections=1000
+      - -c
+      - listen_addresses=*
+    env_file:
+      - .env.evolution
     environment:
-      - POSTGRES_DB=${POSTGRES_DATABASE}
-      - POSTGRES_USER=${POSTGRES_USERNAME}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DATABASE:-evolution_db}
+      - POSTGRES_USER=${POSTGRES_USERNAME:-evolution}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-evolution_secret_password}
     volumes:
       - evolution_pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME} -d ${POSTGRES_DATABASE}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USERNAME:-evolution} -d ${POSTGRES_DATABASE:-evolution_db}"]
       interval: 3s
       timeout: 3s
       retries: 10
