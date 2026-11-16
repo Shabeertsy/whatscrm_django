@@ -82,7 +82,7 @@ class EvolutionClient:
             "alwaysOnline": False,
             "readMessages": False,
             "readStatus": False,
-            "syncFullHistory": False,
+            "syncFullHistory": True,  # Pull existing messages so inbox is populated on first connect
         }
         return self._request('POST', '/instance/create', json_data=payload)
 

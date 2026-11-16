@@ -119,13 +119,20 @@ class EvolutionWebhookView(APIView):
             contact.save(update_fields=["name"])
 
         # Find or create Conversation
-        conv, created = Conversation.objects.get_or_create(
+        # Always look up by contact+instance only, then reopen if resolved.
+        conv = Conversation.objects.filter(
             contact=contact,
             instance=instance,
-            status__in=["open", "pending"],
-            defaults={"status": "open", "ai_active": False},
-        )
-        if not created and conv.status == "resolved":
+        ).order_by("-last_message_at").first()
+
+        if conv is None:
+            conv = Conversation.objects.create(
+                contact=contact,
+                instance=instance,
+                status="open",
+                ai_active=False,
+            )
+        elif conv.status == "resolved":
             conv.status = "open"
             conv.save(update_fields=["status"])
 
@@ -242,6 +249,15 @@ class EvolutionWebhookView(APIView):
             instance.evolution_qr_code = ""
 
         instance.save(update_fields=["evolution_status", "is_active", "evolution_phone", "evolution_qr_code", "updated_at"])
+
+        # Trigger a background chat sync whenever the device (re)connects so that
+        # any messages received while offline / being re-linked appear automatically.
+        if state == "open":
+            try:
+                from .services import sync_scanned_instance_chats
+                sync_scanned_instance_chats(instance)
+            except Exception as sync_exc:
+                logger.warning(f"[Evolution Webhook] Auto-sync on connection.update failed: {sync_exc}")
 
     def _handle_qrcode_updated(self, instance: WhatsappInstance, data: dict):
         """Saves fresh QR code for linking."""

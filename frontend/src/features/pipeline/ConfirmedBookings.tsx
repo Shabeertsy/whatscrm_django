@@ -29,7 +29,10 @@ export function ConfirmedBookings() {
     deletingId,
     totalValue,
     extraFieldColumns,
+    filterFieldColumns,
     getBookingFields,
+    dynamicFilters,
+    setDynamicFilters,
 
     // Pagination
     page,
@@ -97,6 +100,9 @@ export function ConfirmedBookings() {
         instances={instances}
         selectedInstanceId={instanceFilter}
         onInstanceChange={setInstanceFilter}
+        extraFieldColumns={filterFieldColumns}
+        dynamicFilters={dynamicFilters}
+        onDynamicFiltersChange={setDynamicFilters}
       />
 
       {/* Bookings Data Table */}

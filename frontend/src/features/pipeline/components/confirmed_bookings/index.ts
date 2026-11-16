@@ -1,6 +1,7 @@
 export * from './types';
 export * from './ConfirmedBookingsStats';
 export * from './ConfirmedBookingsFilters';
+export * from './ConfirmedBookingsExtraFilters';
 export * from './ConfirmedBookingRow';
 export * from './ConfirmedBookingsTable';
 export * from './ViewBookingModal';

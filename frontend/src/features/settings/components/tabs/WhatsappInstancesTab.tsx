@@ -119,19 +119,28 @@ export function WhatsappInstancesTab() {
     fetchInstances();
   }, []);
 
-  // Live poll any connecting scanned instances so status updates live without needing a page refresh
+  // Live poll any connecting scanned instances so status updates live without needing a page refresh.
+  // Also periodically refresh already-connected instances every 30 s to detect silent disconnects.
   useEffect(() => {
     const hasConnecting = instances.some(
       (inst) => inst.instance_type === 'scanned_device' && inst.evolution_status === 'connecting'
     );
-    if (!hasConnecting) return;
+    const hasConnected = instances.some(
+      (inst) => inst.instance_type === 'scanned_device' && inst.evolution_status === 'open'
+    );
+    if (!hasConnecting && !hasConnected) return;
+
+    // Use a faster poll (3 s) while connecting, slower poll (30 s) once connected
+    const pollInterval = hasConnecting ? 3000 : 30000;
 
     const interval = setInterval(async () => {
-      const connecting = instances.filter(
-        (inst) => inst.instance_type === 'scanned_device' && inst.evolution_status === 'connecting'
+      const toCheck = instances.filter(
+        (inst) =>
+          inst.instance_type === 'scanned_device' &&
+          (inst.evolution_status === 'connecting' || inst.evolution_status === 'open')
       );
 
-      for (const inst of connecting) {
+      for (const inst of toCheck) {
         try {
           const res = await evolutionApi.getInstanceStatus(inst.id);
           const newStatus = res.data.status;
@@ -152,13 +161,15 @@ export function WhatsappInstancesTab() {
               toast.success(`${inst.display_name} connected successfully!`);
               // Trigger chat sync in background
               evolutionApi.syncInstanceChats(inst.id).catch(() => { });
+            } else if (inst.evolution_status === 'open' && newStatus !== 'open') {
+              toast.error(`${inst.display_name} disconnected. Re-scan QR to reconnect.`);
             }
           }
         } catch {
           // ignore background poll errors
         }
       }
-    }, 3000);
+    }, pollInterval);
 
     return () => clearInterval(interval);
   }, [instances]);

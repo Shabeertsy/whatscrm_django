@@ -12,6 +12,7 @@ import {
   ExtraFieldColumn,
   BookingFieldConfig,
   EditingBookingFormData,
+  DynamicFieldFilter,
 } from '../components/confirmed_bookings/types';
 import { whatsappApi } from '../../../api/whatsapp';
 
@@ -27,6 +28,10 @@ export function useConfirmedBookings(enabled = true) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedPipeline, setSelectedPipeline] = useState<string>('');
+
+  // Dynamic field filters (passed to backend for server-side pagination)
+  const [dynamicFilters, setDynamicFilters] = useState<DynamicFieldFilter[]>([]);
+  const [debouncedDynamicFilters, setDebouncedDynamicFilters] = useState<DynamicFieldFilter[]>([]);
 
   // Pagination states
   const [page, setPage] = useState(1);
@@ -45,7 +50,7 @@ export function useConfirmedBookings(enabled = true) {
   const [noteText, setNoteText] = useState<string>('');
   const [savingNote, setSavingNote] = useState(false);
 
-  // 1. Debounce search input
+  // 1. Debounce search and dynamic filter inputs
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(search);
@@ -53,6 +58,14 @@ export function useConfirmedBookings(enabled = true) {
     }, 300);
     return () => clearTimeout(timer);
   }, [search]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedDynamicFilters(dynamicFilters);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [dynamicFilters]);
 
   // 2. Initial pipelines and instances fetch
   useEffect(() => {
@@ -87,24 +100,33 @@ export function useConfirmedBookings(enabled = true) {
     };
   }, [enabled]);
 
-  // 3. Fetch paginated confirmed bookings from backend
+  // 3. Fetch paginated confirmed bookings from backend with dynamic filters
   const fetchBookings = useCallback(
     async (
       currentPage: number,
       currentPageSize: number,
       pipelineName: string,
       query: string,
-      instId?: string
+      instId?: string,
+      activeFilters?: DynamicFieldFilter[]
     ) => {
       setLoadingBookings(true);
       try {
         const targetInstance = instId !== undefined ? instId : instanceFilter;
+        const currentFilters = activeFilters !== undefined ? activeFilters : debouncedDynamicFilters;
+        const filtersToSend = currentFilters.filter(f => {
+          if (f.type === 'date') return !!(f.dateFrom || f.dateTo);
+          if (f.type === 'number') return (f.numMin !== '' && f.numMin !== undefined) || (f.numMax !== '' && f.numMax !== undefined);
+          return !!(f.value && f.value.trim());
+        });
+
         const res = await getPaginatedConfirmedBookings({
           page: currentPage,
           page_size: currentPageSize,
           pipeline: pipelineName,
           search: query,
           instance: targetInstance,
+          extra_filters: filtersToSend.length > 0 ? filtersToSend : undefined,
         });
 
         setBookings(res.results || []);
@@ -118,13 +140,13 @@ export function useConfirmedBookings(enabled = true) {
         setLoadingBookings(false);
       }
     },
-    [instanceFilter]
+    [instanceFilter, debouncedDynamicFilters]
   );
 
   useEffect(() => {
     if (!enabled) return;
-    fetchBookings(page, pageSize, selectedPipeline, debouncedSearch, instanceFilter);
-  }, [enabled, page, pageSize, selectedPipeline, debouncedSearch, instanceFilter, fetchBookings]);
+    fetchBookings(page, pageSize, selectedPipeline, debouncedSearch, instanceFilter, debouncedDynamicFilters);
+  }, [enabled, page, pageSize, selectedPipeline, debouncedSearch, instanceFilter, debouncedDynamicFilters, fetchBookings]);
 
   // Unique pipeline names for selector
   const pipelineNames = useMemo(() => {
@@ -158,7 +180,7 @@ export function useConfirmedBookings(enabled = true) {
 
   // Dynamic extra field columns derived from pipelines and booking extra_data
   const extraFieldColumns: ExtraFieldColumn[] = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, ExtraFieldColumn>();
 
     const relevantPipelines = selectedPipeline
       ? pipelines.filter(p => p.name === selectedPipeline)
@@ -167,13 +189,23 @@ export function useConfirmedBookings(enabled = true) {
     relevantPipelines.forEach(p => {
       (p.extra_fields || []).forEach(f => {
         if (f && f.key && !map.has(f.key)) {
-          map.set(f.key, f.label || f.key);
+          map.set(f.key, {
+            key: f.key,
+            label: f.label || f.key,
+            type: f.type || 'text',
+            options: f.options,
+          });
         }
       });
       (p.stages || []).forEach(s => {
         (s.extra_fields || []).forEach(f => {
           if (f && f.key && !map.has(f.key)) {
-            map.set(f.key, f.label || f.key);
+            map.set(f.key, {
+              key: f.key,
+              label: f.label || f.key,
+              type: f.type || 'text',
+              options: f.options,
+            });
           }
         });
       });
@@ -184,14 +216,23 @@ export function useConfirmedBookings(enabled = true) {
         Object.keys(b.extra_data).forEach(k => {
           if (!map.has(k)) {
             const pretty = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-            map.set(k, pretty);
+            map.set(k, { key: k, label: pretty, type: 'text' });
           }
         });
       }
     });
 
-    return Array.from(map.entries()).map(([key, label]) => ({ key, label }));
+    return Array.from(map.values());
   }, [bookings, pipelines, selectedPipeline]);
+
+  // Combined fields available for dynamic filtering (pipeline extra fields + Notes)
+  const filterFieldColumns: ExtraFieldColumn[] = useMemo(() => {
+    const list = [...extraFieldColumns];
+    if (!list.some(c => c.key === 'note')) {
+      list.push({ key: 'note', label: 'Notes', type: 'text' });
+    }
+    return list;
+  }, [extraFieldColumns]);
 
   // Helper to extract fields config for a single booking
   const getBookingFields = useCallback(
@@ -372,7 +413,10 @@ export function useConfirmedBookings(enabled = true) {
     deletingId,
     totalValue: serverTotalValue,
     extraFieldColumns,
+    filterFieldColumns,
     getBookingFields,
+    dynamicFilters,
+    setDynamicFilters,
 
     // Pagination
     page,

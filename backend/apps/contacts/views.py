@@ -920,6 +920,8 @@ class ConfirmedBookingsView(APIView):
         pipeline_param = request.query_params.get('pipeline')
         instance_id_param = request.query_params.get('instance')
         search_param = request.query_params.get('search', '').strip()
+        note_param = request.query_params.get('note', '').strip()
+        extra_filters_param = request.query_params.get('extra_filters')
         is_paginated = request.query_params.get('paginate') == 'true' or 'page' in request.query_params
 
         bookings = scope_confirmed_bookings_qs(
@@ -968,6 +970,97 @@ class ConfirmedBookingsView(APIView):
                 Q(pipeline_name__icontains=search_param) |
                 Q(note__icontains=search_param)
             )
+
+        if note_param:
+            bookings = bookings.filter(note__icontains=note_param)
+
+        # Dynamic extra field filters (and Notes filter)
+        if extra_filters_param:
+            try:
+                import json
+                extra_filters = json.loads(extra_filters_param)
+                if isinstance(extra_filters, list) and len(extra_filters) > 0:
+                    matching_ids = []
+                    for b_id, b_extra, b_note in bookings.values_list('id', 'extra_data', 'note'):
+                        extra = b_extra if isinstance(b_extra, dict) else {}
+                        match = True
+                        for f in extra_filters:
+                            key = f.get('key')
+                            if not key:
+                                continue
+                            f_type = f.get('type', 'text')
+
+                            # Note / Notes field filtering
+                            if key in ('note', 'notes'):
+                                val = str(f.get('value') or '').strip().lower()
+                                if val and val not in (b_note or '').lower():
+                                    match = False
+                                    break
+                                continue
+
+                            raw_val = extra.get(key)
+
+                            if f_type == 'date':
+                                d_from = str(f.get('dateFrom') or '').strip()
+                                d_to = str(f.get('dateTo') or '').strip()
+                                if not d_from and not d_to:
+                                    continue
+                                if not raw_val:
+                                    match = False
+                                    break
+                                raw_str = str(raw_val).strip()
+                                raw_date = raw_str[:10] if len(raw_str) >= 10 else raw_str
+                                if d_from and raw_date < d_from:
+                                    match = False
+                                    break
+                                if d_to and raw_date > d_to:
+                                    match = False
+                                    break
+
+                            elif f_type == 'number':
+                                num_min_str = f.get('numMin')
+                                num_max_str = f.get('numMax')
+                                has_min = num_min_str is not None and str(num_min_str).strip() != ''
+                                has_max = num_max_str is not None and str(num_max_str).strip() != ''
+                                if not has_min and not has_max:
+                                    continue
+                                if raw_val is None or str(raw_val).strip() == '':
+                                    match = False
+                                    break
+                                try:
+                                    num_val = float(raw_val)
+                                    if has_min and num_val < float(num_min_str):
+                                        match = False
+                                        break
+                                    if has_max and num_val > float(num_max_str):
+                                        match = False
+                                        break
+                                except (ValueError, TypeError):
+                                    match = False
+                                    break
+
+                            else: # text or select
+                                val = str(f.get('value') or '').strip().lower()
+                                if not val:
+                                    continue
+                                if raw_val is None:
+                                    match = False
+                                    break
+                                if isinstance(raw_val, dict):
+                                    str_val = str(raw_val.get('name') or raw_val.get('label') or raw_val.get('title') or '').lower()
+                                else:
+                                    str_val = str(raw_val).lower()
+                                if val not in str_val:
+                                    match = False
+                                    break
+
+                        if match:
+                            matching_ids.append(b_id)
+
+                    bookings = bookings.filter(id__in=matching_ids)
+            except Exception as e:
+                import logging
+                logging.getLogger(__name__).warning(f"[ConfirmedBookingsView] Failed to parse extra_filters: {e}")
 
         bookings = bookings.order_by('-confirmed_at', '-created_at')
 

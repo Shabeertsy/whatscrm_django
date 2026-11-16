@@ -1,4 +1,5 @@
 import { apiClient } from "../../api/client";
+import type { DynamicFieldFilter } from "./components/confirmed_bookings/types";
 
 export interface PipelineStage {
   id: string;
@@ -249,6 +250,7 @@ export const getPaginatedConfirmedBookings = async (params: {
   pipeline?: string;
   search?: string;
   instance?: string;
+  extra_filters?: DynamicFieldFilter[];
 }): Promise<PaginatedConfirmedBookingsResult> => {
   const queryParams: Record<string, any> = {
     paginate: 'true',
@@ -258,6 +260,9 @@ export const getPaginatedConfirmedBookings = async (params: {
   if (params.pipeline && params.pipeline !== 'all') queryParams.pipeline = params.pipeline;
   if (params.search && params.search.trim()) queryParams.search = params.search.trim();
   if (params.instance && params.instance !== 'all') queryParams.instance = params.instance;
+  if (params.extra_filters && params.extra_filters.length > 0) {
+    queryParams.extra_filters = JSON.stringify(params.extra_filters);
+  }
 
   const res = await apiClient.get('/contacts/pipeline/deals/confirmed/', { params: queryParams });
   return res.data;

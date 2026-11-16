@@ -116,14 +116,14 @@ def sync_instance_status(instance: WhatsappInstance) -> str:
 
         instance.save(update_fields=["evolution_status", "is_active", "evolution_phone", "evolution_qr_code", "updated_at"])
 
-        # Auto-sync existing chats if instance has 0 conversations
+        # Auto-sync chats whenever device connects (not just on very first connection).
+        # This ensures messages received while the device was offline / being reconnected
+        # are pulled in automatically without the user clicking "Sync" manually.
         if status_normalized == "open":
-            from apps.messaging.models import Conversation
-            if Conversation.objects.filter(instance=instance).count() == 0:
-                try:
-                    sync_scanned_instance_chats(instance)
-                except Exception as sync_err:
-                    logger.warning(f"[Evolution Service] Auto-sync chats error: {sync_err}")
+            try:
+                sync_scanned_instance_chats(instance)
+            except Exception as sync_err:
+                logger.warning(f"[Evolution Service] Auto-sync chats error: {sync_err}")
 
         return status_normalized
     except Exception as exc:
@@ -329,14 +329,25 @@ def sync_scanned_instance_chats(instance: WhatsappInstance) -> int:
             conv.last_message_at = ts
             conv.save(update_fields=["last_message_at"])
 
-    # 3. Ensure webhook is configured
+    # 3. Ensure webhook is configured (retry up to 3 times on failure)
     try:
         base_url = (
             getattr(settings, "EVOLUTION_WEBHOOK_BASE_URL", None)
             or getattr(settings, "BACKEND_PUBLIC_URL", "http://localhost:8000")
         ).rstrip("/")
         webhook_url = f"{base_url}/api/evolution/webhook/{inst_name}/"
-        client.set_webhook(inst_name, webhook_url)
+        last_webhook_exc = None
+        for _attempt in range(3):
+            try:
+                client.set_webhook(inst_name, webhook_url)
+                last_webhook_exc = None
+                break
+            except Exception as retry_exc:
+                last_webhook_exc = retry_exc
+                import time
+                time.sleep(1)
+        if last_webhook_exc:
+            logger.warning(f"[Evolution Sync] Could not ensure webhook for {inst_name} after 3 attempts: {last_webhook_exc}")
     except Exception as exc:
         logger.warning(f"[Evolution Sync] Could not ensure webhook for {inst_name}: {exc}")
 
