@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   Calendar, Hash, AlignLeft, ListFilter, FileText, X,
-  RotateCcw, Sparkles, Clock, Check
+  RotateCcw, Clock, Check
 } from 'lucide-react';
 import type { ExtraFieldColumn, DynamicFieldFilter } from './types';
 
@@ -121,18 +121,10 @@ export function ConfirmedBookingsExtraFilters({
     <div className="border-t border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/40 p-4 transition-all">
       {/* Header bar of extra filters panel */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-3 mb-3 border-b border-slate-200/60 dark:border-slate-800">
-        <div className="flex items-center gap-2">
-          <div className="h-6 w-6 rounded-md bg-[#007e3a]/10 text-[#007e3a] flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5" />
-          </div>
-          <div>
-            <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-              Dynamic Field Filters
-            </h4>
-            <p className="text-[11px] text-slate-500 dark:text-slate-400">
-              Filter by custom pipeline fields and booking notes across all pages
-            </p>
-          </div>
+        <div>
+          <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+            Dynamic Field Filters
+          </h4>
         </div>
 
         <div className="flex items-center gap-2">
@@ -169,17 +161,16 @@ export function ConfirmedBookingsExtraFilters({
             type === 'date'
               ? !!(f?.dateFrom || f?.dateTo)
               : type === 'number'
-              ? (f?.numMin !== '' && f?.numMin !== undefined) || (f?.numMax !== '' && f?.numMax !== undefined)
-              : !!(f?.value && f.value.trim());
+                ? (f?.numMin !== '' && f?.numMin !== undefined) || (f?.numMax !== '' && f?.numMax !== undefined)
+                : !!(f?.value && f.value.trim());
 
           return (
             <div
               key={col.key}
-              className={`flex flex-col justify-between rounded-xl border bg-white dark:bg-slate-900/90 p-3 shadow-xs transition-all duration-150 ${
-                isActive
-                  ? 'border-[#007e3a] ring-2 ring-[#007e3a]/15 shadow-sm'
-                  : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
-              }`}
+              className={`flex flex-col justify-between rounded-xl border bg-white dark:bg-slate-900/90 p-3 shadow-xs transition-all duration-150 ${isActive
+                ? 'border-[#007e3a] ring-2 ring-[#007e3a]/15 shadow-sm'
+                : 'border-slate-200/90 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'
+                }`}
             >
               {/* Card top: icon, label, badge, clear */}
               <div>

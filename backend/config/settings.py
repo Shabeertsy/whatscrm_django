@@ -231,6 +231,16 @@ SIMPLE_JWT = {
 PROXY_API_BASE_URL = os.getenv("PROXY_API_BASE_URL", "")
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "")
 
+
+
+# ─── Project A — CRM OAuth2 credentials ──────────────────────────────────────
+# Base URL is resolved dynamically from the DB (UserActiveProxy / PROXY_API_BASE_URL).
+# Only the OAuth2 app credentials are fixed here.
+PROJECT_A_CLIENT_ID     = os.getenv("PROJECT_A_CLIENT_ID", "")
+PROJECT_A_CLIENT_SECRET = os.getenv("PROJECT_A_CLIENT_SECRET", "")
+
+
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

@@ -33,6 +33,10 @@ import urllib.request
 import json
 import time
 import hashlib
+import logging
+import requests
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -189,45 +193,88 @@ class PropertyConfigProxyView(APIView):
 
 
 class CRMRoomsProxyView(APIView):
+    """
+    Proxy view for Project A's CRM Room API.
+    Uses OAuth2 Client Credentials (Bearer token) stored/cached in Redis.
+    Endpoints:
+      GET /api/core/crm-rooms/           → list of rooms (paginated)
+      GET /api/core/crm-rooms/<uuid>/    → single room detail
+    All query params from the frontend are forwarded transparently.
+    """
     permission_classes = [IsAuthenticated, RequirePermission]
     required_permission = Permission.ACCESS_HOTELS
 
     def get(self, request, uuid=None):
-        query_params = request.GET.urlencode()
-        base = get_proxy_url(request.user)
-        
-        if uuid:
-            url = f"{base}/crm/rooms/{uuid}/"
-            if query_params:
-                url += f"?{query_params}"
-        else:
-            url = f"{base}/crm/rooms/"
-            if query_params:
-                url += f"?{query_params}"
-        
-        cache_key = 'crm_rooms_api_' + hashlib.md5(url.encode()).hexdigest()
-        cached_data = cache.get(cache_key)
-        
-        if cached_data:
-            return Response(cached_data)
+        from apps.core.booking_api import get_crm_rooms, get_crm_room_detail
 
-        start_time = time.time()
+        p = request.GET
+
         try:
-            req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-            with urllib.request.urlopen(req) as response:
-                data = json.loads(response.read().decode())
-                
-                cache.set(cache_key, data, timeout=60)
-                return Response(data)
-                
-        except urllib.error.HTTPError as e:
+            if uuid:
+                data = get_crm_room_detail(
+                    room_uuid    = uuid,
+                    user         = request.user,
+                    check_in     = p.get('check_in'),
+                    check_out    = p.get('check_out'),
+                    adults       = int(p.get('adults', 1)),
+                    children     = int(p.get('children', 0)),
+                    rooms_needed = int(p.get('rooms_needed', 1)),
+                )
+            else:
+                data = get_crm_rooms(
+                    user             = request.user,
+                    check_in         = p.get('check_in'),
+                    check_out        = p.get('check_out'),
+                    adults           = int(p.get('adults', 1)),
+                    children         = int(p.get('children', 0)),
+                    rooms_needed     = int(p.get('rooms_needed', 1)),
+                    page             = int(p.get('page', 1)),
+                    page_size        = int(p.get('page_size', 10)),
+                    search           = p.get('search'),
+                    property_type    = p.get('property_type'),
+                    room_type        = p.get('room_type'),
+                    bedroom_type     = p.get('bedroom_type'),
+                    amenities        = p.get('amenities'),
+                    tags             = p.get('tags'),
+                    room_views       = p.get('room_views'),
+                    areas            = p.get('areas'),
+                    districts        = p.get('districts'),
+                    meal_plans       = p.get('meal_plans'),
+                    min_price        = p.get('min_price'),
+                    max_price        = p.get('max_price'),
+                    sort             = p.get('sort', 'price_asc'),
+                    hide_unavailable = p.get('hide_unavailable', 'false') == 'true',
+                )
+            return Response(data)
+
+        except requests.HTTPError as e:
+            status_code = e.response.status_code if e.response is not None else 503
+            resp_body = ""
             try:
-                error_body = json.loads(e.read().decode())
-                return Response(error_body, status=e.code)
-            except:
-                return Response({"error": str(e)}, status=e.code)
+                resp_body = e.response.json()
+            except Exception:
+                resp_body = e.response.text if e.response is not None else str(e)
+
+            logger.error('[CRMRoomsProxyView] HTTP %s from Project A: %s | Response: %s', status_code, e, resp_body)
+
+            if uuid and status_code == 404:
+                return Response({'error': 'Room not found.'}, status=404)
+            return Response(
+                {
+                    'error': 'Failed to fetch rooms from booking system.',
+                    'details': resp_body,
+                    'status_code': status_code,
+                },
+                status=status_code
+            )
+
+        except requests.ConnectionError:
+            logger.error('[CRMRoomsProxyView] Cannot connect to Project A')
+            return Response({'error': 'Booking system is currently unavailable.'}, status=503)
+
         except Exception as e:
-            return Response({"error": str(e)}, status=500)
+            logger.exception('[CRMRoomsProxyView] Unexpected error: %s', e)
+            return Response({'error': 'Internal server error.'}, status=500)
 
 
 class DashboardMetricsView(APIView):
