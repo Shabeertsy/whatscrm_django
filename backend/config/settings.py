@@ -295,7 +295,9 @@ AWS_S3_SIGNATURE_VERSION = "s3v4"
 
 AWS_DEFAULT_ACL = None
 
-AWS_QUERYSTRING_AUTH = True
+# If a custom domain is set for R2/S3, querystring_auth is disabled. Otherwise, presigned URLs are signed.
+AWS_S3_CUSTOM_DOMAIN = os.getenv("R2_PUBLIC_DOMAIN", os.getenv("AWS_S3_CUSTOM_DOMAIN", "")) or None
+AWS_QUERYSTRING_AUTH = False if AWS_S3_CUSTOM_DOMAIN else True
 
 # Meta Graph API
 META_GRAPH_API_VERSION = os.getenv("META_GRAPH_API_VERSION", "v20.0")

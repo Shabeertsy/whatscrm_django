@@ -101,7 +101,9 @@ class EvolutionWebhookView(APIView):
         message_obj = data.get("message") or {}
 
         # Parse message content & type
-        msg_type, body, media_url = self._extract_message_content(message_obj, data)
+        msg_type, body, media_url, storage_path = self._extract_message_content(
+            message_obj, data, instance=instance, key=key
+        )
 
         # Find or create Contact
         phone_with_plus = f"+{clean_phone}"
@@ -148,6 +150,7 @@ class EvolutionWebhookView(APIView):
             msg_type=msg_type,
             body=body,
             media_url=media_url,
+            storage_path=storage_path or None,
             status=msg_status,
             timestamp=now_ts,
         )
@@ -174,11 +177,37 @@ class EvolutionWebhookView(APIView):
                 except Exception as e:
                     logger.warning(f"[Evolution Webhook] Celery trigger failed: {e}")
 
-    def _extract_message_content(self, message_obj: dict, data: dict):
+    def _get_media_base64(self, data: dict, message_obj: dict, instance: WhatsappInstance = None, key: dict = None) -> str:
+        """Finds base64 in webhook payload or fetches it from Evolution API on demand."""
+        # Direct base64 in data
+        b64 = data.get("base64") or message_obj.get("base64")
+        if b64:
+            return b64
+
+        #  Inside nested media object
+        media_nested = data.get("media") or {}
+        if isinstance(media_nested, dict) and media_nested.get("base64"):
+            return media_nested.get("base64")
+
+        #  Fetch on demand from Evolution API if not in webhook payload
+        if instance and getattr(instance, "evolution_instance_name", None) and key:
+            try:
+                from .client import EvolutionClient
+                client = EvolutionClient()
+                res = client.get_base64_from_media_message(instance.evolution_instance_name, key)
+                if isinstance(res, dict) and res.get("base64"):
+                    return res["base64"]
+            except Exception as exc:
+                logger.warning(f"[Evolution Webhook] Failed to fetch on-demand media base64: {exc}")
+
+        return ""
+
+    def _extract_message_content(self, message_obj: dict, data: dict, instance: WhatsappInstance = None, key: dict = None):
         """Extracts text, media type, and media url from Evolution API message structure."""
         body = ""
         msg_type = "text"
         media_url = ""
+        storage_path = ""
 
         if "conversation" in message_obj and message_obj["conversation"]:
             body = message_obj["conversation"]
@@ -190,29 +219,36 @@ class EvolutionWebhookView(APIView):
             img = message_obj["imageMessage"]
             body = img.get("caption", "")
             msg_type = "image"
-            media_url = self._save_evolution_media(data.get("base64"), img.get("mimetype", "image/jpeg"), "img")
+            b64 = self._get_media_base64(data, message_obj, instance, key)
+            media_url, storage_path = self._save_evolution_media(b64, img.get("mimetype", "image/jpeg"), "img")
         elif "audioMessage" in message_obj:
             aud = message_obj["audioMessage"]
             msg_type = "audio"
-            media_url = self._save_evolution_media(data.get("base64"), aud.get("mimetype", "audio/ogg"), "aud")
+            b64 = self._get_media_base64(data, message_obj, instance, key)
+            media_url, storage_path = self._save_evolution_media(b64, aud.get("mimetype", "audio/ogg"), "aud")
         elif "videoMessage" in message_obj:
             vid = message_obj["videoMessage"]
             body = vid.get("caption", "")
             msg_type = "video"
-            media_url = self._save_evolution_media(data.get("base64"), vid.get("mimetype", "video/mp4"), "vid")
+            b64 = self._get_media_base64(data, message_obj, instance, key)
+            media_url, storage_path = self._save_evolution_media(b64, vid.get("mimetype", "video/mp4"), "vid")
         elif "documentMessage" in message_obj:
             doc = message_obj["documentMessage"]
             body = doc.get("fileName") or doc.get("caption", "")
             msg_type = "document"
-            media_url = self._save_evolution_media(data.get("base64"), doc.get("mimetype", "application/pdf"), "doc")
+            b64 = self._get_media_base64(data, message_obj, instance, key)
+            media_url, storage_path = self._save_evolution_media(b64, doc.get("mimetype", "application/pdf"), "doc")
 
-        return msg_type, body, media_url
+        return msg_type, body, media_url, storage_path
 
-    def _save_evolution_media(self, base64_str: str, mimetype: str, prefix: str) -> str:
-        """Saves base64 media to storage if provided."""
+    def _save_evolution_media(self, base64_str: str, mimetype: str, prefix: str) -> tuple[str, str]:
+        """Saves base64 media to storage. Returns (public_url, storage_path)."""
         if not base64_str:
-            return ""
+            return "", ""
         try:
+            from apps.messaging.storage_backends import get_whatsapp_storage
+            storage = get_whatsapp_storage()
+
             # Clean base64 header if present (e.g. data:image/png;base64,...)
             if "," in base64_str:
                 base64_str = base64_str.split(",", 1)[1]
@@ -221,14 +257,24 @@ class EvolutionWebhookView(APIView):
             if "png" in mimetype: ext = ".png"
             elif "pdf" in mimetype: ext = ".pdf"
             elif "ogg" in mimetype: ext = ".ogg"
+            elif "webm" in mimetype: ext = ".webm"
             elif "mp4" in mimetype: ext = ".mp4"
+            elif "mp3" in mimetype: ext = ".mp3"
 
             filename = f"chat_media/{prefix}_{timezone.now().strftime('%Y%m%d_%H%M%S')}_{timezone.now().microsecond}{ext}"
-            saved_path = default_storage.save(filename, ContentFile(file_bytes))
-            return default_storage.url(saved_path)
+            saved_path = storage.save(filename, ContentFile(file_bytes))
+            url = storage.url(saved_path)
+
+            if not (url.startswith("http://") or url.startswith("https://")):
+                base = getattr(settings, "BACKEND_PUBLIC_URL", "http://127.0.0.1:8000").rstrip("/")
+                if not url.startswith("/"):
+                    url = "/" + url
+                url = f"{base}{url}"
+
+            return url, saved_path
         except Exception as exc:
             logger.warning(f"[Evolution Webhook] Failed to decode and save media: {exc}")
-            return ""
+            return "", ""
 
     def _handle_connection_update(self, instance: WhatsappInstance, data: dict):
         """Updates instance connection status ('open', 'close', 'connecting')."""

@@ -7,7 +7,13 @@ class R2MediaStorage(S3Storage):
     location = "whatsapp_media"
     default_acl = None
     file_overwrite = False
-    querystring_auth = True
+    
+    # If a custom public domain is configured for R2 (e.g. pub-xxx.r2.dev or media.domain.com),
+    # URLs will be permanent clean public links without query strings.
+    # Otherwise, signed URLs are generated with 7-day validity (and dynamically refreshed from storage_path).
+    custom_domain = os.getenv("R2_PUBLIC_DOMAIN", os.getenv("AWS_S3_CUSTOM_DOMAIN", None))
+    querystring_auth = False if custom_domain else True
+    querystring_expire = 60 * 60 * 24 * 7  # 7 days
 
 import functools
 

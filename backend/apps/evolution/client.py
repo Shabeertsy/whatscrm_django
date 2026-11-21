@@ -228,3 +228,21 @@ class EvolutionClient:
             "delay": delay,
         }
         return self._request('POST', f"/message/sendMedia/{instance_name}", json_data=payload)
+
+    def get_base64_from_media_message(self, instance_name: str, message_key: dict) -> dict:
+        """
+        Fetches base64 of a media message from Evolution API on demand.
+        POST /chat/getBase64FromMediaMessage/{instance}
+        """
+        payload = {
+            "message": {
+                "key": message_key
+            },
+            "convertToMp4": False
+        }
+        try:
+            res = self._request('POST', f"/chat/getBase64FromMediaMessage/{instance_name}", json_data=payload, timeout=25)
+            return res if isinstance(res, dict) else {}
+        except Exception as exc:
+            logger.warning(f"[EvolutionClient] getBase64FromMediaMessage failed for {instance_name}: {exc}")
+            return {}
